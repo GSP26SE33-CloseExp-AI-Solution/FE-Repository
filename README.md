@@ -1,46 +1,95 @@
-# Getting Started with Create React App
+# FE-Repository  
+## Frontend Service – Near-Expiry Food Trading Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Frontend (ReactJS + TypeScript) chịu trách nhiệm xây dựng giao diện người dùng cho hệ thống giao dịch thực phẩm cận hạn. FE đảm nhiệm việc hiển thị dữ liệu, điều hướng nghiệp vụ theo vai trò và giao tiếp với Backend thông qua REST API.
 
-## Available Scripts
+README này mô tả **phạm vi, công nghệ, cấu trúc và quy ước phát triển** của FE-Repository trong đồ án.
 
-In the project directory, you can run:
+---
 
-### `npm start`
+## 1) Mục tiêu & Phạm vi
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- Cung cấp giao diện web cho toàn bộ người dùng của hệ thống
+- Hiển thị dữ liệu nghiệp vụ và kết quả xử lý từ Backend / AI
+- Đảm bảo trải nghiệm người dùng rõ ràng, dễ sử dụng
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+### Các vai trò FE hỗ trợ
+- **Admin**: quản lý hệ thống, người dùng và thống kê
+- **Nhân viên siêu thị**: đăng sản phẩm cận hạn, xem OCR & giá AI
+- **Nhân viên đóng gói**: theo dõi và cập nhật trạng thái đơn hàng
+- **Nhân viên giao hàng**: xem và cập nhật trạng thái giao
+- **Hộ kinh doanh thực phẩm**: duyệt, đặt hàng và gửi phản hồi
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 2) Công nghệ Frontend sử dụng
 
-### `npm run build`
+- **Framework**: ReactJS + TypeScript  
+- **Routing**: React Router  
+- **Form Handling**: React Hook Form  
+- **Schema Validation**: Zod  
+- **UI Library**: Radix UI  
+- **HTTP Client**: Axios  
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 3) Cấu trúc thư mục
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+src/
+components/ # UI components dùng chung
+pages/ # Trang theo chức năng & vai trò
+hooks/ # Custom React hooks
+services/ # Gọi REST API
+utils/ # Helper, constants
+App.tsx # Routing & layout chính
+public/
+package.json
+README.md
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## 4) Quy ước & tiêu chuẩn phát triển
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+- Chỉ sử dụng **React Functional Component**
+- Code **100% bằng TypeScript** (không dùng .js / .jsx)
+- Business logic và API call đặt trong `services/` hoặc `hooks/`
+- UI component chỉ xử lý render và props
+- Validate form bằng **React Hook Form + Zod**
+- Kiểm tra null/undefined trước khi render (`?.`, `??`)
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+---
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+## 5) Nghiệp vụ FE chính
 
-## Learn More
+- Đăng nhập và phân quyền theo vai trò
+- Quản lý sản phẩm cận hạn
+- Hiển thị kết quả OCR và giá gợi ý từ AI
+- Quản lý đơn hàng và trạng thái xử lý
+- Dashboard và thống kê
+- Gửi phản hồi người dùng
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+---
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 6) Tích hợp Backend & AI
+
+- FE giao tiếp với **.NET Backend** thông qua REST API
+- Backend gọi sang **AI Service (Python/FastAPI)**
+- FE chỉ đảm nhiệm hiển thị và điều hướng nghiệp vụ
+- Xác thực bằng JWT token
+
+---
+
+## 7) Triển khai
+
+- **Frontend Hosting**: Vercel  
+- **CDN & Security**: Cloudflare  
+- **Build Tool**: Create React App  
+
+---
+
+## 8) Ghi chú
+
+- Repository này **chỉ chứa Frontend**
+- Không xử lý logic Backend hoặc AI
+- API contract được định nghĩa trong tài liệu riêng
+- FE có thể triển khai độc lập
