@@ -35,16 +35,18 @@ README này mô tả **phạm vi, công nghệ, cấu trúc và quy ước phát
 
 ## 3) Cấu trúc thư mục
 
+```
 src/
-components/ # UI components dùng chung
-pages/ # Trang theo chức năng & vai trò
-hooks/ # Custom React hooks
-services/ # Gọi REST API
-utils/ # Helper, constants
-App.tsx # Routing & layout chính
-public/
-package.json
+    components/     # UI components dùng chung
+    pages/          # Trang theo chức năng & vai trò
+    hooks/          # Custom React hooks
+    services/       # Gọi REST API
+    utils/          # Helper, constants
+    App.tsx         # Routing & layout chính
+    public/
+    package.json
 README.md
+```
 
 ---
 
