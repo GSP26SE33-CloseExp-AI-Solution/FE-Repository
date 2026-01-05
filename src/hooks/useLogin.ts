@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../services/authService';
-import { saveAuth } from '../utils/auth';
-import { ILoginRequest } from '../types/auth.type';
+import { login } from '@/services/authService';
+import { saveAuth } from '@/utils/auth';
+import { ILoginRequest } from '@/types/auth.type';
 
 export const useLogin = () => {
     const navigate = useNavigate();

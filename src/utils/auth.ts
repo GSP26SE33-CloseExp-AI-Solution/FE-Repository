@@ -1,4 +1,4 @@
-import { ILoginResponse } from '../types/auth.type';
+import { ILoginResponse } from '@/types/auth.type';
 
 const AUTH_KEY = 'closeexp_auth';
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { getAuth } from '../../utils/auth';
+import { getAuth } from '@/utils/auth';
 
 const Dashboard: React.FC = () => {
     const auth = getAuth();
