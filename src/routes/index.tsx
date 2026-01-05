@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
+import PrivateRoute from './PrivateRoute';
 import Home from '../pages/Home';
 import Login from '../pages/Login';
 import Dashboard from '../pages/Dashboard';
@@ -22,9 +23,11 @@ const AppRoutes: React.FC = () => {
                 <Route
                     path="/dashboard"
                     element={
-                        <MainLayout>
-                            <Dashboard />
-                        </MainLayout>
+                        <PrivateRoute>
+                            <MainLayout>
+                                <Dashboard />
+                            </MainLayout>
+                        </PrivateRoute>
                     }
                 />
             </Routes>
