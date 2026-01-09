@@ -1,24 +1,12 @@
-export interface ILoginRequest {
+export type UserRole = 'ADMIN' | 'VENDOR' | 'SUPERMARKET_STAFF' | 'PACKAGE_STAFF' | 'MARKETING_STAFF';
+
+export interface IUser {
+    id: number;
     email: string;
-    password: string;
+    role: UserRole;
 }
 
 export interface ILoginResponse {
     token: string;
-    role: 'ADMIN' | 'STAFF' | 'DELIVER' | 'VENDOR';
-    userName: string;
-}
-export interface ILoginRequest {
-    username: string;
-    password: string;
-}
-
-export interface ILoginResponse {
-    accessToken: string;
-    refreshToken?: string;
-    user: {
-        id: string;
-        username: string;
-        role: string;
-    };
+    user: IUser;
 }

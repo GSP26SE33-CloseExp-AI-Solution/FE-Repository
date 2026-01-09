@@ -1,12 +1,39 @@
-import api from './api';
-import { ILoginRequest, ILoginResponse } from '@/types/auth.type';
+import axiosClient from './axiosClient';
+import { mockUsers } from '@/mocks/mockUsers';
+import { ILoginResponse } from '@/types/auth.type';
+
+interface LoginPayload {
+    email: string;
+    password: string;
+}
 
 export const login = async (
-    payload: ILoginRequest
+    payload: LoginPayload
 ): Promise<ILoginResponse> => {
-    const response = await api.post<ILoginResponse>(
-        '/auth/login',
-        payload
+    // ==========================
+    // 🔴 API thật (dùng sau)
+    // ==========================
+    /*
+    return axiosClient.post('/auth/login', payload);
+    */
+
+    // ==========================
+    // 🟢 MOCK LOGIN
+    // ==========================
+    const user = mockUsers.find(
+        u => u.email === payload.email && u.password === payload.password
     );
-    return response.data;
+
+    if (!user) {
+        throw new Error('Email hoặc mật khẩu không đúng');
+    }
+
+    return {
+        token: `mock-token-${user.id}`,
+        user: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+        },
+    };
 };

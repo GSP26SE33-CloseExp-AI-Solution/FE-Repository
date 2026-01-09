@@ -16,9 +16,6 @@ export const clearAuth = () => {
 };
 
 export const isAuthenticated = (): boolean => {
-    const raw = localStorage.getItem('closeexp_auth');
-    if (!raw) return false;
-
-    const auth = JSON.parse(raw);
-    return !!auth.token;
+    const auth = getAuth();
+    return Boolean(auth?.token);
 };

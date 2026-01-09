@@ -1,64 +1,40 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { login } from '@/services/authService';
 import { saveAuth } from '@/utils/auth';
-import { ILoginRequest } from '@/types/auth.type';
+import { ILoginResponse } from '@/types/auth.type';
+
+interface LoginPayload {
+    email: string;
+    password: string;
+}
 
 export const useLogin = () => {
-    const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const [email, setEmail] = useState<string>('');
-    const [password, setPassword] = useState<string>('');
-    const [error, setError] = useState<string>('');
-    const [loading, setLoading] = useState<boolean>(false);
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        if (!email || !password) {
-            setError('Vui lòng nhập đầy đủ email và mật khẩu');
-            return;
-        }
-
-        setLoading(true);
-        setError('');
-
-        const payload: ILoginRequest = {
-            email,
-            password,
-        };
-
+    const handleLogin = async (
+        payload: LoginPayload
+    ): Promise<ILoginResponse> => {
         try {
-            const response = await login(payload);
+            setLoading(true);
+            setError(null);
 
-            // LƯU AUTH
-            saveAuth(response);
+            const res = await login(payload);
 
-            // REDIRECT THEO ROLE
-            switch (response.role) {
-                case 'ADMIN':
-                    navigate('/dashboard');
-                    break;
-                case 'STAFF':
-                    navigate('/orders');
-                    break;
-                default:
-                    navigate('/');
-            }
+            saveAuth(res);
+
+            return res;
         } catch (err: any) {
-            setError(err.message);
+            setError(err.message || 'Đăng nhập thất bại');
+            throw err;
         } finally {
             setLoading(false);
         }
     };
 
     return {
-        email,
-        password,
-        error,
+        handleLogin,
         loading,
-        setEmail,
-        setPassword,
-        handleSubmit,
+        error,
     };
 };

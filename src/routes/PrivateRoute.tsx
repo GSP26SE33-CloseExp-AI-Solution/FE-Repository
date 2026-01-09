@@ -1,19 +1,12 @@
-import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Outlet } from 'react-router-dom';
 import { isAuthenticated } from '@/utils/auth';
 
-interface PrivateRouteProps {
-    children: React.ReactNode;
-}
-
-const PrivateRoute: React.FC<PrivateRouteProps> = ({ children }) => {
-    // Chưa đăng nhập
+const PrivateRoute = () => {
     if (!isAuthenticated()) {
         return <Navigate to="/login" replace />;
     }
 
-    // Đã đăng nhập
-    return <>{children}</>;
+    return <Outlet />;
 };
 
 export default PrivateRoute;
