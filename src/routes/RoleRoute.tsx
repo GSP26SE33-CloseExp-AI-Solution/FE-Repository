@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { getAuth } from '@/utils/auth';
 import { UserRole } from '@/types/auth.type';
+import { getRedirectByRole } from '@/utils/redirect';
 
 interface Props {
     allow: UserRole[];
@@ -14,7 +15,12 @@ const RoleRoute = ({ allow }: Props) => {
     }
 
     if (!allow.includes(auth.user.role)) {
-        return <Navigate to="/403" replace />;
+        return (
+            <Navigate
+                to={getRedirectByRole(auth.user.role)}
+                replace
+            />
+        );
     }
 
     return <Outlet />;

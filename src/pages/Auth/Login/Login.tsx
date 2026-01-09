@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLogin } from '@/hooks/useLogin';
+import { getRedirectByRole } from '@/utils/redirect';
+import { getAuth } from '@/utils/auth';
 
 const Login = () => {
     const navigate = useNavigate();
@@ -9,32 +11,23 @@ const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
+    // Nếu đã login thì đá về trang theo role
+    useEffect(() => {
+        const auth = getAuth();
+        if (auth) {
+            navigate(getRedirectByRole(auth.user.role), { replace: true });
+        }
+    }, [navigate]);
+
     const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         try {
             const response = await handleLogin({ email, password });
+            if (!response) return;
 
-            switch (response.user.role) {
-                case 'ADMIN':
-                    navigate('/admin/dashboard');
-                    break;
-                case 'SUPERMARKET_STAFF':
-                    navigate('/supermarket/products');
-                    break;
-                case 'PACKAGE_STAFF':
-                    navigate('/package/orders');
-                    break;
-                case 'MARKETING_STAFF':
-                    navigate('/marketing/promotions');
-                    break;
-                case 'VENDOR':
-                    navigate('/');
-                    break;
-                default:
-                    navigate('/guest');
-            }
-
+            const redirectUrl = getRedirectByRole(response.user.role);
+            navigate(redirectUrl, { replace: true });
         } catch {
             // error đã được set trong useLogin
         }
@@ -70,8 +63,10 @@ const Login = () => {
                 <p>Account test:</p>
                 <ul>
                     <li>ADMIN — admin@test.com / 123456</li>
-                    <li>STAFF — staff@test.com / 123456</li>
-                    <li>USER — user@test.com / 123456</li>
+                    <li>VENDOR — vendor@test.com / 123456</li>
+                    <li>SUPERMARKET STAFF — supermarket@test.com / 123456</li>
+                    <li>PACKAGE STAFF — package@test.com / 123456</li>
+                    <li>MARKETING STAFF — marketing@test.com / 123456</li>
                 </ul>
             </div>
         </form>
