@@ -7,8 +7,13 @@ export const saveAuth = (data: ILoginResponse) => {
 };
 
 export const getAuth = (): ILoginResponse | null => {
-    const raw = localStorage.getItem(AUTH_KEY);
-    return raw ? JSON.parse(raw) : null;
+    try {
+        const raw = localStorage.getItem(AUTH_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch {
+        clearAuth();
+        return null;
+    }
 };
 
 export const clearAuth = () => {

@@ -1,5 +1,6 @@
 import React from 'react';
 import { getAuth } from '@/utils/auth';
+import { useLogout } from '@/hooks/useLogout';
 
 const AdminDashboard: React.FC = () => {
     const auth = getAuth();
