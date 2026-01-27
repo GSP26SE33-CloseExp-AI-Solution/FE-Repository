@@ -255,9 +255,12 @@ const demoProducts: Product[] = [
 const SProducts: React.FC = () => {
     const navigate = useNavigate();
     const [keyword, setKeyword] = useState<string>("");
+    const [searchType, setSearchType] = useState<string>("Tất cả");
+    const [expiryFilter, setExpiryFilter] = useState<string>("Tất cả");
 
     const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
         setKeyword(e.target.value);
+        setCurrentPage(1);
     };
 
     const handleAddProduct = () => {
@@ -293,18 +296,18 @@ const SProducts: React.FC = () => {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
         if (diffDays >= 8) {
-            return { label: "Còn hạn dài", color: "bg-green-100 text-green-700" };
+            return { label: "Còn dài hạn", color: "bg-green-100 text-green-700" };
         }
 
         if (diffDays >= 3 && diffDays <= 7) {
-            return { label: "Còn hạn ngắn", color: "bg-green-100 text-green-700" };
+            return { label: "Còn ngắn hạn", color: "bg-blue-100 text-blue-700" };
         }
 
         if (diffDays >= 1 && diffDays <= 2) {
             return { label: "Sắp hết hạn", color: "bg-yellow-100 text-yellow-700" };
         }
 
-        if (diffDays >= 0 && diffDays <= 0) {
+        if (diffDays === 0) {
             return { label: "Trong ngày", color: "bg-orange-100 text-orange-700" };
         }
 
@@ -316,7 +319,6 @@ const SProducts: React.FC = () => {
         const today = new Date();
         const expiry = new Date(expiryDate);
 
-        // reset giờ để tránh lệch do timezone
         today.setHours(0, 0, 0, 0);
         expiry.setHours(0, 0, 0, 0);
 
@@ -326,15 +328,57 @@ const SProducts: React.FC = () => {
         return diffDays > 0 ? diffDays : 0;
     };
 
+    // FILTER THEO TỪ KHÓA
+    const filteredByKeyword = demoProducts.filter(p => {
+        const kw = keyword.toLowerCase();
+
+        if (!kw) return true;
+
+        switch (searchType) {
+            case "Tên sản phẩm":
+                return p.name.toLowerCase().includes(kw);
+
+            case "Phân loại":
+                return p.category.toLowerCase().includes(kw);
+
+            case "Thương hiệu":
+                return p.brand.toLowerCase().includes(kw);
+
+            case "Xuất xứ":
+                return p.origin.toLowerCase().includes(kw);
+
+            default: // Tất cả
+                return (
+                    p.name.toLowerCase().includes(kw) ||
+                    p.category.toLowerCase().includes(kw) ||
+                    p.brand.toLowerCase().includes(kw) ||
+                    p.origin.toLowerCase().includes(kw)
+                );
+        }
+    });
+
+    // FILTER THEO HẠN SỬ DỤNG
+    const filteredProducts = filteredByKeyword.filter(p => {
+        const status = getExpiryStatus(p.expiry).label;
+
+        if (expiryFilter === "Tất cả") return true;
+        if (expiryFilter === "Còn dài hạn") return status === "Còn dài hạn";
+        if (expiryFilter === "Còn ngắn hạn") return status === "Còn ngắn hạn";
+        if (expiryFilter === "Sắp hết hạn") return status === "Sắp hết hạn";
+        if (expiryFilter === "Trong ngày") return status === "Trong ngày";
+        if (expiryFilter === "Hết hạn") return status === "Hết hạn";
+
+        return true;
+    });
+
     // PHÂN TRANG
     const ITEMS_PER_PAGE = 10;
-
     const [currentPage, setCurrentPage] = useState(1);
 
-    const totalPages = Math.ceil(demoProducts.length / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
 
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const currentProducts = demoProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    const currentProducts = filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     const goNext = () => {
         if (currentPage < totalPages) setCurrentPage(prev => prev + 1);
@@ -348,17 +392,46 @@ const SProducts: React.FC = () => {
         <div className="w-full">
             {/* TOP BAR */}
             <div className="flex items-center gap-5 mb-6">
-                <div className="flex items-center flex-1 h-[50px] bg-white border border-gray-200 rounded-lg px-4 shadow-sm focus-within:ring-2 focus-within:ring-green-600">
-                    <Search className="text-green-700 mr-4" size={22} />
+                {/* SEARCH INPUT */}
+                <div className="flex items-center flex-1 h-[50px] bg-white border border-gray-200 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-green-600 overflow-hidden">
+
+                    {/* SEARCH TYPE DROPDOWN */}
+                    <div className="relative h-full">
+                        <select
+                            value={searchType}
+                            onChange={(e) => {
+                                setSearchType(e.target.value);
+                                setCurrentPage(1);
+                            }}
+                            className="appearance-none h-full pl-4 pr-10 text-[15px] bg-gray-50 border-r border-gray-200 outline-none text-gray-700"
+                        >
+                            <option>Tất cả</option>
+                            <option>Tên sản phẩm</option>
+                            <option>Phân loại</option>
+                            <option>Thương hiệu</option>
+                            <option>Xuất xứ</option>
+                        </select>
+
+                        <ChevronDown
+                            size={18}
+                            className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                        />
+                    </div>
+
+                    {/* SEARCH ICON */}
+                    <Search className="text-green-700 mx-3" size={20} />
+
+                    {/* INPUT */}
                     <input
                         type="text"
-                        placeholder="Tìm kiếm"
+                        placeholder="Nhập từ khóa tìm kiếm..."
                         value={keyword}
                         onChange={handleSearchChange}
-                        className="w-full outline-none text-[20px] text-gray-500 font-light"
+                        className="w-full h-full outline-none text-[18px] text-gray-600 font-light pr-4"
                     />
                 </div>
 
+                {/* BUTTON ADD PRODUCT */}
                 <button
                     type="button"
                     onClick={handleAddProduct}
@@ -367,6 +440,50 @@ const SProducts: React.FC = () => {
                     <span className="text-[20px] font-semibold">Thêm sản phẩm</span>
                     <Plus size={26} />
                 </button>
+            </div>
+
+            {/* EXPIRY STATUS LEGEND */}
+            <div className="px-5 py-4 bg-white">
+                <div className="text-sm font-semibold text-gray-700 mb-3">
+                    Chú thích trạng thái hạn sử dụng
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 font-medium">
+                            Còn dài hạn
+                        </span>
+                        <span className="text-gray-600">≥ 8 ngày</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 font-medium">
+                            Còn ngắn hạn
+                        </span>
+                        <span className="text-gray-600">3 – 7 ngày</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+                            Sắp hết hạn
+                        </span>
+                        <span className="text-gray-600">1 – 2 ngày</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full bg-orange-100 text-orange-700 font-medium">
+                            Trong ngày
+                        </span>
+                        <span className="text-gray-600">Hết hạn hôm nay</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <span className="px-3 py-1 rounded-full bg-red-100 text-red-700 font-medium">
+                            Hết hạn
+                        </span>
+                        <span className="text-gray-600">Đã quá hạn</span>
+                    </div>
+                </div>
             </div>
 
             {/* PRODUCT LIST */}
@@ -380,11 +497,18 @@ const SProducts: React.FC = () => {
 
                     <div className="relative w-[200px] h-[50px] mr-[20px]">
                         <select
+                            value={expiryFilter}
+                            onChange={(e) => {
+                                setExpiryFilter(e.target.value);
+                                setCurrentPage(1);
+                            }}
                             className="appearance-none w-full h-full bg-white border border-gray-200 rounded-lg pl-4 pr-12 text-[18px] text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-600"
                         >
                             <option>Tất cả</option>
-                            <option>Còn hạn ngắn</option>
+                            <option>Còn dài hạn</option>
+                            <option>Còn ngắn hạn</option>
                             <option>Sắp hết hạn</option>
+                            <option>Trong ngày</option>
                             <option>Hết hạn</option>
                         </select>
 
