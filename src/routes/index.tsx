@@ -1,11 +1,3 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import AppRouter from './AppRouter';
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-        <AppRouter />
-    </React.StrictMode>
-);
-
-export default AppRouter;
+export { default as AppRouter } from "./AppRouter";
+export { default as PrivateRoute } from "./PrivateRoute";
+export { default as RoleRoute } from "./RoleRoute";

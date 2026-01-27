@@ -1,12 +1,19 @@
 import { Outlet } from "react-router-dom";
-import Header from "@/components/layouts/Header";
+import { Header, Sidebar, Footer } from "@/components/layouts";
 
-const MainLayout = () => {
+const MainLayout: React.FC = () => {
     return (
-        <div>
+        <div className="min-h-screen flex flex-col bg-white">
             <Header />
-            <Outlet />
-            {/* footer */}
+
+            <div className="flex flex-1 pt-20">
+                <Sidebar />
+                <main className="flex-1 p-5 bg-white min-w-0">
+                    <Outlet />
+                </main>
+            </div>
+
+            <Footer />
         </div>
     );
 };

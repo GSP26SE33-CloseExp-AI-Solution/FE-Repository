@@ -1,6 +1,7 @@
 import axiosClient from './axiosClient';
 import { mockUsers } from '@/mocks/mockUsers';
 import { ILoginResponse } from '@/types/auth.type';
+import { clearAuth } from '@/utils/auth';
 
 interface LoginPayload {
     email: string;
@@ -17,9 +18,6 @@ export const login = async (
     return axiosClient.post('/auth/login', payload);
     */
 
-    // ==========================
-    // 🟢 MOCK LOGIN
-    // ==========================
     const user = mockUsers.find(
         u => u.email === payload.email && u.password === payload.password
     );
@@ -36,4 +34,15 @@ export const login = async (
             role: user.role,
         },
     };
+};
+
+export const logout = (): void => {
+    clearAuth();
+
+    // ==========================
+    // 🔴 API thật (dùng sau)
+    // ==========================
+    /*
+    return axiosClient.post('/auth/logout');
+    */
 };
