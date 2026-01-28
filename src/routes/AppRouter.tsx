@@ -3,8 +3,8 @@ import MainLayout from "@/layouts/MainLayout";
 
 import SDashboard from "@/pages/Supermarket/SDashboard";
 
-import SProducts from "@/pages/Supermarket/SProducts";
-import SAddProduct from "@/pages/Supermarket/SProducts/SAddProduct";
+import ProductList from "@/pages/Supermarket/SProducts/ProductList";
+import AddProduct from "@/pages/Supermarket/SProducts/AddProduct";
 
 import NotFound from "@/pages/Common/NotFound";
 import Forbidden from "@/pages/Common/Forbidden";
@@ -18,8 +18,8 @@ const AppRouter: React.FC = () => {
           {/* ===== SUPERMARKET ROUTES ===== */}
           <Route path="/supermarket/dashboard" element={<SDashboard />} />
           
-          <Route path="/supermarket/products" element={<SProducts />} />
-          <Route path="/supermarket/products/add" element={<SAddProduct />} />
+          <Route path="/supermarket/products" element={<ProductList />} />
+          <Route path="/supermarket/products/add" element={<AddProduct />} />
 
           {/* Common */}
           <Route path="/forbidden" element={<Forbidden />} />
