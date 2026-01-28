@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { demoProducts } from "./data/products"
+import { demoProducts } from "../data/products"
 import { useProductsList } from "./hooks/useProductsList"
 import * as helpers from "./utils/productHelpers"
 

@@ -1,5 +1,5 @@
 // FAKE DATA
-export interface Product {
+export interface ProductDraft {
     id: string;                  // ID chuẩn hóa
     image: string;               // Hình ảnh
     name: string;                // Tên sản phẩm
@@ -8,7 +8,7 @@ export interface Product {
     brand: string;               // Thương hiệu
     origin: string;              // Xuất xứ
     unit: string;                // Đơn vị
-    qty: number;                 // Số lượng
+    qty: number | null;          // Số lượng
 
     manufactureDate: string;     // Ngày sản xuất
     expiry: string;              // Hạn sử dụng (dd/mm/yyyy để hiển thị)
@@ -23,7 +23,12 @@ export interface Product {
     organization: string;        // Tổ chức chịu trách nhiệm
 
     originalPrice: number;       // Giá gốc
-    salePrice: number;           // Giá bán
+    salePrice: number | null;    // Giá bán
+}
+
+export interface Product extends ProductDraft {
+    qty: number;
+    salePrice: number;
 }
 
 export const demoProducts: Product[] = [
