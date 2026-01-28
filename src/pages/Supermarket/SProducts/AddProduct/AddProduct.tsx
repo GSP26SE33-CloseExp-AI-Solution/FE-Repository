@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { useProductImages } from "./hooks/useProductImages";
 
 import AddProductHeader from "./components/AddProductHeader";
@@ -17,14 +19,22 @@ const AddProduct: React.FC = () => {
     const [pageState, setPageState] = useState<PageState>("UPLOAD");
     const [product, setProduct] = useState<ProductDraft | null>(null);
 
+    const navigate = useNavigate();
+    
     const handleConfirmUpload = () => {
         setPageState("AI_PROCESSING");
 
-        // fake AI delay
         setTimeout(() => {
-            setProduct(fakeAiProduct());
-            setPageState("AI_RESULT");
-        }, 2500);
+            const aiProduct = fakeAiProduct();
+            setProduct(aiProduct);
+
+            navigate("/supermarket/products/confirm", {
+                state: {
+                    product: aiProduct,
+                    images: productImages.images.map(i => i.preview),
+                },
+            });
+        }, 2000);
     };
 
     return (

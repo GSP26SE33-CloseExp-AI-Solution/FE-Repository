@@ -2,6 +2,10 @@
 export interface ProductDraft {
     id: string;                  // ID chuẩn hóa
     image: string;               // Hình ảnh
+
+    sku?: string;                // mã nội bộ / SKU
+    barcode?: string;            // mã vạch
+    
     name: string;                // Tên sản phẩm
     description: string;         // Mô tả
     category: string;            // Phân loại
