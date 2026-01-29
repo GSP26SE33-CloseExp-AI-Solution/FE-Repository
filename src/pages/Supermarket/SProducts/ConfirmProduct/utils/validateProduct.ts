@@ -1,4 +1,4 @@
-import { ProductDraft } from "../../data/products";
+import { ProductDraft } from "../../../../../mocks/fakeProducts.mock";
 
 export const REQUIRED_FIELDS: (keyof ProductDraft)[] = [
     "name",          // Tên sản phẩm

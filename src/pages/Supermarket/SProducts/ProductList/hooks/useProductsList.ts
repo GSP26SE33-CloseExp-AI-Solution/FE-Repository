@@ -1,5 +1,5 @@
 import { useState, ChangeEvent } from "react"
-import { Product } from "../../data/products"
+import { Product } from "../../../../../mocks/fakeProducts.mock"
 import { getExpiryStatus } from "../utils/productHelpers"
 
 const ITEMS_PER_PAGE = 10

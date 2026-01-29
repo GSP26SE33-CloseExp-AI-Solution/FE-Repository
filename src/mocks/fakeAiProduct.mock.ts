@@ -1,4 +1,4 @@
-import { ProductDraft } from "./products";
+import { ProductDraft } from "./fakeProducts.mock";
 
 export const fakeAiProduct = (): ProductDraft => ({
     id: "AI_TMP_001",

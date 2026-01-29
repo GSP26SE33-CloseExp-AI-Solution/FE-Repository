@@ -1,5 +1,5 @@
 import axiosClient from './axiosClient';
-import { mockUsers } from '@/mocks/mockUsers';
+import { mockUsers } from '@/mocks/fakeUsers.mock';
 import { ILoginResponse } from '@/types/auth.type';
 import { clearAuth } from '@/utils/auth';
 

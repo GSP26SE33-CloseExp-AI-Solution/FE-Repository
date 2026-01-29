@@ -4,6 +4,7 @@ interface ActionButtonsProps {
     onSubmit: () => void;
     disabled?: boolean;
     missingCount?: number;
+    step: "edit" | "ai" | "review";
 }
 
 const ActionButtons: React.FC<ActionButtonsProps> = ({
@@ -12,7 +13,17 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
     onSubmit,
     disabled = false,
     missingCount = 0,
+    step,
 }) => {
+
+    const submitLabelMap = {
+        edit: "Gọi AI định giá",
+        ai: "Xác nhận giá AI",
+        review: "Hoàn tất sản phẩm",
+    } as const;
+
+    const submitLabel = submitLabelMap[step];
+
     return (
         <div className="flex justify-between items-center pt-6 border-t">
             <button
@@ -39,10 +50,12 @@ const ActionButtons: React.FC<ActionButtonsProps> = ({
                     }
                     onClick={onSubmit}
                     className={`px-5 py-2 rounded text-white
-        ${disabled ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"}
-    `}
+                            ${disabled
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-blue-600 hover:bg-blue-700"}
+                    `}
                 >
-                    Xác nhận thông tin sản phẩm
+                    {submitLabel}
                 </button>
 
             </div>

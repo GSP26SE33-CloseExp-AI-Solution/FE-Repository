@@ -8,8 +8,8 @@ import ImageUploadCard from "./components/ImageUploadCard";
 import ConfirmButton from "./components/ConfirmButton";
 import AiProcessing from "./components/AiProcessing";
 
-import { fakeAiProduct } from "../data/fakeAiProduct";
-import { ProductDraft } from "../data/products";
+import { fakeAiProduct } from "../../../../mocks/fakeAiProduct.mock";
+import { ProductDraft } from "../../../../mocks/fakeProducts.mock";
 
 type PageState = "UPLOAD" | "AI_PROCESSING" | "AI_RESULT" | "SAVED";
 

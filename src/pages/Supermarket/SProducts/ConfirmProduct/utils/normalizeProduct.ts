@@ -1,5 +1,5 @@
-import { ProductDraft, Product } from "../../data/products";
-import { sections } from "../components/productFormConfig";
+import { ProductDraft, Product } from "../../../../../mocks/fakeProducts.mock";
+import { sections } from "../components/RequiredFieldsForm/productFormConfig";
 
 const DEFAULT_TEXT = "Chưa có mô tả chi tiết";
 
