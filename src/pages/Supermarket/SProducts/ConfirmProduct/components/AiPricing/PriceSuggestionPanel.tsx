@@ -1,4 +1,6 @@
 import React, { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+
 import { PriceSuggestion } from "../../types/priceSuggestion.types";
 import PriceCompare from "./PriceCompare";
 import PerformanceBar from "./PerformanceBar";
@@ -17,7 +19,7 @@ const PriceSuggestionPanel: React.FC<Props> = ({
     onChangePrice,
 }) => {
 
-    // ✅ tính competitiveness theo giá hiện tại
+    // tính competitiveness theo giá hiện tại
     const competitiveness = useMemo(() => {
         return calcCompetitiveness(
             salePrice,
@@ -27,14 +29,25 @@ const PriceSuggestionPanel: React.FC<Props> = ({
         );
     }, [salePrice, data]);
 
-    // ✅ tính tỷ lệ bán dự kiến
+    // tính tỷ lệ bán dự kiến
     const sellRate = useMemo(() => {
         return calcSellRate(competitiveness);
     }, [competitiveness]);
 
+    const navigate = useNavigate();
+
     return (
         <div className="p-4 border rounded-lg bg-blue-50 space-y-4">
-            <h3 className="font-semibold text-lg">🤖 AI đề xuất giá</h3>
+            <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-lg">🤖 AI đề xuất giá</h3>
+
+                <button
+                    onClick={() => navigate(`/supermarket/products/1/ai-pricing`)}
+                    className="text-xs text-gray-500 hover:text-blue-600 transition"
+                >
+                    xem chi tiết →
+                </button>
+            </div>
 
             <div className="flex items-center justify-between gap-4">
                 <p>
@@ -44,11 +57,9 @@ const PriceSuggestionPanel: React.FC<Props> = ({
                     </span>
                 </p>
 
-                {/* ✅ giữ PerformanceBar như bạn muốn */}
                 <PerformanceBar value={competitiveness} />
             </div>
 
-            {/* ✅ giữ nguyên nùi so sánh giá */}
             <PriceCompare
                 suggested={data.suggestedPrice}
                 min={data.marketMin}
@@ -56,14 +67,12 @@ const PriceSuggestionPanel: React.FC<Props> = ({
                 current={salePrice}
             />
 
-            {/* ✅ input chỉnh giá */}
             <PriceAdjustInput
                 value={salePrice}
                 suggested={data.suggestedPrice}
                 onChange={onChangePrice}
             />
 
-            {/* ✅ thêm sellRate nếu muốn show */}
             <p className="text-sm text-gray-700">
                 📈 Dự đoán khả năng bán:{" "}
                 <span className="font-semibold">
