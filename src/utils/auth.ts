@@ -1,26 +1,27 @@
-import { ILoginResponse } from '@/types/auth.type';
+import { AuthSession } from '@/types/auth.model'
+import { STORAGE_KEYS } from '@/constants/storageKeys'
 
-const AUTH_KEY = 'closeexp_auth';
+export const saveAuth = (data: AuthSession): void => {
+    localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(data))
+}
 
-export const saveAuth = (data: ILoginResponse) => {
-    localStorage.setItem(AUTH_KEY, JSON.stringify(data));
-};
+export const getAuth = (): AuthSession | null => {
+    const raw = localStorage.getItem(STORAGE_KEYS.AUTH)
+    if (!raw) return null
 
-export const getAuth = (): ILoginResponse | null => {
     try {
-        const raw = localStorage.getItem(AUTH_KEY);
-        return raw ? JSON.parse(raw) : null;
+        return JSON.parse(raw) as AuthSession
     } catch {
-        clearAuth();
-        return null;
+        clearAuth()
+        return null
     }
-};
+}
 
-export const clearAuth = () => {
-    localStorage.removeItem(AUTH_KEY);
-};
+export const clearAuth = (): void => {
+    localStorage.removeItem(STORAGE_KEYS.AUTH)
+}
 
 export const isAuthenticated = (): boolean => {
-    const auth = getAuth();
-    return Boolean(auth?.token);
-};
+    const auth = getAuth()
+    return !!auth?.accessToken && auth.expiresAt > Date.now()
+}

@@ -1,14 +1,14 @@
 import React, { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { PriceSuggestion } from "../../types/priceSuggestion.types";
+import { AiPricingResponse } from "@/types/aiPricing.types";
 import PriceCompare from "./PriceCompare";
 import PerformanceBar from "./PerformanceBar";
 import PriceAdjustInput from "./PriceAdjustInput";
 import { calcCompetitiveness, calcSellRate } from "../../utils/aiPricing";
 
 interface Props {
-    data: PriceSuggestion;
+    data: AiPricingResponse;
     salePrice: number;
     onChangePrice: (price: number) => void;
 }
@@ -18,23 +18,22 @@ const PriceSuggestionPanel: React.FC<Props> = ({
     salePrice,
     onChangePrice,
 }) => {
+    const navigate = useNavigate();
 
-    // tính competitiveness theo giá hiện tại
     const competitiveness = useMemo(() => {
         return calcCompetitiveness(
             salePrice,
-            data.marketMin,
-            data.marketMax,
-            data.suggestedPrice
+            data.minPrice,
+            data.maxPrice
         );
-    }, [salePrice, data]);
+    }, [salePrice, data.minPrice, data.maxPrice]);
 
-    // tính tỷ lệ bán dự kiến
     const sellRate = useMemo(() => {
-        return calcSellRate(competitiveness);
-    }, [competitiveness]);
-
-    const navigate = useNavigate();
+        return calcSellRate(
+            data.urgencyLevel,
+            data.discountPercent
+        );
+    }, [data.urgencyLevel, data.discountPercent]);
 
     return (
         <div className="p-4 border rounded-lg bg-blue-50 space-y-4">
@@ -42,14 +41,14 @@ const PriceSuggestionPanel: React.FC<Props> = ({
                 <h3 className="font-semibold text-lg">🤖 AI đề xuất giá</h3>
 
                 <button
-                    onClick={() => navigate(`/supermarket/products/$1/ai-pricing`)}
+                    onClick={() => navigate(`/supermarket/products/${data.category}/ai-pricing`)}
                     className="text-xs text-gray-500 hover:text-blue-600 transition"
                 >
-                    xem chi tiết
+                    Xem phân tích chi tiết
                 </button>
             </div>
 
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-2">
                 <p>
                     Giá AI đề xuất:{" "}
                     <span className="font-bold text-blue-600">
@@ -57,13 +56,16 @@ const PriceSuggestionPanel: React.FC<Props> = ({
                     </span>
                 </p>
 
-                <PerformanceBar value={competitiveness} />
+                <PerformanceBar
+                    label="Mức độ cạnh tranh giá"
+                    value={competitiveness}
+                />
             </div>
 
             <PriceCompare
                 suggested={data.suggestedPrice}
-                min={data.marketMin}
-                max={data.marketMax}
+                min={data.minPrice}
+                max={data.maxPrice}
                 current={salePrice}
             />
 
@@ -73,14 +75,18 @@ const PriceSuggestionPanel: React.FC<Props> = ({
                 onChange={onChangePrice}
             />
 
-            <p className="text-sm text-gray-700">
-                📈 Dự đoán khả năng bán:{" "}
-                <span className="font-semibold">
-                    {sellRate === "High" && "Cao"}
-                    {sellRate === "Medium" && "Trung bình"}
-                    {sellRate === "Low" && "Thấp"}
-                </span>
-            </p>
+            <PerformanceBar
+                label="Khả năng bán dự kiến"
+                value={sellRate}
+            />
+
+            <div className="text-sm text-gray-600">
+                ⏳ Còn {data.daysToExpire} ngày trước khi hết hạn
+            </div>
+
+            <div className="text-sm text-orange-600 font-medium">
+                📌 Khuyến nghị: {data.recommendedAction}
+            </div>
         </div>
     );
 };

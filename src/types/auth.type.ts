@@ -1,12 +1,37 @@
-export type UserRole = 'ADMIN' | 'VENDOR' | 'SUPERMARKET_STAFF' | 'PACKAGE_STAFF' | 'MARKETING_STAFF' | 'GUEST';
-
-export interface IUser {
-    id: number;
-    email: string;
-    role: UserRole;
+export interface IUserFromApi {
+  userId: string
+  fullName: string
+  email: string
+  phone: string
+  roleName: string
+  roleId: number
+  status: string
+  createdAt: string
+  updatedAt: string
 }
 
-export interface ILoginResponse {
-    token: string;
-    user: IUser;
+export interface IAuthTokens {
+  accessToken: string
+  refreshToken: string
+  expiresAt: string // ISO date từ BE
+  user: IUserFromApi
+}
+
+export interface IAuthResponse {
+  success: boolean
+  message: string
+  data: IAuthTokens | null
+  errors: string[] | null
+}
+
+export interface ILoginPayload {
+  email: string
+  password: string
+}
+
+export interface IRegisterPayload {
+  fullName: string
+  email: string
+  phone: string
+  password: string
 }

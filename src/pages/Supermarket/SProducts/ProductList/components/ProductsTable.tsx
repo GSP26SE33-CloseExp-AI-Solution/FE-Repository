@@ -1,6 +1,7 @@
 import React from "react";
-import ProductRow, { Product } from "./ProductRow";
 import { ChevronDown } from "lucide-react";
+import ProductRow from "./ProductRow";
+import { Product } from "@/types/product.type";
 
 interface ProductsTableProps {
     products: Product[];

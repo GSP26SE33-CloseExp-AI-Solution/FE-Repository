@@ -1,10 +1,10 @@
-import { UserRole } from '@/types/auth.type';
+import { UserRole } from '@/types/auth.model'
 
 export const ROLE_REDIRECT: Record<UserRole, string> = {
     ADMIN: '/admin/dashboard',
+    SUPERMARKET: '/supermarket/products',
     VENDOR: '/vendor',
-    SUPERMARKET_STAFF: '/supermarket/products',
-    PACKAGE_STAFF: '/package/orders',
-    MARKETING_STAFF: '/marketing/promotions',
-    GUEST: '/',
-};
+    PACKAGE: '/package/orders',
+    MARKETING: '/marketing/promotions',
+    '': '/',
+}

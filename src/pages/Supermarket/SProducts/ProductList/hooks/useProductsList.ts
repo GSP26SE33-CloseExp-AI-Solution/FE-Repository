@@ -1,14 +1,19 @@
-import { useState, ChangeEvent } from "react"
-import { Product } from "../../../../../mocks/fakeProducts.mock"
+import { useEffect, useState, ChangeEvent } from "react"
 import { getExpiryStatus } from "../utils/productHelpers"
+import { getProductsBySupermarket } from "@/services/product.service"
+import { mapProductApiToUI } from "../utils/mapProductApiToUI"
+import { Product } from "@/types/product.type"
 
 const ITEMS_PER_PAGE = 10
 
-export const useProductsList = (products: Product[]) => {
+export const useProductsList = (supermarketId: string) => {
     const [keyword, setKeyword] = useState("")
     const [searchType, setSearchType] = useState("Tất cả")
     const [expiryFilter, setExpiryFilter] = useState("Tất cả")
     const [currentPage, setCurrentPage] = useState(1)
+
+    const [products, setProducts] = useState<Product[]>([])
+    const [loading, setLoading] = useState(false)
 
     const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
         setKeyword(e.target.value)
@@ -56,6 +61,36 @@ export const useProductsList = (products: Product[]) => {
     const goNext = () => currentPage < totalPages && setCurrentPage(p => p + 1)
     const goPrev = () => currentPage > 1 && setCurrentPage(p => p - 1)
 
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                setLoading(true)
+
+                const data = await getProductsBySupermarket(supermarketId)
+
+                const items = data.items ?? data ?? []
+
+                if (items.length > 0) {
+                    const mapped = items.map(mapProductApiToUI)
+                    setProducts(mapped)
+                } else {
+                    setProducts([])
+                }
+            } catch (err) {
+                console.error("Failed to fetch products:", err)
+                setProducts([])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchProducts()
+    }, [supermarketId])
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [keyword, searchType, expiryFilter])
+
     return {
         keyword,
         searchType,
@@ -63,6 +98,7 @@ export const useProductsList = (products: Product[]) => {
         currentPage,
         totalPages,
         currentProducts,
+        loading,
 
         setSearchType,
         setExpiryFilter,

@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom"
-import { demoProducts } from "../../../../mocks/fakeProducts.mock"
+import { ProductDraft } from "@/types/product.type";
 import { useProductsList } from "./hooks/useProductsList"
 import * as helpers from "./utils/productHelpers"
 
@@ -11,11 +11,12 @@ import PaginationBar from "./components/PaginationBar"
 const ProductsList = () => {
     const navigate = useNavigate()
 
-    const productsList = useProductsList(demoProducts)
-
     const handleAddProduct = () => {
         navigate("/supermarket/products/add")
     }
+
+    const supermarketId = "123" // tạm fake
+    const productsList = useProductsList(supermarketId)
 
     return (
         <div className="w-full">

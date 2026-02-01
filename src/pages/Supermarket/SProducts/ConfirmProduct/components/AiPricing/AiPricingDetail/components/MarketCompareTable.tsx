@@ -1,15 +1,54 @@
 import { useMemo, useState } from "react";
-import { mockAiPricingExplain } from "../../../../../../../mocks/fakeMarketPrices.mock";
+import { AiPricingResponse } from "@/types/aiPricing.types";
+
 import MarketCompareRow from "./MarketCompareRow";
 import MarketFilterBar from "./MarketFilterBar";
 import MarketSortSelect from "./MarketSortSelect";
 
-const MarketCompareTable = () => {
+interface Props {
+    pricing: AiPricingResponse | null;
+    loading: boolean;
+}
+
+interface MarketItem {
+    supermarket: string;
+    price: number;
+    discountPercent: number;
+    quantity: number;
+}
+
+const MarketCompareTable: React.FC<Props> = ({ pricing, loading }) => {
     const [keyword, setKeyword] = useState("");
     const [sort, setSort] = useState("price-asc");
 
-    const data = useMemo(() => {
-        let list = [...mockAiPricingExplain.marketPrices];
+    /*
+     Tạm thời dựng data dựa trên khoảng giá AI
+     */
+    const data: MarketItem[] = useMemo(() => {
+        if (!pricing) return [];
+
+        const baseList: MarketItem[] = [
+            {
+                supermarket: "Giá tối thiểu AI",
+                price: pricing.minPrice,
+                discountPercent: pricing.discountPercent,
+                quantity: 120,
+            },
+            {
+                supermarket: "Giá đề xuất AI",
+                price: pricing.suggestedPrice,
+                discountPercent: pricing.discountPercent,
+                quantity: 80,
+            },
+            {
+                supermarket: "Giá tối đa AI",
+                price: pricing.maxPrice,
+                discountPercent: pricing.discountPercent - 5,
+                quantity: 60,
+            },
+        ];
+
+        let list = [...baseList];
 
         if (keyword) {
             list = list.filter((item) =>
@@ -33,7 +72,7 @@ const MarketCompareTable = () => {
         }
 
         return list;
-    }, [keyword, sort]);
+    }, [pricing, keyword, sort]);
 
     return (
         <div className="border rounded-xl bg-white overflow-hidden">
@@ -65,9 +104,21 @@ const MarketCompareTable = () => {
             </div>
 
             {/* Rows */}
-            {data.map((item, idx) => (
+            {loading && (
+                <div className="p-6 text-center text-gray-400 text-sm">
+                    Đang phân tích dữ liệu thị trường...
+                </div>
+            )}
+
+            {!loading && data.map((item, idx) => (
                 <MarketCompareRow key={idx} item={item} />
             ))}
+
+            {!loading && data.length === 0 && (
+                <div className="p-6 text-center text-gray-400 text-sm">
+                    Không có dữ liệu so sánh
+                </div>
+            )}
         </div>
     );
 };

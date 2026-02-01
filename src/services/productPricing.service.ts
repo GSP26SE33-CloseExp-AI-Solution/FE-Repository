@@ -1,11 +1,14 @@
-import { priceSuggestionMock } from "../mocks/fakePriceSuggestion.mock";
+import axiosClient from "./axiosClient";
+import { AiPricingResponse } from "@/types/aiPricing.types";
 
-export type PriceSuggestionResponse = typeof priceSuggestionMock;
-
-export function getPriceSuggestion(): Promise<PriceSuggestionResponse> {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve(priceSuggestionMock);
-        }, 800);
-    });
-}
+export const getAiPriceSuggestion = (payload: {
+    category: string;
+    expiryDate: string;
+    originalPrice: number;
+    brand: string;
+}) => {
+    return axiosClient.post<AiPricingResponse>(
+        "/api/AI/pricing",
+        payload
+    );
+};

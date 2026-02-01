@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, ChangeEvent } from "react";
 import { useImageHash } from "@/hooks/useImageHash";
-import type { ImageFile } from "@/types/image";
+import type { ImageFile } from "@/types/image.type";
 
 interface Props {
     maxImages: number;

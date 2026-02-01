@@ -6,4 +6,14 @@ module.exports = {
             "@": path.resolve(__dirname, "src"),
         },
     },
+
+    devServer: {
+        proxy: {
+            "/api": {
+                target: "https://c122w5dv-5014.asse.devtunnels.ms",
+                changeOrigin: true,
+                secure: false,
+            },
+        },
+    },
 };

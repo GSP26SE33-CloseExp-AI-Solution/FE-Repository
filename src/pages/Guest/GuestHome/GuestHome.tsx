@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { logout } from '@/services/authService';
+import { logout } from '@/services/auth.service';
 
 const GuestHome: React.FC = () => {
     const navigate = useNavigate();

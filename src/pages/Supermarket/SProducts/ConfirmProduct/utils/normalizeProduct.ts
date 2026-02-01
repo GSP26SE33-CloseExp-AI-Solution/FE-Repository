@@ -1,4 +1,4 @@
-import { ProductDraft, Product } from "../../../../../mocks/fakeProducts.mock";
+import { ProductDraft, Product } from "@/types/product.type";
 import { sections } from "../components/RequiredFieldsForm/productFormConfig";
 
 const DEFAULT_TEXT = "Chưa có mô tả chi tiết";
@@ -43,5 +43,7 @@ export function normalizeProduct(draft: ProductDraft): Product {
 
         expiry: new Date(normalized.expiry).toISOString().slice(0, 10),
         manufactureDate: normalized.manufactureDate?.trim() ?? "",
+
+        createdAt: new Date().toISOString(),
     };
 }

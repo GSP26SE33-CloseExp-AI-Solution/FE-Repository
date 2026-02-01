@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { login } from '@/services/authService';
+import { login } from '@/services/auth.service';
 import { saveAuth } from '@/utils/auth';
-import { ILoginResponse } from '@/types/auth.type';
+import { AuthSession } from '@/types/auth.model';
 
 interface LoginPayload {
     email: string;
@@ -14,7 +14,7 @@ export const useLogin = () => {
 
     const handleLogin = async (
         payload: LoginPayload
-    ): Promise<ILoginResponse> => {
+    ): Promise<AuthSession> => {
         try {
             setLoading(true);
             setError(null);

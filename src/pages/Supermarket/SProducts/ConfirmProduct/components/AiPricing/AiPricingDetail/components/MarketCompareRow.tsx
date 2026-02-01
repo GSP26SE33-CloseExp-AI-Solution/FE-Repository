@@ -1,4 +1,4 @@
-import { MarketPriceItem } from "../types/aiPricingDetail.types";
+import { MarketPriceItem } from "../../../../../../../../types/aiPricingDetail.types";
 
 interface Props {
     item: MarketPriceItem;

@@ -1,5 +1,5 @@
 import React from "react";
-import { ProductDraft } from "../../../../../../mocks/fakeProducts.mock";
+import { ProductDraft } from "@/types/product.type";
 import { sections, Field } from "./productFormConfig";
 import ProductFieldRow from "./ProductFieldRow";
 

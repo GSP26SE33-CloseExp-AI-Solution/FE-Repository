@@ -1,20 +1,33 @@
 import { useState } from "react";
-import { fakeAiPrice } from "@/mocks/fakeAiPrice.mock";
-import { PriceSuggestion } from "../types/priceSuggestion.types";
-import { ProductDraft } from "@/mocks/fakeProducts.mock";
+import { ProductDraft } from "@/types/product.type";
+import { AiPricingResponse } from "@/types/aiPricing.types";
 
 export const useAiPricing = (product: ProductDraft) => {
     const [priceSuggestion, setPriceSuggestion] =
-        useState<PriceSuggestion | null>(null);
+        useState<AiPricingResponse | null>(null);
     const [loading, setLoading] = useState(false);
 
     const fetchAiPrice = async () => {
         setLoading(true);
 
-        await new Promise((r) => setTimeout(r, 800));
+        const payload = {
+            category: product.category,
+            brand: product.brand,
+            originalPrice: product.originalPrice ?? 0,
+            expiryDate: new Date(product.expiry).toISOString(),
+        };
 
-        const result = fakeAiPrice();
-        setPriceSuggestion(result);
+        const res = await fetch("/api/AI/pricing", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+        });
+
+        const data: AiPricingResponse = await res.json();
+
+        if (data.success) {
+            setPriceSuggestion(data);
+        }
 
         setLoading(false);
     };

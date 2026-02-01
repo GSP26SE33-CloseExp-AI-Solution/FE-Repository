@@ -1,5 +1,4 @@
-import { ProductDraft } from "../../../../../../mocks/fakeProducts.mock";
-
+import { ProductDraft } from "@/types/product.type";
 export type Field = {
     label: string;
     key: keyof ProductDraft;

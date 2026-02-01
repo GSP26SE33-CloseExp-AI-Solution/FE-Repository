@@ -9,12 +9,12 @@ import {
 } from "lucide-react";
 
 const menuItems = [
-    { label: "Dashboard", path: "/supermarket/dashboard", icon: LayoutDashboard },
-    { label: "Products", path: "/supermarket/products", icon: Box },
-    { label: "Statistic", path: "/supermarket/statistic", icon: BarChart3 },
-    { label: "Profile", path: "/supermarket/profile", icon: User },
-    { label: "Notification", path: "/supermarket/notification", icon: Bell },
-    { label: "Setting", path: "/supermarket/setting", icon: Settings },
+    { label: "Tổng quan", path: "/supermarket/dashboard", icon: LayoutDashboard },
+    { label: "Sản phẩm", path: "/supermarket/products", icon: Box },
+    { label: "Thống kê", path: "/supermarket/statistic", icon: BarChart3 },
+    { label: "Hồ sơ", path: "/supermarket/profile", icon: User },
+    { label: "Thông báo", path: "/supermarket/notification", icon: Bell },
+    { label: "Cài đặt", path: "/supermarket/setting", icon: Settings },
 ];
 
 const Sidebar = () => {
@@ -29,7 +29,7 @@ const Sidebar = () => {
                     <span className="block h-[2px] bg-black" />
                     <span className="block h-[2px] bg-black" />
                 </div>
-                <span className="text-[20px] font-bold whitespace-nowrap">Menu</span>
+                <span className="text-[20px] font-bold whitespace-nowrap">Danh Mục</span>
             </div>
 
             {/* MENU ITEMS */}

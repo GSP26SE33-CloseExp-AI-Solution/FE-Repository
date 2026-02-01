@@ -1,79 +1,87 @@
-import React from "react";
-import { useEffect } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 import AddProductHeader from "../AddProduct/components/AddProductHeader";
-
-// components
 import ProductImagesPreview from "./components/ProductImagesPreview";
 import RequiredFieldsForm from "./components/RequiredFieldsForm/RequiredFieldsForm";
 import ActionButtons from "./components/ActionButtons";
-import PriceSuggestionPanel from "./components/AiPricing/PriceSuggestionPanel";
-import ProductSummaryTable from "./components/ProductSummaryTable";
 
-// mocks
-import { fakeAiProduct } from "../../../../mocks/fakeAiProduct.mock";
-
-// utils
+import { ProductDraft } from "@/types/product.type";
+import { AiScanResponse } from "@/types/ai.type";
 import { validateProduct } from "./utils/validateProduct";
 import { normalizeProduct } from "./utils/normalizeProduct";
-
-// hooks
-import { useConfirmStep } from "./hooks/useConfirmStep";
-import { useAiPricing } from "./hooks/useAiPricing";
-import { useProductDraft } from "./hooks/useProductDraft";
+import { mapAiResponseToProductDraft } from "./utils/mapAiResponseToProductDraft";
 
 const ConfirmProduct: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const { images } = (location.state as any) || {};
+    const { product, images } = location.state as {
+        product: AiScanResponse;
+        images: string[];
+    };
 
-    const aiInitialProduct = fakeAiProduct();
+    /* Tạo bản nháp từ AI chỉ 1 lần */
+    const aiInitialProductRef = useRef<ProductDraft>(
+        mapAiResponseToProductDraft(product, images[0] ?? "")
+    );
 
-    const { draftProduct, setDraftProduct, updateField } =
-        useProductDraft(aiInitialProduct);
+    const [draftProduct, setDraftProduct] = useState<ProductDraft>(
+        aiInitialProductRef.current
+    );
 
-    const { step, setStep, locked } = useConfirmStep();
+    /* Validation memo để không tính lại mỗi render */
+    const validation = useMemo(
+        () => validateProduct(draftProduct),
+        [draftProduct]
+    );
 
-    const { priceSuggestion, loading, fetchAiPrice } = useAiPricing(draftProduct);
+    const isValid = validation.isValid;
+    const missingFields = validation.missingFields;
 
-    const validation = validateProduct(draftProduct);
-    const { isValid, missingFields } = validation;
+    /* ================= RESET ================= */
 
-    const handleSubmit = async () => {
+    const handleResetAll = () => {
+        setDraftProduct(aiInitialProductRef.current);
+    };
+
+    const resetSection = (fields: (keyof ProductDraft)[]) => {
+        setDraftProduct((prev) => {
+            const updated = { ...prev };
+
+            fields.forEach((key) => {
+                (updated as any)[key] = aiInitialProductRef.current[key];
+            });
+
+            return updated;
+        });
+    };
+
+    /* ================= ACTIONS ================= */
+
+    const handleBack = () => navigate(-1);
+
+    const handleSaveDraft = () => {
+        console.log("SAVE DRAFT", draftProduct);
+        toast.success("Đã lưu nháp sản phẩm");
+    };
+
+    const handleSubmit = () => {
         if (!isValid) {
             toast.error(`Còn thiếu ${missingFields.length} trường bắt buộc`);
             return;
         }
 
-        // Step 1: gọi AI
-        if (step === "edit") {
-            await fetchAiPrice();
-            setStep("ai");
-            return;
-        }
-
-        // Step 2: confirm AI
-        if (step === "ai") {
-            setStep("review");
-            return;
-        }
-
-        // Step 3: submit thật
         const finalProduct = normalizeProduct(draftProduct);
-        console.log("FINAL PRODUCT", finalProduct);
+
+        console.log("SUBMIT PRODUCT", finalProduct);
+        toast.success("Tạo sản phẩm thành công");
+
         navigate("/supermarket/products");
     };
 
-    useEffect(() => {
-        if (priceSuggestion && draftProduct.salePrice == null) {
-            updateField("salePrice", priceSuggestion.suggestedPrice);
-        }
-    }, [priceSuggestion]);
-
-    const salePrice = draftProduct.salePrice ?? 0;
+    /* ================= UI ================= */
 
     return (
         <div className="w-full min-h-screen bg-white">
@@ -89,33 +97,17 @@ const ConfirmProduct: React.FC = () => {
                         <RequiredFieldsForm
                             product={draftProduct}
                             onChange={setDraftProduct}
-                            onResetAll={() => setDraftProduct(aiInitialProduct)}
-                            onResetSection={() => { }}
-                            locked={locked}
+                            onResetAll={handleResetAll}
+                            onResetSection={resetSection}
                         />
 
-                        {step !== "edit" && priceSuggestion && (
-                            <PriceSuggestionPanel
-                                data={priceSuggestion}
-                                salePrice={salePrice}
-                                onChangePrice={(price) => updateField("salePrice", price)}
-                            />
-                        )}
-
-                        {step === "review" && priceSuggestion && (
-                            <ProductSummaryTable
-                                product={draftProduct}
-                                price={salePrice}
-                            />
-                        )}
-
                         <ActionButtons
-                            onBack={() => navigate(-1)}
-                            onSaveDraft={() => console.log("SAVE")}
+                            step="review"
+                            onBack={handleBack}
+                            onSaveDraft={handleSaveDraft}
                             onSubmit={handleSubmit}
-                            disabled={!isValid || loading}
+                            disabled={!isValid}
                             missingCount={missingFields.length}
-                            step={step}
                         />
                     </div>
                 </div>

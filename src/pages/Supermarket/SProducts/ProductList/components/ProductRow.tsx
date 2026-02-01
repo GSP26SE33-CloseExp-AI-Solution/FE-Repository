@@ -1,29 +1,6 @@
 import React from "react";
 import { Eye, Pencil } from "lucide-react";
-
-export interface Product {
-    id: string;
-    image: string;
-    name: string;
-    description: string;
-    category: string;
-    brand: string;
-    origin: string;
-    unit: string;
-    qty: number;
-    manufactureDate: string;
-    expiry: string;
-    shelfLife: string;
-    weight: string;
-    ingredients: string;
-    usage: string;
-    storage: string;
-    manufacturer: string;
-    warning: string;
-    organization: string;
-    originalPrice: number;
-    salePrice: number;
-}
+import { Product } from "@/types/product.type"
 
 /* ===== PROPS ===== */
 interface ProductRowProps {
@@ -47,7 +24,11 @@ const ProductRow: React.FC<ProductRowProps> = ({
     getDaysLeft,
 }) => {
     const status = getExpiryStatus(product.expiry);
-    const discount = calcDiscount(product.originalPrice, product.salePrice);
+
+    const discount =
+        product.originalPrice && product.salePrice
+            ? calcDiscount(product.originalPrice, product.salePrice)
+            : 0;
 
     return (
         <div className="grid grid-cols-[90px_2.2fr_110px_140px_130px_120px_140px_150px_110px] items-center h-[76px] border-b border-gray-100 px-5 text-[15px] hover:bg-gray-50 transition">
@@ -87,7 +68,7 @@ const ProductRow: React.FC<ProductRowProps> = ({
 
             {/* ORIGINAL PRICE */}
             <div className="text-center text-gray-400 line-through">
-                {formatPrice(product.originalPrice)}
+                {formatPrice(product.originalPrice ?? 0)}
             </div>
 
             {/* DISCOUNT */}
@@ -97,7 +78,7 @@ const ProductRow: React.FC<ProductRowProps> = ({
 
             {/* SALE PRICE */}
             <div className="text-center font-semibold text-green-700">
-                {formatPrice(product.salePrice)}
+                {formatPrice(product.salePrice ?? 0)}
             </div>
 
             {/* STATUS */}
