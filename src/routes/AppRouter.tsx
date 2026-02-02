@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "@/layouts/MainLayout";
+import Login from "@/pages/Auth/Login";
+import PrivateRoute from "@/routes/PrivateRoute";
 
 import SDashboard from "@/pages/Supermarket/SDashboard";
 
@@ -15,23 +17,30 @@ const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<MainLayout />}>
 
-          {/* ===== SUPERMARKET ROUTES ===== */}
-          <Route path="/supermarket/dashboard" element={<SDashboard />} />
+        {/* PUBLIC ROUTE */}
+        <Route path="/login" element={<Login />} />
 
-          <Route path="/supermarket/products" element={<ProductList />} />
-          <Route path="/supermarket/products/add" element={<AddProduct />} />
-          <Route path="/supermarket/products/confirm" element={<ConfirmProduct />} />
-          <Route
-            path="/supermarket/products/:productId/ai-pricing"
-            element={<AiPricingDetailPage />}
-          />
+        {/* PRIVATE ROUTES */}
+        <Route element={<PrivateRoute />}>
+          <Route element={<MainLayout />}>
 
-          {/* Common */}
-          <Route path="/forbidden" element={<Forbidden />} />
-          <Route path="*" element={<NotFound />} />
+            {/* ===== SUPERMARKET ROUTES ===== */}
+            <Route path="/supermarket/dashboard" element={<SDashboard />} />
+            <Route path="/supermarket/products" element={<ProductList />} />
+            <Route path="/supermarket/products/add" element={<AddProduct />} />
+            <Route path="/supermarket/products/confirm" element={<ConfirmProduct />} />
+            <Route
+              path="/supermarket/products/:productId/ai-pricing"
+              element={<AiPricingDetailPage />}
+            />
+
+            {/* Common */}
+            <Route path="/forbidden" element={<Forbidden />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
         </Route>
+
       </Routes>
     </BrowserRouter>
   );

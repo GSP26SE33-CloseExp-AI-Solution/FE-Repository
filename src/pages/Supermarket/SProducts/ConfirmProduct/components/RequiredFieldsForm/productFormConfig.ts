@@ -1,10 +1,11 @@
 import { ProductDraft } from "@/types/product.type";
+
 export type Field = {
     label: string;
     key: keyof ProductDraft;
     required?: boolean;
     textarea?: boolean;
-    type?: "text" | "number";
+    type?: "text" | "number" | "date";
 };
 
 export const sections: { title: string; fields: Field[] }[] = [
@@ -40,8 +41,8 @@ export const sections: { title: string; fields: Field[] }[] = [
     {
         title: "Hạn sử dụng",
         fields: [
-            { label: "Ngày sản xuất", key: "manufactureDate" },
-            { label: "Hạn sử dụng", key: "expiry", required: true },
+            { label: "Ngày sản xuất", key: "manufactureDate", type: "date" },
+            { label: "Hạn sử dụng", key: "expiry", required: true, type: "date" },
             { label: "Hạn dùng mô tả", key: "shelfLife" },
         ],
     },

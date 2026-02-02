@@ -1,0 +1,112 @@
+/* ===== BACKGROUND PASTEL THEME ===== */
+
+@keyframes gradientMove {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.eco-animated-bg {
+  background: linear-gradient(-45deg,
+      #d1fae5,
+      #ccfbf1,
+      #e0f2fe,
+      #dbeafe);
+  background-size: 400% 400%;
+  animation: gradientMove 18s ease infinite;
+}
+
+.bg-glow {
+  position: absolute;
+  width: 650px;
+  height: 650px;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.18) 0%, transparent 70%);
+  filter: blur(90px);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 0;
+}
+
+/* ===== TOAST PASTEL THEME ===== */
+
+.toast-success {
+  background: #e6f4ea !important;
+  color: #1b5e20 !important;
+  border: 1px solid #b7e4c7 !important;
+}
+
+.toast-error {
+  background: #fdecea !important;
+  color: #b71c1c !important;
+  border: 1px solid #f5c2c0 !important;
+}
+
+.toast-warning {
+  background: #fff8e1 !important;
+  color: #8d6e00 !important;
+  border: 1px solid #ffe082 !important;
+}
+
+.toast-info {
+  background: #e3f2fd !important;
+  color: #0d47a1 !important;
+  border: 1px solid #90caf9 !important;
+}
+
+/* bo góc + đổ bóng nhẹ */
+.react-hot-toast {
+  border-radius: 14px !important;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08) !important;
+  font-size: 14px;
+}
+
+/* ===== ANIMATION CARD ===== */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(25px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ===== SHIMMER EFFECT FOR BUTTON ===== */
+
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -150%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(120deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.45) 50%,
+      rgba(255, 255, 255, 0) 100%);
+  transform: skewX(-20deg);
+  animation: shimmerMove 1.6s infinite;
+}
+
+@keyframes shimmerMove {
+  100% {
+    left: 150%;
+  }
+}

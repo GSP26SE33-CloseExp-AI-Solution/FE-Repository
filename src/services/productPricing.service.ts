@@ -1,4 +1,4 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../utils/axiosClient";
 import { AiPricingResponse } from "@/types/aiPricing.types";
 
 export const getAiPriceSuggestion = (payload: {

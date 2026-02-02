@@ -1,4 +1,4 @@
-export const breadcrumbMap: Record<string, string[]> = {
+export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/supermarket/dashboard": ["Dashboard"],
     "/supermarket/products": ["Products"],
     "/supermarket/products/add": ["Products", "Add Product"],

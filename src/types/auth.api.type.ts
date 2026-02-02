@@ -13,7 +13,7 @@ export interface IUserFromApi {
 export interface IAuthTokens {
   accessToken: string
   refreshToken: string
-  expiresAt: string // ISO date từ BE
+  expiresAt: string
   user: IUserFromApi
 }
 
@@ -26,12 +26,5 @@ export interface IAuthResponse {
 
 export interface ILoginPayload {
   email: string
-  password: string
-}
-
-export interface IRegisterPayload {
-  fullName: string
-  email: string
-  phone: string
   password: string
 }

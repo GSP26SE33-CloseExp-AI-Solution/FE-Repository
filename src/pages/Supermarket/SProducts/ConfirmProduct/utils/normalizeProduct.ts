@@ -5,6 +5,12 @@ const DEFAULT_TEXT = "Chưa có mô tả chi tiết";
 
 export function normalizeProduct(draft: ProductDraft): Product {
     const normalized: any = { ...draft };
+    const toISODate = (value: any): string | null => {
+        if (!value) return null;
+
+        const d = new Date(value);
+        return isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+    };
 
     // 1. Gán mặc định cho field KHÔNG bắt buộc nếu rỗng
     sections.forEach((section) => {
@@ -17,7 +23,13 @@ export function normalizeProduct(draft: ProductDraft): Product {
                     value === null ||
                     value === undefined
                 ) {
-                    normalized[field.key] = DEFAULT_TEXT;
+                    if (field.type === "date") {
+                        normalized[field.key] = null;
+                    }
+                    else {
+                        normalized[field.key] = DEFAULT_TEXT;
+                    }
+
                 }
             }
         });
@@ -41,8 +53,8 @@ export function normalizeProduct(draft: ProductDraft): Product {
                 ? Number(normalized.salePrice)
                 : Number(normalized.originalPrice),
 
-        expiry: new Date(normalized.expiry).toISOString().slice(0, 10),
-        manufactureDate: normalized.manufactureDate?.trim() ?? "",
+        expiry: toISODate(normalized.expiry),
+        manufactureDate: toISODate(normalized.manufactureDate),
 
         createdAt: new Date().toISOString(),
     };

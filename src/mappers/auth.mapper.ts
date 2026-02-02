@@ -1,7 +1,7 @@
-import { IAuthTokens } from '@/types/auth.type'
+import { IAuthTokens } from '@/types/auth.api.type'
 import { AuthSession, UserRole } from '@/types/auth.model'
 
-const mapRole = (roleName: string): UserRole => {
+export const mapRole = (roleName: string): UserRole => {
     switch (roleName?.toUpperCase()) {
         case 'ADMIN':
             return 'ADMIN'

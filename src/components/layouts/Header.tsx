@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { breadcrumbMap } from "@/constants/breadcrumbs";
+import { useNavigate, useLocation } from "react-router-dom";
+import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs";
 import { Bell, User } from "lucide-react";
+import { clearAuth } from "@/utils/authStorage";
 import Logo from "@/assets/logo.png";
 
 const Header = () => {
@@ -9,12 +10,17 @@ const Header = () => {
     const ref = useRef<HTMLDivElement>(null);
     const location = useLocation();
 
+    const handleLogout = () => {
+        clearAuth();
+        window.location.href = "/login";
+    };
+
     const getBreadcrumbs = (pathname: string): string[] => {
-        const match = Object.keys(breadcrumbMap)
+        const match = Object.keys(BREAD_CRUMB_MAP)
             .sort((a, b) => b.length - a.length)
             .find((key) => pathname.startsWith(key));
 
-        return match ? breadcrumbMap[match] : [];
+        return match ? BREAD_CRUMB_MAP[match] : [];
     };
 
     const breadcrumbs = getBreadcrumbs(location.pathname);
@@ -72,7 +78,10 @@ const Header = () => {
                                 <button className="w-full px-4 py-2 text-left hover:bg-gray-100">
                                     Hồ sơ
                                 </button>
-                                <button className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50">
+                                <button
+                                    onClick={handleLogout}
+                                    className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50"
+                                >
                                     Đăng xuất
                                 </button>
                             </div>

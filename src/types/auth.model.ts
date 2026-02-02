@@ -17,6 +17,6 @@ export interface AuthUser {
 export interface AuthSession {
     accessToken: string
     refreshToken: string
-    expiresAt: number // FE dùng timestamp
+    expiresAt: number
     user: AuthUser
 }

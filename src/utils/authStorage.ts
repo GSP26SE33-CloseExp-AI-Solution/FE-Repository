@@ -23,5 +23,6 @@ export const clearAuth = (): void => {
 
 export const isAuthenticated = (): boolean => {
     const auth = getAuth()
-    return !!auth?.accessToken && auth.expiresAt > Date.now()
+    if (!auth?.accessToken || !auth.expiresAt) return false
+    return auth.expiresAt > Date.now()
 }
