@@ -1,18 +1,18 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { getAuth } from '@/utils/authStorage'
+import { getAuthSession } from '@/utils/authStorage'
 import { UserRole } from '@/types/auth.model'
-import { getRedirectByRole } from '@/utils/redirect'
 
 interface Props {
     allow: UserRole[]
 }
 
 const RoleRoute = ({ allow }: Props) => {
-    const auth = getAuth()
+    const auth = getAuthSession()
 
     if (!auth) return <Navigate to="/login" replace />
+
     if (!allow.includes(auth.user.role)) {
-        return <Navigate to={getRedirectByRole(auth.user.role)} replace />
+        return <Navigate to="/forbidden" replace />
     }
 
     return <Outlet />

@@ -5,7 +5,7 @@ export const saveAuth = (data: AuthSession): void => {
     localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(data))
 }
 
-export const getAuth = (): AuthSession | null => {
+export const getAuthSession = (): AuthSession | null => {
     const raw = localStorage.getItem(STORAGE_KEYS.AUTH)
     if (!raw) return null
 
@@ -22,7 +22,20 @@ export const clearAuth = (): void => {
 }
 
 export const isAuthenticated = (): boolean => {
-    const auth = getAuth()
-    if (!auth?.accessToken || !auth.expiresAt) return false
-    return auth.expiresAt > Date.now()
+    const session = getAuthSession()
+    return !!session?.accessToken && !isTokenExpired()
+}
+
+export const getAccessToken = (): string | null => {
+    return getAuthSession()?.accessToken ?? null
+}
+
+export const getUserRole = () => {
+    return getAuthSession()?.user.role ?? ''
+}
+
+export const isTokenExpired = (): boolean => {
+    const session = getAuthSession()
+    if (!session?.expiresAt) return true
+    return Date.now() >= session.expiresAt
 }

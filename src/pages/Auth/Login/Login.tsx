@@ -1,57 +1,58 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate, useLocation } from "react-router-dom";
+import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
+
 import { useAuth } from "@/hooks/useAuth";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { showSuccess } from "@/utils/toast";
+import { isAuthenticated, getAuthSession } from "@/utils/authStorage";
+import { getRedirectByRole } from "@/utils/roleRedirect";
+
 import Logo from "@/assets/logo.png";
 
 const Login = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { login, loading } = useAuth();
 
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
 
+    if (isAuthenticated()) {
+        const session = getAuthSession();
+        const redirectPath = session ? getRedirectByRole(session.user.role) : "/";
+        return <Navigate to={redirectPath} replace />;
+    }
+
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (loading) return;
 
-        try {
-            const session = await login(email, password);
-            if (!session) return;
+        const session = await login(email.trim(), password);
+        if (!session) return;
 
-            showSuccess("Chào mừng bạn quay lại!");
+        showSuccess("Chào mừng bạn quay lại!");
 
-            setTimeout(() => {
-                navigate("/supermarket/dashboard", { replace: true });
-            }, 500);
+        const redirectPath = getRedirectByRole(session.user.role);
+        const from = (location.state as any)?.from?.pathname;
 
-        } catch {
-        }
+        navigate(from || redirectPath, { replace: true });
     };
 
     return (
         <div className="eco-animated-bg min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
-
-            {/* Ánh sáng AI phía sau */}
             <div className="bg-glow" />
 
-            {/* Card đăng nhập */}
             <div className="relative z-10 w-full max-w-md backdrop-blur-xl bg-white/80 shadow-2xl rounded-2xl p-8 space-y-6 border border-white/40 animate-[fadeInUp_0.6s_ease-out]">
 
                 <div className="text-center space-y-2">
                     <img src={Logo} alt="CloseExp AI" className="w-14 h-14 mx-auto transition duration-300 hover:scale-105" />
-                    <h1 className="text-2xl font-bold text-gray-800">
-                        Nền tảng CloseExp AI
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                        Quản lý thông minh, mua sắm tiện lợi
-                    </p>
+                    <h1 className="text-2xl font-bold text-gray-800">Nền tảng CloseExp AI</h1>
+                    <p className="text-sm text-gray-500">Quản lý thông minh, mua sắm tiện lợi</p>
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">
 
-                    {/* Email */}
                     <div>
                         <label className="text-sm font-medium text-gray-600">Email</label>
                         <div className="relative">
@@ -61,16 +62,13 @@ const Login = () => {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required
-                                placeholder="toilaban@email.com"
-                                className="w-full mt-1 pl-9 pr-4 py-2 border rounded-lg
-                                focus:ring-2 focus:ring-green-300 focus:border-green-400
-                                focus:shadow-[0_0_0_4px_rgba(34,197,94,0.15)]
-                                transition-all duration-200 outline-none"
+                                placeholder="banlatoi@email.com"
+                                autoComplete="email"
+                                className="w-full mt-1 pl-9 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-300 focus:border-green-400 transition-all duration-200 outline-none"
                             />
                         </div>
                     </div>
 
-                    {/* Mật khẩu */}
                     <div>
                         <label className="text-sm font-medium text-gray-600">Mật khẩu</label>
                         <div className="relative">
@@ -81,10 +79,8 @@ const Login = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 required
                                 placeholder="••••••••"
-                                className="w-full mt-1 pl-9 pr-10 py-2 border rounded-lg
-                                focus:ring-2 focus:ring-green-300 focus:border-green-400
-                                focus:shadow-[0_0_0_4px_rgba(34,197,94,0.15)]
-                                transition-all duration-200 outline-none"
+                                autoComplete="current-password"
+                                className="w-full mt-1 pl-9 pr-10 py-2 border rounded-lg focus:ring-2 focus:ring-green-300 focus:border-green-400 transition-all duration-200 outline-none"
                             />
                             <button
                                 type="button"
@@ -99,18 +95,21 @@ const Login = () => {
                     <button
                         type="submit"
                         disabled={loading}
-                        className={`w-full bg-gradient-to-r from-green-400 to-emerald-500
-                            hover:from-green-500 hover:to-emerald-600
-                            text-white font-semibold py-2.5 rounded-lg shadow-md
-                            transition-all duration-300 active:scale-95 disabled:opacity-60
-                            ${loading ? "btn-shimmer" : ""}`}
+                        className="w-full bg-gradient-to-r from-green-400 to-emerald-500 text-white font-semibold py-2.5 rounded-lg shadow-md transition-all duration-300 active:scale-95 disabled:opacity-70"
                     >
-                        {loading ? "Đang đăng nhập..." : "Đăng nhập"}
+                        {loading ? (
+                            <span className="flex items-center justify-center gap-2">
+                                <Loader2 className="animate-spin" size={18} />
+                                Đang đăng nhập...
+                            </span>
+                        ) : "Đăng nhập"}
                     </button>
+
                     <button
                         type="button"
                         onClick={() => navigate("/register")}
-                        className="w-full border border-gray-200 text-gray-600 font-medium py-2.5 rounded-lg hover:bg-gray-50 transition"
+                        disabled={loading}
+                        className="w-full border border-gray-200 text-gray-600 font-medium py-2.5 rounded-lg hover:bg-gray-50 transition disabled:opacity-50"
                     >
                         Tạo tài khoản mới
                     </button>

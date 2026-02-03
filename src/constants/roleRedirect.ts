@@ -1,10 +1,10 @@
 import { UserRole } from '@/types/auth.model'
 
 export const ROLE_REDIRECT: Record<UserRole, string> = {
-    ADMIN: '/admin',
+    ADMIN: '/admin/dashboard',
     SUPERMARKET: '/supermarket/dashboard',
-    VENDOR: '/vendor',
-    MARKETING: '/marketing',
-    PACKAGE: '/package',
-    '': '/',
+    VENDOR: '/vendor/dashboard',
+    MARKETING: '/marketing/dashboard',
+    PACKAGE: '/package/dashboard',
+    '': '/'
 }

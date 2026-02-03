@@ -2,6 +2,7 @@
   "name": "fe-repository",
   "version": "0.1.0",
   "private": true,
+  "proxy": "https://c122w5dv-5014.asse.devtunnels.ms",
   "dependencies": {
     "@craco/craco": "^7.1.0",
     "@testing-library/dom": "^10.4.1",

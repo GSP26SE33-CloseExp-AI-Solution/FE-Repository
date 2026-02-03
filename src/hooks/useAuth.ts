@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { loginApi } from '@/services/auth.service'
-import { saveAuth, clearAuth } from '@/utils/authStorage'
+import { loginApi, registerApi } from '@/services/auth.service'
+import { clearAuth } from '@/utils/authStorage'
 import { AuthSession } from '@/types/auth.model'
 
 export const useAuth = () => {
@@ -13,8 +13,6 @@ export const useAuth = () => {
             setError(null)
 
             const session = await loginApi({ email, password })
-            saveAuth(session)
-
             return session
         } catch (err: any) {
             setError(err.message || 'Đăng nhập thất bại')
@@ -24,9 +22,29 @@ export const useAuth = () => {
         }
     }
 
+    const register = async (
+        fullName: string,
+        email: string,
+        phone: string,
+        password: string
+    ): Promise<boolean> => {
+        try {
+            setLoading(true)
+            setError(null)
+
+            await registerApi({ fullName, email, phone, password })
+            return true
+        } catch (err: any) {
+            setError(err.message || 'Đăng ký thất bại')
+            return false
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const logout = () => {
         clearAuth()
     }
 
-    return { login, logout, loading, error }
+    return { login, register, logout, loading, error }
 }
