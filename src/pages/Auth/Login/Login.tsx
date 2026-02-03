@@ -3,41 +3,41 @@ import { useNavigate, Navigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/useAuth";
-import { showSuccess } from "@/utils/toast";
-import { isAuthenticated, getAuthSession } from "@/utils/authStorage";
 import { getRedirectByRole } from "@/utils/roleRedirect";
 
 import Logo from "@/assets/logo.png";
 
 const Login = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const { login, loading } = useAuth();
+    const { login, loading } = useAuth()
+    const navigate = useNavigate()
 
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
-
-    if (isAuthenticated()) {
-        const session = getAuthSession();
-        const redirectPath = session ? getRedirectByRole(session.user.role) : "/";
-        return <Navigate to={redirectPath} replace />;
-    }
+    const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
 
     const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (loading) return;
+        e.preventDefault()
 
-        const session = await login(email.trim(), password);
-        if (!session) return;
+        const session = await login(email, password)
 
-        showSuccess("Chào mừng bạn quay lại!");
+        if (!session) return
 
-        const redirectPath = getRedirectByRole(session.user.role);
-        const from = (location.state as any)?.from?.pathname;
+        console.log("✅ SESSION:", session)
+        console.log("🔥 ROLE ID:", session.user.roleId)
+        console.log("🏪 SUPERMARKET NAME:", session.user.marketStaffInfo?.supermarket?.name)
+        console.log("huhuhu huhuhu SESSION FULL:", session)
+        console.log("USER:", session?.user)
+        console.log("MARKET STAFF:", session?.user?.marketStaffInfo)
+        console.log("SUPERMARKET:", session?.user?.marketStaffInfo?.supermarket)
+        console.log("NAME:", session?.user?.marketStaffInfo?.supermarket?.name)
+        console.log("FULL USER JSON:", JSON.stringify(session.user, null, 2))
 
-        navigate(from || redirectPath, { replace: true });
-    };
+        const path = getRedirectByRole(session.user.roleId)
+
+        console.log("➡️ REDIRECT TO:", path)
+
+        navigate(path, { replace: true })
+    }
 
     return (
         <div className="eco-animated-bg min-h-screen flex items-center justify-center px-4 relative overflow-hidden">

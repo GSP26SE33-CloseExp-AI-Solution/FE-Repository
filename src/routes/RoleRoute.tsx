@@ -1,17 +1,18 @@
-import { Navigate, Outlet } from 'react-router-dom'
-import { getAuthSession } from '@/utils/authStorage'
-import { UserRole } from '@/types/auth.model'
+import { Navigate, Outlet } from "react-router-dom"
+import { useAuthContext } from "@/contexts/AuthContext"
 
 interface Props {
-    allow: UserRole[]
+    allow: string[]
 }
 
 const RoleRoute = ({ allow }: Props) => {
-    const auth = getAuthSession()
+    const { user } = useAuthContext()
 
-    if (!auth) return <Navigate to="/login" replace />
+    if (!user) {
+        return <Navigate to="/login" replace />
+    }
 
-    if (!allow.includes(auth.user.role)) {
+    if (!allow.includes(user.roleName)) {
         return <Navigate to="/forbidden" replace />
     }
 

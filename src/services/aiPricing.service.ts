@@ -5,7 +5,7 @@ export const getAiPriceSuggestion = async (
     payload: AiPricingRequest
 ): Promise<AiPricingResponse> => {
     const res = await axiosClient.post<AiPricingResponse>(
-        "/api/AI/pricing",
+        "/AI/pricing",
         payload
     )
 

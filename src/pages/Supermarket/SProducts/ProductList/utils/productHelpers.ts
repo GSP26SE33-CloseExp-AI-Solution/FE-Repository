@@ -12,8 +12,10 @@ export const formatPrice = (price: number) =>
     price.toLocaleString("vi-VN") + "đ"
 
 // % GIẢM GIÁ
-export const calcDiscount = (original: number, sale: number) =>
-    Math.round(((original - sale) / original) * 100)
+export const calcDiscount = (original: number, sale: number) => {
+    if (!original || original <= 0) return 0
+    return Math.round(((original - sale) / original) * 100)
+}
 
 // TRẠNG THÁI HẠN
 export const getExpiryStatus = (expiryDate: string) => {
@@ -45,6 +47,6 @@ export const getDaysLeft = (expiryDate: string) => {
     expiry.setHours(0, 0, 0, 0)
 
     const diffTime = expiry.getTime() - today.getTime()
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-    return diffDays > 0 ? diffDays : 0
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) // có thể âm
 }
+

@@ -1,56 +1,70 @@
-import { useEffect, useRef, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs";
-import { Bell, User } from "lucide-react";
-import { clearAuth } from "@/utils/authStorage";
-import Logo from "@/assets/logo.png";
+import { useEffect, useRef, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
+import { Bell, User, LogOut } from "lucide-react"
+
+import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs"
+import { useAuthContext } from "../../contexts/AuthContext"
+import Logo from "@/assets/logo.png"
 
 const Header = () => {
-    const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
-    const location = useLocation();
+    const { user, roleName, supermarketName, logout } = useAuthContext()
+    const navigate = useNavigate()
 
-    const handleLogout = () => {
-        clearAuth();
-        window.location.href = "/login";
-    };
+    const [open, setOpen] = useState(false)
+    const ref = useRef<HTMLDivElement>(null)
+    const location = useLocation()
 
     const getBreadcrumbs = (pathname: string): string[] => {
         const match = Object.keys(BREAD_CRUMB_MAP)
             .sort((a, b) => b.length - a.length)
-            .find((key) => pathname.startsWith(key));
+            .find((key) => pathname.startsWith(key))
+        return match ? BREAD_CRUMB_MAP[match] : []
+    }
 
-        return match ? BREAD_CRUMB_MAP[match] : [];
-    };
-
-    const breadcrumbs = getBreadcrumbs(location.pathname);
+    const breadcrumbs = getBreadcrumbs(location.pathname)
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) {
-                setOpen(false);
+                setOpen(false)
             }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        }
+        document.addEventListener("mousedown", handleClickOutside)
+        return () =>
+            document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    const avatarText = user?.fullName
+        ? user.fullName.charAt(0).toUpperCase()
+        : "U"
 
     return (
-        <header className="fixed top-0 left-0 w-full h-20 bg-white border-b border-gray-200 z-50">
-            <div className="w-full h-full px-6 flex items-center">
+        <header className="fixed top-0 left-0 w-full h-20 backdrop-blur-xl bg-white/70 border-b border-white/40 z-50 shadow-sm">
+            <div className="w-full h-full px-8 flex items-center">
 
                 {/* LEFT */}
                 <div className="flex items-center gap-3 w-[260px]">
-                    <img src={Logo} alt="CloseExp Logo" className="w-9 h-9 object-contain" />
-                    <span className="text-xl font-bold">Supermarket Staff</span>
+                    <img src={Logo} alt="CloseExp AI" className="w-10 h-10" />
+                    <div className="leading-tight">
+                        <p className="font-bold text-gray-800">CloseExp AI</p>
+                        <p className="text-xs text-gray-500">
+                            Nền tảng mua bán thông minh
+                        </p>
+                    </div>
                 </div>
 
-                {/* CENTER: Breadcrumb */}
-                <div className="flex items-center gap-3 flex-1 text-gray-500 text-base">
+                {/* CENTER */}
+                <div className="flex items-center gap-2 flex-1 text-sm text-gray-500">
                     {breadcrumbs.map((crumb, index) => (
-                        <span key={index} className="flex items-center gap-3">
-                            {index > 0 && <span>›</span>}
-                            <span className={index === breadcrumbs.length - 1 ? "text-black font-medium" : ""}>
+                        <span key={index} className="flex items-center gap-2">
+                            {index > 0 && <span>/</span>}
+                            <span
+                                className={
+                                    index === breadcrumbs.length - 1
+                                        ? "text-gray-800 font-medium"
+                                        : ""
+                                }
+                            >
                                 {crumb}
                             </span>
                         </span>
@@ -59,29 +73,46 @@ const Header = () => {
 
                 {/* RIGHT */}
                 <div className="flex items-center gap-6">
-                    <span className="text-gray-500 text-lg">Coop Xtra Linh Trung</span>
-
-                    <button className="text-gray-600 hover:text-black transition-colors">
+                    <button className="text-gray-500 hover:text-green-600">
                         <Bell size={22} />
                     </button>
 
                     <div className="relative" ref={ref}>
-                        <button onClick={() => setOpen(!open)} className="flex items-center gap-2">
-                            <div className="w-8 h-8 border-2 border-black rounded-full flex items-center justify-center">
-                                <User size={18} />
+                        <button
+                            onClick={() => setOpen(!open)}
+                            className="flex items-center gap-3 hover:bg-white/60 px-3 py-2 rounded-lg"
+                        >
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 text-white flex items-center justify-center font-bold">
+                                {avatarText}
                             </div>
-                            <span className="text-lg font-medium">Nguyễn Văn A</span>
+
+                            <div className="flex flex-col text-left leading-tight">
+                                <span className="font-medium text-gray-700">
+                                    {user?.fullName ?? "Người dùng"}
+                                </span>
+
+                                <span className="text-xs text-gray-500">
+                                    {roleName}
+                                    {supermarketName &&
+                                        ` · ${supermarketName}`}
+                                </span>
+                            </div>
                         </button>
 
                         {open && (
-                            <div className="absolute right-0 mt-2 w-44 bg-white border border-gray-200 rounded-lg shadow-md">
-                                <button className="w-full px-4 py-2 text-left hover:bg-gray-100">
+                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg overflow-hidden">
+                                <button
+                                    onClick={() => navigate("/supplier/profile")}
+                                    className="w-full px-4 py-2 text-left hover:bg-gray-100"
+                                >
                                     Hồ sơ
                                 </button>
+
                                 <button
-                                    onClick={handleLogout}
-                                    className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50"
+                                    onClick={logout}
+                                    className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
                                 >
+                                    <LogOut size={16} />
                                     Đăng xuất
                                 </button>
                             </div>
@@ -90,7 +121,7 @@ const Header = () => {
                 </div>
             </div>
         </header>
-    );
-};
+    )
+}
 
-export default Header;
+export default Header

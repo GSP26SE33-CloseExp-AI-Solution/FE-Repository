@@ -1,13 +1,20 @@
 const AddProductHeader = () => {
     return (
-        <div className="flex justify-between items-center mb-10">
-            <h1 className="text-[35px] font-bold text-gray-900">
-                Đăng tải Sản phẩm
-            </h1>
+        <div className="flex items-start justify-between">
+            <div>
+                <h1 className="text-2xl font-semibold text-gray-800">
+                    Thêm sản phẩm mới
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                    Tải lên hình ảnh để AI nhận diện thông tin sản phẩm và hỗ trợ tạo dữ liệu nhanh chóng.
+                </p>
+            </div>
 
-            <button className="w-[200px] h-[50px] border border-gray-200 rounded-lg text-[20px] font-semibold hover:bg-gray-50">
-                Thoát
-            </button>
+            <div className="hidden md:flex items-center gap-2 text-sm text-gray-400">
+                <span className="px-3 py-1 rounded-full bg-gray-100 border">
+                    AI Smart Scan
+                </span>
+            </div>
         </div>
     );
 };

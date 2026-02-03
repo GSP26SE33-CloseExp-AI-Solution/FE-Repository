@@ -1,24 +1,16 @@
 const Footer = () => {
     return (
-        <footer className="w-full border-t border-gray-200 bg-[#FAFAFA] py-1.5 text-xs text-gray-500">
-            <div className="w-full px-[40px] py-1.5 flex items-center justify-between text-xs text-gray-500">
+        <footer className="w-full mt-auto border-t border-white/40 bg-white/60 backdrop-blur-xl text-xs text-gray-500">
+            <div className="max-w-screen-xl mx-auto px-6 py-3 flex flex-col md:flex-row items-center justify-between gap-2">
 
                 <p>
-                    © 2026 CloseExp AI System — a platform that applies AI to support the sale of near-expiry products
+                    © {new Date().getFullYear()} CloseExp AI Việt Nam — Nền tảng AI hỗ trợ bán hàng cận date
                 </p>
 
-                <div className="flex items-center gap-6">
-                    <a href="#" className="hover:text-gray-700 transition-colors">
-                        Term of Service
-                    </a>
-                    <span className="h-4 w-px bg-gray-300" />
-                    <a href="#" className="hover:text-gray-700 transition-colors">
-                        Policy
-                    </a>
-                    <span className="h-4 w-px bg-gray-300" />
-                    <a href="#" className="hover:text-gray-700 transition-colors">
-                        Help Center
-                    </a>
+                <div className="flex items-center gap-5">
+                    <a href="#" className="hover:text-green-600 transition">Điều khoản</a>
+                    <a href="#" className="hover:text-green-600 transition">Chính sách</a>
+                    <a href="#" className="hover:text-green-600 transition">Trung tâm trợ giúp</a>
                 </div>
 
             </div>

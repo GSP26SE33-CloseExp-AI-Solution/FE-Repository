@@ -1,53 +1,61 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom"
 
-import MainLayout from "@/layouts/MainLayout";
-import PrivateRoute from "@/routes/PrivateRoute";
-import RoleRoute from "@/routes/RoleRoute";
+import MainLayout from "@/layouts/MainLayout"
+import PrivateRoute from "@/routes/PrivateRoute"
+import RoleRoute from "@/routes/RoleRoute"
 
-import Login from "@/pages/Auth/Login";
-import Register from "@/pages/Auth/Register/Register";
+import Login from "@/pages/Auth/Login"
+import Register from "@/pages/Auth/Register/Register"
 
-import SDashboard from "@/pages/Supermarket/SDashboard";
-import ProductList from "@/pages/Supermarket/SProducts/ProductList/ProductsList";
-import AddProduct from "@/pages/Supermarket/SProducts/AddProduct/AddProduct";
-import ConfirmProduct from "@/pages/Supermarket/SProducts/ConfirmProduct/ConfirmProduct";
-import AiPricingDetailPage from "@/pages/Supermarket/SProducts/ConfirmProduct/components/AiPricing/AiPricingDetail/AiPricingDetailPage";
+import SDashboard from "@/pages/Supermarket/SDashboard"
+import ProductList from "@/pages/Supermarket/SProducts/ProductList/ProductsList"
+import AddProduct from "@/pages/Supermarket/SProducts/AddProduct/AddProduct"
+import ConfirmProduct from "@/pages/Supermarket/SProducts/ConfirmProduct/ConfirmProduct"
+import AiPricingDetailPage from "@/pages/Supermarket/SProducts/ConfirmProduct/components/AiPricing/AiPricingDetail/AiPricingDetailPage"
+import ProfilePage from "@/pages/Supermarket/SProfile/ProfilePage"
 
-import AdminDashboard from "@/pages/Admin/AdminDashboard";
+import AdminDashboard from "@/pages/Admin/AdminDashboard"
 
-import NotFound from "@/pages/Common/NotFound";
-import Forbidden from "@/pages/Common/Forbidden";
+import NotFound from "@/pages/Common/NotFound"
+import Forbidden from "@/pages/Common/Forbidden"
+import Home from "@/pages/Home/Home"
 
 const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Login />} />
 
-        {/* ===== PUBLIC ROUTES ===== */}
+        {/* ===== PUBLIC ===== */}
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* ===== PRIVATE ROUTES (ĐÃ LOGIN) ===== */}
+        {/* ===== PRIVATE (LOGIN REQUIRED) ===== */}
         <Route element={<PrivateRoute />}>
 
           {/* ===== ADMIN ===== */}
-          <Route element={<RoleRoute allow={['ADMIN']} />}>
+          <Route element={<RoleRoute allow={["Admin"]} />}>
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
           </Route>
 
-          {/* ===== SUPERMARKET ===== */}
-          <Route element={<RoleRoute allow={['SUPERMARKET']} />}>
+          {/* ===== SUPPLIER STAFF ===== */}
+          <Route element={<RoleRoute allow={["SupplierStaff"]} />}>
             <Route element={<MainLayout />}>
-              <Route path="/supermarket/dashboard" element={<SDashboard />} />
-              <Route path="/supermarket/products" element={<ProductList />} />
-              <Route path="/supermarket/products/add" element={<AddProduct />} />
-              <Route path="/supermarket/products/confirm" element={<ConfirmProduct />} />
+              <Route path="/supplier/dashboard" element={<SDashboard />} />
+              <Route path="/supplier/products" element={<ProductList />} />
+              <Route path="/supplier/products/add" element={<AddProduct />} />
+              <Route path="/supplier/products/confirm" element={<ConfirmProduct />} />
               <Route
-                path="/supermarket/products/:productId/ai-pricing"
+                path="/supplier/products/:productId/ai-pricing"
                 element={<AiPricingDetailPage />}
               />
+              <Route path="/supplier/profile" element={<ProfilePage />} />
             </Route>
+          </Route>
+
+          {/* ===== VENDOR ===== */}
+          <Route element={<RoleRoute allow={["Vendor"]} />}>
+            <Route path="/vendor/dashboard" element={<AdminDashboard />} />
           </Route>
 
           {/* ===== COMMON PRIVATE ===== */}
@@ -60,7 +68,7 @@ const AppRouter: React.FC = () => {
 
       </Routes>
     </BrowserRouter>
-  );
-};
+  )
+}
 
-export default AppRouter;
+export default AppRouter

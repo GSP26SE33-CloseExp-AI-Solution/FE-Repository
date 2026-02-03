@@ -1,37 +1,53 @@
-import { useState } from "react";
-import { useNavigate, Navigate } from "react-router-dom";
-import { Eye, EyeOff, User, Mail, Phone, Lock, Loader2 } from "lucide-react";
+import { useState } from "react"
+import { useNavigate, Navigate } from "react-router-dom"
+import { Eye, EyeOff, User, Mail, Phone, Lock, Loader2 } from "lucide-react"
 
-import { useAuth } from "@/hooks/useAuth";
-import { showSuccess } from "@/utils/toast";
-import { isAuthenticated } from "@/utils/authStorage";
+import { useAuth } from "@/hooks/useAuth"
+import { showSuccess, showError } from "@/utils/toast"
+import { isAuthenticated } from "@/utils/authStorage"
+import { getRedirectByRole } from "@/utils/roleRedirect"
 
-import Logo from "@/assets/logo.png";
+import Logo from "@/assets/logo.png"
 
 const Register = () => {
-    const navigate = useNavigate();
-    const { register, loading } = useAuth();
+    const navigate = useNavigate()
+    const { register, loading } = useAuth()
 
-    const [fullName, setFullName] = useState("");
-    const [email, setEmail] = useState("");
-    const [phone, setPhone] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
+    const [fullName, setFullName] = useState("")
+    const [email, setEmail] = useState("")
+    const [phone, setPhone] = useState("")
+    const [password, setPassword] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
 
     if (isAuthenticated()) {
-        return <Navigate to="/supermarket/dashboard" replace />;
+        return <Navigate to="/" replace />
     }
 
     const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (loading) return;
+        e.preventDefault()
+        if (loading) return
 
-        const ok = await register(fullName.trim(), email.trim(), phone.trim(), password);
-        if (!ok) return;
+        try {
+            const session = await register({
+                fullName,
+                email,
+                phone,
+                password,
+            })
 
-        showSuccess("Đăng ký thành công! Vui lòng đăng nhập.");
-        navigate("/login");
-    };
+            if (!session) return
+
+            console.log("✅ REGISTER SESSION:", session)
+
+            showSuccess("Đăng ký thành công!")
+
+            const path = getRedirectByRole(session.user.roleId)
+
+            navigate(path, { replace: true })
+        } catch (err: any) {
+            showError(err?.message || "Đăng ký thất bại")
+        }
+    }
 
     return (
         <div className="eco-animated-bg min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
@@ -95,8 +111,8 @@ const Register = () => {
                 </form>
             </div>
         </div>
-    );
-};
+    )
+}
 
 const Input = ({ icon, label, type = "text", value, setValue }: any) => (
     <div>
@@ -112,6 +128,6 @@ const Input = ({ icon, label, type = "text", value, setValue }: any) => (
             />
         </div>
     </div>
-);
+)
 
 export default Register;

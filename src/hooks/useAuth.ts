@@ -1,50 +1,51 @@
-import { useState } from 'react'
-import { loginApi, registerApi } from '@/services/auth.service'
-import { clearAuth } from '@/utils/authStorage'
-import { AuthSession } from '@/types/auth.model'
+import { useState } from "react"
+import { loginApi, registerApi } from "@/services/auth.service"
+import { saveAuth, clearAuth } from "@/utils/authStorage"
+import { AuthData } from "@/types/auth.types"
 
 export const useAuth = () => {
     const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
 
-    const login = async (email: string, password: string): Promise<AuthSession | null> => {
+    const logout = () => {
+        clearAuth()
+    }
+
+    const login = async (email: string, password: string): Promise<AuthData | null> => {
         try {
             setLoading(true)
-            setError(null)
 
             const session = await loginApi({ email, password })
+
+            console.log("✅ SESSION:", session)
+            console.log("🏪 SUPERMARKET:", session.user.marketStaffInfo?.supermarket?.name)
+
+            saveAuth(session)
+
             return session
-        } catch (err: any) {
-            setError(err.message || 'Đăng nhập thất bại')
+        } catch (e) {
+            console.error("❌ LOGIN ERROR", e)
             return null
         } finally {
             setLoading(false)
         }
     }
 
-    const register = async (
-        fullName: string,
-        email: string,
-        phone: string,
-        password: string
-    ): Promise<boolean> => {
+    const register = async (payload: any): Promise<AuthData | null> => {
         try {
             setLoading(true)
-            setError(null)
 
-            await registerApi({ fullName, email, phone, password })
-            return true
-        } catch (err: any) {
-            setError(err.message || 'Đăng ký thất bại')
-            return false
+            const session = await registerApi(payload)
+
+            saveAuth(session)
+
+            return session
+        } catch (e) {
+            console.error("❌ REGISTER ERROR", e)
+            return null
         } finally {
             setLoading(false)
         }
     }
 
-    const logout = () => {
-        clearAuth()
-    }
-
-    return { login, register, logout, loading, error }
+    return { login, register, loading, logout }
 }

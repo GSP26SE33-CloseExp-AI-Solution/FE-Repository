@@ -1,8 +1,8 @@
-import { useEffect, useState, ChangeEvent } from "react"
-import { getExpiryStatus } from "../utils/productHelpers"
+import { useEffect, useState, ChangeEvent, useMemo } from "react"
 import { getProductsBySupermarket } from "@/services/product.service"
-import { mapProductApiToUI } from "../utils/mapProductApiToUI"
-import { Product } from "@/types/product.type"
+import { mapProductsToLotsUI } from "@/mappers/product.mapper"
+import { ProductLotUI } from "@/types/productLotUI.type"
+import { getExpiryStatus } from "../utils/productHelpers"
 
 const ITEMS_PER_PAGE = 10
 
@@ -12,7 +12,7 @@ export const useProductsList = (supermarketId: string) => {
     const [expiryFilter, setExpiryFilter] = useState("Tất cả")
     const [currentPage, setCurrentPage] = useState(1)
 
-    const [products, setProducts] = useState<Product[]>([])
+    const [lots, setLots] = useState<ProductLotUI[]>([])
     const [loading, setLoading] = useState(false)
 
     const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -20,71 +20,70 @@ export const useProductsList = (supermarketId: string) => {
         setCurrentPage(1)
     }
 
-    // FILTER KEYWORD
-    const filteredByKeyword = products.filter(p => {
+    // 🔍 FILTER KEYWORD
+    const filteredByKeyword = useMemo(() => {
         const kw = keyword.toLowerCase()
-        if (!kw) return true
+        if (!kw) return lots
 
-        switch (searchType) {
-            case "Tên sản phẩm":
-                return p.name.toLowerCase().includes(kw)
-            case "Phân loại":
-                return p.category.toLowerCase().includes(kw)
-            case "Thương hiệu":
-                return p.brand.toLowerCase().includes(kw)
-            case "Xuất xứ":
-                return p.origin.toLowerCase().includes(kw)
-            default:
-                return (
-                    p.name.toLowerCase().includes(kw) ||
-                    p.category.toLowerCase().includes(kw) ||
-                    p.brand.toLowerCase().includes(kw) ||
-                    p.origin.toLowerCase().includes(kw)
-                )
-        }
-    })
+        return lots.filter(lot => {
+            switch (searchType) {
+                case "Tên sản phẩm":
+                    return lot.productName.toLowerCase().includes(kw)
+                case "Phân loại":
+                    return lot.category.toLowerCase().includes(kw)
+                case "Thương hiệu":
+                    return lot.brand.toLowerCase().includes(kw)
+                case "Barcode":
+                    return lot.barcode?.toLowerCase().includes(kw)
+                default:
+                    return (
+                        lot.productName.toLowerCase().includes(kw) ||
+                        lot.category.toLowerCase().includes(kw) ||
+                        lot.brand.toLowerCase().includes(kw) ||
+                        lot.barcode?.toLowerCase().includes(kw)
+                    )
+            }
+        })
+    }, [lots, keyword, searchType])
 
-    // FILTER EXPIRY
-    const filteredProducts = filteredByKeyword.filter(p => {
-        const status = getExpiryStatus(p.expiry).label
-        if (expiryFilter === "Tất cả") return true
-        return status === expiryFilter
-    })
+    // ⏳ FILTER EXPIRY
+    const filteredLots = useMemo(() => {
+        if (expiryFilter === "Tất cả") return filteredByKeyword
 
-    const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE)
+        return filteredByKeyword.filter(lot => {
+            const status = getExpiryStatus(lot.expiryDate).label
+            return status === expiryFilter
+        })
+    }, [filteredByKeyword, expiryFilter])
+
+    // 📄 PAGINATION
+    const totalPages = Math.ceil(filteredLots.length / ITEMS_PER_PAGE)
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
-    const currentProducts = filteredProducts.slice(
-        startIndex,
-        startIndex + ITEMS_PER_PAGE
-    )
+
+    const currentLots = useMemo(() => {
+        return filteredLots.slice(startIndex, startIndex + ITEMS_PER_PAGE)
+    }, [filteredLots, startIndex])
 
     const goNext = () => currentPage < totalPages && setCurrentPage(p => p + 1)
     const goPrev = () => currentPage > 1 && setCurrentPage(p => p - 1)
 
+    // 📦 FETCH DATA
     useEffect(() => {
         const fetchProducts = async () => {
             try {
                 setLoading(true)
-
-                const data = await getProductsBySupermarket(supermarketId)
-
-                const items = data.items ?? data ?? []
-
-                if (items.length > 0) {
-                    const mapped = items.map(mapProductApiToUI)
-                    setProducts(mapped)
-                } else {
-                    setProducts([])
-                }
+                const res = await getProductsBySupermarket(supermarketId)
+                const items = res.items ?? res ?? []
+                setLots(mapProductsToLotsUI(items))
             } catch (err) {
                 console.error("Failed to fetch products:", err)
-                setProducts([])
+                setLots([])
             } finally {
                 setLoading(false)
             }
         }
 
-        fetchProducts()
+        if (supermarketId) fetchProducts()
     }, [supermarketId])
 
     useEffect(() => {
@@ -97,7 +96,7 @@ export const useProductsList = (supermarketId: string) => {
         expiryFilter,
         currentPage,
         totalPages,
-        currentProducts,
+        currentLots,
         loading,
 
         setSearchType,

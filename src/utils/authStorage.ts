@@ -1,41 +1,56 @@
-import { AuthSession } from '@/types/auth.model'
-import { STORAGE_KEYS } from '@/constants/storageKeys'
+import { AuthData } from "@/types/auth.types"
 
-export const saveAuth = (data: AuthSession): void => {
-    localStorage.setItem(STORAGE_KEYS.AUTH, JSON.stringify(data))
-}
+const KEY = "auth_session"
 
-export const getAuthSession = (): AuthSession | null => {
-    const raw = localStorage.getItem(STORAGE_KEYS.AUTH)
-    if (!raw) return null
-
+const getSession = (): AuthData | null => {
+    const raw = localStorage.getItem(KEY)
     try {
-        return JSON.parse(raw) as AuthSession
+        return raw ? JSON.parse(raw) : null
     } catch {
-        clearAuth()
         return null
     }
 }
 
-export const clearAuth = (): void => {
-    localStorage.removeItem(STORAGE_KEYS.AUTH)
+export const authStorage = {
+    get: getSession,
+
+    set(data: AuthData) {
+        localStorage.setItem(KEY, JSON.stringify(data))
+    },
+
+    clear() {
+        localStorage.removeItem(KEY)
+    },
+
+    isAuthenticated(): boolean {
+        const session = getSession()
+        if (!session?.accessToken) return false
+        if (isTokenExpired(session.expiresAt)) {
+            localStorage.removeItem(KEY)
+            return false
+        }
+        return true
+    },
+
+    getAccessToken(): string | null {
+        return getSession()?.accessToken ?? null
+    },
+
+    getRefreshToken(): string | null {
+        return getSession()?.refreshToken ?? null
+    },
 }
 
-export const isAuthenticated = (): boolean => {
-    const session = getAuthSession()
-    return !!session?.accessToken && !isTokenExpired()
+export const getAuthSession = () => getSession()
+export const saveAuth = (data: AuthData) => authStorage.set(data)
+export const clearAuth = () => authStorage.clear()
+export const isAuthenticated = () => authStorage.isAuthenticated()
+
+export const getSupermarketName = (): string => {
+    return authStorage.get()?.user?.marketStaffInfo?.supermarket?.name ?? ""
 }
 
-export const getAccessToken = (): string | null => {
-    return getAuthSession()?.accessToken ?? null
-}
-
-export const getUserRole = () => {
-    return getAuthSession()?.user.role ?? ''
-}
-
-export const isTokenExpired = (): boolean => {
-    const session = getAuthSession()
-    if (!session?.expiresAt) return true
-    return Date.now() >= session.expiresAt
+const isTokenExpired = (expiresAt?: string): boolean => {
+    if (!expiresAt) return true
+    return new Date(expiresAt).getTime() <= Date.now()
 }

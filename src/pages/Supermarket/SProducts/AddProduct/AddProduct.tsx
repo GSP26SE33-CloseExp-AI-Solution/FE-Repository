@@ -22,14 +22,9 @@ const AddProduct: React.FC = () => {
         setPageState("AI_PROCESSING");
 
         try {
-            // lấy ảnh chính (file gốc gửi BE)
             const mainImage = productImages.images[0].file;
-
-            // gọi AI
             const aiResponse = await aiService.smartScan(mainImage);
 
-            // KHÔNG build ProductDraft ở đây
-            // chỉ gửi raw AI response + ảnh sang Confirm
             navigate("/supermarket/products/confirm", {
                 state: {
                     product: aiResponse,
@@ -44,23 +39,29 @@ const AddProduct: React.FC = () => {
     };
 
     return (
-        <div className="w-full bg-white min-h-screen">
-            <AddProductHeader />
+        <div className="w-full min-h-screen bg-white">
+            <div className="w-full px-8 pt-30 pb-16 space-y-6">
 
-            {pageState === "UPLOAD" && (
-                <>
-                    <ImageUploadCard {...productImages} />
+                <AddProductHeader />
 
-                    {productImages.images.length > 0 &&
-                        !productImages.usingCamera && (
-                            <div className="flex justify-start">
+                {pageState === "UPLOAD" && (
+                    <div>
+                        <ImageUploadCard {...productImages} />
+
+                        {productImages.images.length > 0 && !productImages.usingCamera && (
+                            <div className="">
                                 <ConfirmButton onConfirm={handleConfirmUpload} />
                             </div>
                         )}
-                </>
-            )}
+                    </div>
+                )}
 
-            {pageState === "AI_PROCESSING" && <AiProcessing />}
+                {pageState === "AI_PROCESSING" && (
+                    <div>
+                        <AiProcessing />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -11,7 +11,7 @@ const AdminDashboard: React.FC = () => {
             <h1>Dashboard</h1>
 
             <p>Xin chào, <strong>{auth?.user.email}</strong></p>
-            <p>Role: <strong>{auth?.user.role}</strong></p>
+            <p>Role: <strong>{auth?.user.roleId}</strong></p>
 
             <button
                 onClick={logout}

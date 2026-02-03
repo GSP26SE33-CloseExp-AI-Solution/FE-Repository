@@ -1,16 +1,10 @@
-import { useNavigate } from 'react-router-dom';
-import { clearAuth } from '@/utils/authStorage';
+import { clearAuth } from "@/utils/authStorage"
 
 export const useLogout = () => {
-    const navigate = useNavigate();
-
     const logout = () => {
-        clearAuth();
+        clearAuth()
+        window.location.href = "/login"
+    }
 
-        navigate('/login', {
-            replace: true, // chặn back
-        });
-    };
-
-    return { logout };
-};
+    return { logout }
+}

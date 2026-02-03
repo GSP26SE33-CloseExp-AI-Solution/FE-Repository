@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_URL = "/api/AI/smart-scan";
+const API_URL = "/AI/smart-scan";
 
 const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {

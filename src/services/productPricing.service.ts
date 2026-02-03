@@ -8,7 +8,7 @@ export const getAiPriceSuggestion = (payload: {
     brand: string;
 }) => {
     return axiosClient.post<AiPricingResponse>(
-        "/api/AI/pricing",
+        "/AI/pricing",
         payload
     );
 };
