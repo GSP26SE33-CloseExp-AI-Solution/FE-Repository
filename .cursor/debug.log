@@ -1,8 +1,0 @@
-{"location":"authStorage.ts:7","message":"authStorage.get called","data":{},"timestamp":1770128013090,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
-{"location":"authStorage.ts:13","message":"localStorage empty, returning null","data":{},"timestamp":1770128013093,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
-{"location":"authStorage.ts:10","message":"localStorage raw value","data":{"hasRaw":false},"timestamp":1770128013093,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
-{"location":"authStorage.ts:7","message":"authStorage.get called","data":{},"timestamp":1770128013096,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
-{"location":"AppRouter.tsx:28","message":"AppRouter useEffect - session read","data":{"session":null},"timestamp":1770128013094,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
-{"location":"authStorage.ts:10","message":"localStorage raw value","data":{"hasRaw":false},"timestamp":1770128013096,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
-{"location":"authStorage.ts:13","message":"localStorage empty, returning null","data":{},"timestamp":1770128013096,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
-{"location":"AppRouter.tsx:28","message":"AppRouter useEffect - session read","data":{"session":null},"timestamp":1770128013097,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
