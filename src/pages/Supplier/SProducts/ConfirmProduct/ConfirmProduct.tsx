@@ -7,81 +7,91 @@ import ProductImagesPreview from "./components/ProductImagesPreview";
 import RequiredFieldsForm from "./components/RequiredFieldsForm/RequiredFieldsForm";
 import ActionButtons from "./components/ActionButtons";
 
-import { ProductDraft } from "@/types/product.type";
-import { AiScanResponse } from "@/types/ai.type";
+import { Product } from "@/types/aiProduct.type";
 import { validateProduct } from "./utils/validateProduct";
-import { normalizeProduct } from "./utils/normalizeProduct";
-import { mapAiResponseToProductDraft } from "./utils/mapAiResponseToProductDraft";
+import { productService } from "@/services/product.service";
 
 const ConfirmProduct: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
     const { product, images } = location.state as {
-        product: AiScanResponse;
+        product: Product;
         images: string[];
     };
 
-    /* Tạo bản nháp từ AI chỉ 1 lần */
-    const aiInitialProductRef = useRef<ProductDraft>(
-        mapAiResponseToProductDraft(product, images[0] ?? "")
+    /* ===== init ===== */
+    const initialProductRef = useRef<Product>(product);
+    const [currentProduct, setCurrentProduct] = useState<Product>(product);
+
+    /* ===== validation ===== */
+    const { isValid, missingFields } = useMemo(
+        () => validateProduct(currentProduct),
+        [currentProduct]
     );
 
-    const [draftProduct, setDraftProduct] = useState<ProductDraft>(
-        aiInitialProductRef.current
-    );
-
-    /* Validation memo để không tính lại mỗi render */
-    const validation = useMemo(
-        () => validateProduct(draftProduct),
-        [draftProduct]
-    );
-
-    const isValid = validation.isValid;
-    const missingFields = validation.missingFields;
-
-    /* ================= RESET ================= */
-
+    /* ===== reset ===== */
     const handleResetAll = () => {
-        setDraftProduct(aiInitialProductRef.current);
+        setCurrentProduct(initialProductRef.current);
     };
 
-    const resetSection = (fields: (keyof ProductDraft)[]) => {
-        setDraftProduct((prev) => {
-            const updated = { ...prev };
+    const resetSection = (fields: (keyof Product)[]) => {
+        setCurrentProduct((prev) => {
+            const updated = { ...prev } as Product;
 
             fields.forEach((key) => {
-                (updated as any)[key] = aiInitialProductRef.current[key];
+                (updated as Record<keyof Product, Product[keyof Product]>)[key] =
+                    initialProductRef.current[key];
             });
 
             return updated;
         });
     };
 
-    /* ================= ACTIONS ================= */
-
+    /* ===== actions ===== */
     const handleBack = () => navigate(-1);
 
     const handleSaveDraft = () => {
-        console.log("SAVE DRAFT", draftProduct);
+        console.log("SAVE DRAFT PRODUCT", currentProduct);
         toast.success("Đã lưu nháp sản phẩm");
     };
 
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         if (!isValid) {
             toast.error(`Còn thiếu ${missingFields.length} trường bắt buộc`);
             return;
         }
 
-        const finalProduct = normalizeProduct(draftProduct);
+        try {
+            const verifiedProduct = await productService.verifyProduct(
+                currentProduct.productId,
+                {
+                    name: currentProduct.name,
+                    brand: currentProduct.brand,
+                    category: currentProduct.category,
+                    barcode: currentProduct.barcode,
+                    originalPrice: currentProduct.originalPrice,
+                    expiryDate: currentProduct.expiryDate,
+                    manufactureDate: currentProduct.manufactureDate,
+                    verifiedBy: currentProduct.createdBy,
+                }
+            );
 
-        console.log("SUBMIT PRODUCT", finalProduct);
-        toast.success("Tạo sản phẩm thành công");
+            toast.success("Xác nhận sản phẩm thành công");
 
-        navigate("/supplier/products");
+            navigate("/supplier/products/pricing", {
+                state: {
+                    product: verifiedProduct,
+                    images,
+                },
+            });
+        } catch {
+            toast.error("Xác nhận sản phẩm thất bại");
+        }
     };
 
-    /* ================= UI ================= */
+    /* ===== pricing rule ===== */
+    const canSuggestPrice = currentProduct.status === 1;
 
     return (
         <div className="w-full min-h-screen bg-white">
@@ -95,10 +105,11 @@ const ConfirmProduct: React.FC = () => {
 
                     <div className="col-span-7 space-y-6">
                         <RequiredFieldsForm
-                            product={draftProduct}
-                            onChange={setDraftProduct}
+                            product={currentProduct}
+                            onChange={setCurrentProduct}
                             onResetAll={handleResetAll}
                             onResetSection={resetSection}
+                            locked={canSuggestPrice}
                         />
 
                         <ActionButtons

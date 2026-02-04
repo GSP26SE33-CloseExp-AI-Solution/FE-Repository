@@ -5,7 +5,7 @@ import { useAuthContext } from "@/contexts/AuthContext"
 
 export const useAuth = () => {
     const [loading, setLoading] = useState(false)
-    const { loginSuccess, logout: contextLogout } = useAuthContext()
+    const { user, loginSuccess, logout: contextLogout } = useAuthContext()
 
     const login = async (
         email: string,
@@ -51,6 +51,7 @@ export const useAuth = () => {
     }
 
     return {
+        user,
         login,
         register,
         logout,

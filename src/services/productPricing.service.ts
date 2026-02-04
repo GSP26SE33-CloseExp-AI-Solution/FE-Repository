@@ -1,14 +1,11 @@
-import axiosClient from "../utils/axiosClient";
-import { AiPricingResponse } from "@/types/aiPricing.types";
+import axiosClient from "@/utils/axiosClient";
 
-export const getAiPriceSuggestion = (payload: {
-    category: string;
-    expiryDate: string;
-    originalPrice: number;
-    brand: string;
-}) => {
-    return axiosClient.post<AiPricingResponse>(
-        "/AI/pricing",
-        payload
-    );
+export const productPricingService = {
+    getPricingSuggestion: async (productId: string) => {
+        const res = await axiosClient.get(
+            `/Products/${productId}/pricing-suggestion`
+        );
+
+        return res.data;
+    },
 };

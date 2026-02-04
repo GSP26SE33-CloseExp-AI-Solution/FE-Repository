@@ -1,29 +1,21 @@
-import { ProductDraft } from "@/types/product.type";
+import { Product } from "@/types/aiProduct.type";
 
-export const REQUIRED_FIELDS: (keyof ProductDraft)[] = [
-    "name",          // Tên sản phẩm
-    "category",      // Danh mục
-    "unit",          // Đơn vị
-    "qty",           // Số lượng
-    "originalPrice", // Giá gốc
-    "salePrice",     // Giá bán
-    "expiry",        // Hạn sử dụng
+const REQUIRED_FIELDS: (keyof Product)[] = [
+    "name",
+    "category",
+    "barcode",
+    "expiryDate",
+    "originalPrice",
 ];
 
-export function validateProduct(product: ProductDraft) {
+export const validateProduct = (product: Product) => {
     const missingFields = REQUIRED_FIELDS.filter((key) => {
         const value = product[key];
-
-        // riêng qty & price: phải là số > 0
-        if (key === "qty" || key === "originalPrice" || key === "salePrice") {
-            return typeof value !== "number" || value <= 0;
-        }
-
-        return value === "" || value === null || value === undefined;
+        return value === null || value === undefined || value === "";
     });
 
     return {
         isValid: missingFields.length === 0,
         missingFields,
     };
-}
+};

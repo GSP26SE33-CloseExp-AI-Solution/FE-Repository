@@ -1,12 +1,29 @@
-export const extractProductFromImages = async (files: File[]) => {
-    const formData = new FormData();
-    files.forEach(f => formData.append("images", f));
+import { aiService } from "@/services/aiImage.service";
 
-    const res = await fetch("/AI/extract", {
-        method: "POST",
-        body: formData,
-    });
+export const extractProductFromImages = async (
+    files: File[],
+    supermarketId?: string,
+    createdBy?: string
+) => {
+    if (!files.length) {
+        throw new Error("Không có ảnh nào được cung cấp");
+    }
 
-    if (!res.ok) throw new Error("AI extract failed");
-    return res.json();
+    if (!supermarketId) {
+        throw new Error("Thiếu supermarketId");
+    }
+
+    if (!createdBy) {
+        throw new Error("Thiếu createdBy");
+    }
+
+    const file = files[0];
+
+    const res = await aiService.uploadOcr(
+        file,
+        supermarketId,
+        createdBy
+    );
+
+    return res;
 };

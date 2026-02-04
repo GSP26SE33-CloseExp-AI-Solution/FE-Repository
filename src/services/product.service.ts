@@ -1,11 +1,24 @@
-import axiosClient from "@/utils/axiosClient"
+import axiosClient from "@/utils/axiosClient";
 
-export const getProductsBySupermarket = async (supermarketId: string) => {
-    const res = await axiosClient.get("/Products")
+export const productService = {
+    verifyProduct: async (
+        productId: string,
+        payload: {
+            name: string;
+            brand: string;
+            category: string;
+            barcode: string;
+            originalPrice: number;
+            expiryDate: string;
+            manufactureDate: string;
+            verifiedBy: string;
+        }
+    ) => {
+        const res = await axiosClient.post(
+            `/Products/${productId}/verify`,
+            payload
+        );
 
-    const products = res.data?.items ?? res.data ?? []
-
-    return {
-        items: products.filter((p: any) => p.supermarketId === supermarketId),
-    }
-}
+        return res.data;
+    },
+};

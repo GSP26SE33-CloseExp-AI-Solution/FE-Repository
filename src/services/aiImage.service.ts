@@ -1,36 +1,24 @@
-import axios from "axios";
+import axiosClient from "@/utils/axiosClient";
 
-const API_URL = "/AI/smart-scan";
-
-const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const result = reader.result as string;
-            resolve(result.split(",")[1]);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
+const API_URL = "/Products/upload-ocr";
 
 export const aiService = {
-    smartScan: async (file: File) => {
-        try {
-            const imageBase64 = await fileToBase64(file);
+    uploadOcr: async (
+        file: File,
+        supermarketId: string,
+        createdBy: string
+    ) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("supermarketId", supermarketId);
+        formData.append("createdBy", createdBy);
 
-            console.log("📸 File:", file.name, file.size);
+        const res = await axiosClient.post(API_URL, formData, {
+            headers: {
+                "Content-Type": "multipart/form-data",
+            },
+        });
 
-            const res = await axios.post(API_URL, {
-                imageBase64,
-                lookupBarcode: true,
-            });
-
-            console.log("RAW AI RESPONSE:", res.data);
-
-            return res.data;
-        } catch (err: any) {
-            console.error("AI ERROR:", err?.response ?? err);
-            throw err;
-        }
+        return res.data;
     },
 };
