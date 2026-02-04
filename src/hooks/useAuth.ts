@@ -1,25 +1,23 @@
 import { useState } from "react"
 import { loginApi, registerApi } from "@/services/auth.service"
-import { saveAuth, clearAuth } from "@/utils/authStorage"
 import { AuthData } from "@/types/auth.types"
+import { useAuthContext } from "@/contexts/AuthContext"
 
 export const useAuth = () => {
     const [loading, setLoading] = useState(false)
+    const { loginSuccess, logout: contextLogout } = useAuthContext()
 
-    const logout = () => {
-        clearAuth()
-    }
-
-    const login = async (email: string, password: string): Promise<AuthData | null> => {
+    const login = async (
+        email: string,
+        password: string
+    ): Promise<AuthData | null> => {
         try {
             setLoading(true)
 
             const session = await loginApi({ email, password })
+            console.log("✅ LOGIN SESSION:", session)
 
-            console.log("✅ SESSION:", session)
-            console.log("🏪 SUPERMARKET:", session.user.marketStaffInfo?.supermarket?.name)
-
-            saveAuth(session)
+            loginSuccess(session)
 
             return session
         } catch (e) {
@@ -35,8 +33,9 @@ export const useAuth = () => {
             setLoading(true)
 
             const session = await registerApi(payload)
+            console.log("✅ REGISTER SESSION:", session)
 
-            saveAuth(session)
+            loginSuccess(session)
 
             return session
         } catch (e) {
@@ -47,5 +46,14 @@ export const useAuth = () => {
         }
     }
 
-    return { login, register, loading, logout }
+    const logout = async () => {
+        await contextLogout()
+    }
+
+    return {
+        login,
+        register,
+        logout,
+        loading,
+    }
 }

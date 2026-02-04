@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Bell, User, LogOut } from "lucide-react"
+import { Bell, LogOut } from "lucide-react"
 
 import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs"
 import { useAuthContext } from "../../contexts/AuthContext"
+
 import Logo from "@/assets/logo.png"
 
 const Header = () => {
@@ -109,7 +110,10 @@ const Header = () => {
                                 </button>
 
                                 <button
-                                    onClick={logout}
+                                    onClick={() => {
+                                        console.log("🖱️ [UI] Logout button clicked")
+                                        logout()
+                                    }}
                                     className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
                                 >
                                     <LogOut size={16} />

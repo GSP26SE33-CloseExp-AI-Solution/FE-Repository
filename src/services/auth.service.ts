@@ -12,6 +12,20 @@ export const loginApi = async (payload: {
     return res.data.data
 }
 
+export const authService = {
+    async logout(refreshToken: string) {
+        console.log("🚪 [LOGOUT API] call")
+        console.log("🔑 refreshToken:", refreshToken)
+
+        const res = await axiosClient.post("/Auth/logout", {
+            refreshToken,
+        })
+
+        console.log("✅ [LOGOUT API] response:", res.data)
+        return res.data
+    },
+}
+
 export const registerApi = async (payload: any): Promise<AuthData> => {
     const res = await axiosClient.post<ApiResponse<AuthData>>("/Auth/register", payload)
     return res.data.data

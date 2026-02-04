@@ -3,9 +3,12 @@ import { BrowserRouter, Routes, Route } from "react-router-dom"
 import MainLayout from "@/layouts/MainLayout"
 import PrivateRoute from "@/routes/PrivateRoute"
 import RoleRoute from "@/routes/RoleRoute"
+import RoleRedirect from "@/routes/RoleRedirect"
 
 import Login from "@/pages/Auth/Login"
 import Register from "@/pages/Auth/Register/Register"
+
+import Home from "@/pages/Home/Home"
 
 import SDashboard from "@/pages/Supermarket/SDashboard"
 import ProductList from "@/pages/Supermarket/SProducts/ProductList/ProductsList"
@@ -18,19 +21,22 @@ import AdminDashboard from "@/pages/Admin/AdminDashboard"
 
 import NotFound from "@/pages/Common/NotFound"
 import Forbidden from "@/pages/Common/Forbidden"
-import Home from "@/pages/Home/Home"
 
 const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
 
-        {/* ===== PUBLIC ===== */}
+        {/* ===== HOME ===== */}
         <Route path="/" element={<Home />} />
+
+        {/* ===== PUBLIC ===== */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
 
-        {/* ===== PRIVATE (LOGIN REQUIRED) ===== */}
+        <Route path="/redirect" element={<RoleRedirect />} />
+        
+        {/* ===== PRIVATE ===== */}
         <Route element={<PrivateRoute />}>
 
           {/* ===== ADMIN ===== */}
@@ -58,7 +64,7 @@ const AppRouter: React.FC = () => {
             <Route path="/vendor/dashboard" element={<AdminDashboard />} />
           </Route>
 
-          {/* ===== COMMON PRIVATE ===== */}
+          {/* ===== COMMON ===== */}
           <Route path="/forbidden" element={<Forbidden />} />
 
         </Route>
