@@ -41,7 +41,7 @@ const PriceSuggestionPanel: React.FC<Props> = ({
                 <h3 className="font-semibold text-lg">🤖 AI đề xuất giá</h3>
 
                 <button
-                    onClick={() => navigate(`/supermarket/products/${data.category}/ai-pricing`)}
+                    onClick={() => navigate(`/supplier/products/${data.category}/ai-pricing`)}
                     className="text-xs text-gray-500 hover:text-blue-600 transition"
                 >
                     Xem phân tích chi tiết

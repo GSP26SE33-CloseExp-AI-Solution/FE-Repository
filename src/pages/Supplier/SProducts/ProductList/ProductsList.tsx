@@ -12,7 +12,7 @@ const ProductsList = () => {
     const navigate = useNavigate()
 
     const handleAddProduct = () => {
-        navigate("/supermarket/products/add")
+        navigate("/supplier/products/add")
     }
 
     const supermarketId = "123" // tạm fake

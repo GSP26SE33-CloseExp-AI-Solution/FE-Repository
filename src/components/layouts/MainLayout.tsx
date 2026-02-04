@@ -1,5 +1,7 @@
 import { Outlet } from "react-router-dom";
-import { Header, Sidebar, Footer } from "@/components/layouts";
+import Header from "./Header";
+import Sidebar from "./Sidebar";
+import Footer from "./Footer";
 
 const MainLayout: React.FC = () => {
     return (

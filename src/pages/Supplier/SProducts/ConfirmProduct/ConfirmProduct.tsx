@@ -78,7 +78,7 @@ const ConfirmProduct: React.FC = () => {
         console.log("SUBMIT PRODUCT", finalProduct);
         toast.success("Tạo sản phẩm thành công");
 
-        navigate("/supermarket/products");
+        navigate("/supplier/products");
     };
 
     /* ================= UI ================= */

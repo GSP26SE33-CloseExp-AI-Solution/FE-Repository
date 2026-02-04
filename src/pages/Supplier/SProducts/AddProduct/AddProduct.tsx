@@ -25,7 +25,7 @@ const AddProduct: React.FC = () => {
             const mainImage = productImages.images[0].file;
             const aiResponse = await aiService.smartScan(mainImage);
 
-            navigate("/supermarket/products/confirm", {
+            navigate("/supplier/products/confirm", {
                 state: {
                     product: aiResponse,
                     images: productImages.images.map((i) => i.preview),

@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 
-import MainLayout from "@/layouts/MainLayout"
+import MainLayout from "@/components/layouts/MainLayout"
 import PrivateRoute from "@/routes/PrivateRoute"
 import RoleRoute from "@/routes/RoleRoute"
 import RoleRedirect from "@/routes/RoleRedirect"
@@ -10,12 +10,12 @@ import Register from "@/pages/Auth/Register/Register"
 
 import Home from "@/pages/Home/Home"
 
-import SDashboard from "@/pages/Supermarket/SDashboard"
-import ProductList from "@/pages/Supermarket/SProducts/ProductList/ProductsList"
-import AddProduct from "@/pages/Supermarket/SProducts/AddProduct/AddProduct"
-import ConfirmProduct from "@/pages/Supermarket/SProducts/ConfirmProduct/ConfirmProduct"
-import AiPricingDetailPage from "@/pages/Supermarket/SProducts/ConfirmProduct/components/AiPricing/AiPricingDetail/AiPricingDetailPage"
-import ProfilePage from "@/pages/Supermarket/SProfile/ProfilePage"
+import SDashboard from "@/pages/Supplier/SDashboard"
+import ProductList from "@/pages/Supplier/SProducts/ProductList/ProductsList"
+import AddProduct from "@/pages/Supplier/SProducts/AddProduct/AddProduct"
+import ConfirmProduct from "@/pages/Supplier/SProducts/ConfirmProduct/ConfirmProduct"
+import AiPricingDetailPage from "@/pages/Supplier/SProducts/ConfirmProduct/components/AiPricing/AiPricingDetail/AiPricingDetailPage"
+import ProfilePage from "@/pages/Supplier/SProfile/ProfilePage"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 

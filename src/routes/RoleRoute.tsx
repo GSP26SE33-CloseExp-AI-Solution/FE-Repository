@@ -1,4 +1,5 @@
 import { Navigate, Outlet } from "react-router-dom"
+
 import { useAuthContext } from "@/contexts/AuthContext"
 
 interface Props {
