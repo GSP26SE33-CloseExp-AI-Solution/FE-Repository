@@ -10,7 +10,6 @@ export const productToForm = (product: Product): ProductFormModel => {
         productId: product.productId,
         supermarketId: product.supermarketId,
 
-        // ⭐ QUAN TRỌNG NHẤT
         name:
             product.barcodeLookupInfo?.productName?.trim() ||
             product.name ||
@@ -28,7 +27,6 @@ export const productToForm = (product: Product): ProductFormModel => {
 
         barcode: product.barcode ?? "",
 
-        // 🔥 BẠN THIẾU DÒNG NÀY
         isFreshFood: product.isFreshFood ?? false,
 
         originalPrice: product.originalPrice ?? 0,

@@ -14,7 +14,8 @@ import SDashboard from "@/pages/Supplier/SDashboard"
 import ProductList from "@/pages/Supplier/SProducts/ProductList/ProductsList"
 import AddProduct from "@/pages/Supplier/SProducts/AddProduct/AddProduct"
 import ConfirmProduct from "@/pages/Supplier/SProducts/ConfirmProduct/ConfirmProduct"
-import AiPricingDetailPage from "@/pages/Supplier/SProducts/ConfirmProduct/components/AiPricing/AiPricingDetail/AiPricingDetailPage"
+import PricingProduct from "@/pages/Supplier/SProducts/PricingProduct/PricingProduct"
+import PublishProduct from "@/pages/Supplier/SProducts/PublishProduct/PublishPage"
 import ProfilePage from "@/pages/Supplier/SProfile/ProfilePage"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
@@ -51,7 +52,8 @@ const AppRouter: React.FC = () => {
               <Route path="/supplier/products" element={<ProductList />} />
               <Route path="/supplier/products/add" element={<AddProduct />} />
               <Route path="/supplier/products/:productId/confirm" element={<ConfirmProduct />} />
-              <Route path="/supplier/products/:productId/ai-pricing" element={<AiPricingDetailPage />} />
+              <Route path="/supplier/products/:productId/pricing" element={<PricingProduct />} />
+              <Route path="/supplier/products/:productId/publish" element={<PublishProduct />} />
               <Route path="/supplier/profile" element={<ProfilePage />} />
             </Route>
           </Route>

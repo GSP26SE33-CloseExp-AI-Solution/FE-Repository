@@ -124,7 +124,7 @@ const ConfirmProduct: React.FC = () => {
 
             toast.success("Xác nhận sản phẩm thành công");
 
-            navigate(`/supplier/products/${res.data.productId}/pricing`);
+            navigate(`/supplier/products/${res.data.data.productId}/pricing`);
         } catch (err) {
             console.error("❌ VERIFY PRODUCT FAILED", err);
             toast.error("Xác nhận sản phẩm thất bại");
