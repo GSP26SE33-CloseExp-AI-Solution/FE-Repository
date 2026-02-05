@@ -1,3 +1,5 @@
+// này là ảnh lúc upload
+
 export interface ImageFile {
     id: string;
     file: File;

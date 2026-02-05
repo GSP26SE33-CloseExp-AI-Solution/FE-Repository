@@ -1,141 +1,44 @@
-import { Product } from "@/types/aiProduct.type";
+import { ProductFormModel } from "@/types/productForm.model";
 
 export interface Field {
-    key: keyof Product;
+    key: keyof ProductFormModel;
     label: string;
     required?: boolean;
-    type?: "text" | "number" | "date";
+    type?: "text" | "number" | "date" | "textarea" | "boolean";
+    editable?: boolean;
 }
 
 export interface Section {
     title: string;
     fields: Field[];
+    confidenceKey?: keyof ProductFormModel;
 }
 
 export const sections: Section[] = [
     {
-        title: "Thông tin cơ bản",
+        title: "AI nhận diện sản phẩm",
+        confidenceKey: "ocrConfidence",
         fields: [
-            { key: "name", label: "Tên sản phẩm", required: true },
-            { key: "brand", label: "Thương hiệu" },
-            { key: "category", label: "Danh mục", required: true },
-            { key: "barcode", label: "Mã vạch", required: true },
+            { key: "barcode", label: "Mã vạch", editable: true },
+            { key: "name", label: "Tên sản phẩm", required: true, editable: true },
+            { key: "brand", label: "Thương hiệu", required: true, editable: true },
+            { key: "category", label: "Danh mục", required: true, editable: true },
+            { key: "isFreshFood", label: "Thực phẩm tươi", type: "boolean", editable: true },
         ],
     },
     {
-        title: "Giá & hạn sử dụng",
+        title: "Thông tin chi tiết",
         fields: [
-            {
-                key: "originalPrice",
-                label: "Giá gốc",
-                required: true,
-                type: "number",
-            },
-            {
-                key: "salePrice",
-                label: "Giá bán đề xuất",
-                type: "number",
-            },
-            {
-                key: "expiryDate",
-                label: "Hạn sử dụng",
-                required: true,
-                type: "date",
-            },
-            {
-                key: "manufactureDate",
-                label: "Ngày sản xuất",
-                type: "date",
-            },
+            { key: "ingredients", label: "Thành phần", type: "textarea", editable: true },
+            { key: "nutritionFacts", label: "Thông tin dinh dưỡng", type: "textarea", editable: true },
         ],
     },
     {
-        title: "Thông tin bổ sung",
+        title: "Thông tin cần xác nhận",
         fields: [
-            { key: "weightTypeName", label: "Loại khối lượng" },
-            {
-                key: "defaultPricePerKg",
-                label: "Giá mặc định / Kg",
-                type: "number",
-            },
-            { key: "isFreshFood", label: "Thực phẩm tươi" },
+            { key: "originalPrice", label: "Giá gốc", type: "number", required: true, editable: true },
+            { key: "expiryDate", label: "Hạn sử dụng", type: "date", required: true, editable: true },
+            { key: "manufactureDate", label: "Ngày sản xuất", type: "date", editable: true },
         ],
     },
 ];
-
-
-
-
-// import { ProductDraft } from "@/types/product.type";
-
-// export type Field = {
-//     label: string;
-//     key: keyof ProductDraft;
-//     required?: boolean;
-//     textarea?: boolean;
-//     type?: "text" | "number" | "date";
-// };
-
-// export const sections: { title: string; fields: Field[] }[] = [
-//     {
-//         title: "Mã & nhận diện",
-//         fields: [
-//             { label: "SKU", key: "sku" },
-//             { label: "Barcode", key: "barcode" },
-//         ],
-//     },
-//     {
-//         title: "Thông tin cơ bản",
-//         fields: [
-//             { label: "Tên sản phẩm", key: "name", required: true },
-//             { label: "Mô tả", key: "description", textarea: true },
-//             { label: "Phân loại sản phẩm", key: "category", required: true },
-//             { label: "Thương hiệu", key: "brand" },
-//             { label: "Xuất xứ", key: "origin" },
-//             { label: "Đơn vị", key: "unit", required: true },
-//             { label: "Số lượng", key: "qty", type: "number", required: true },
-//         ],
-//     },
-//     {
-//         title: "Thành phần & bảo quản",
-//         fields: [
-//             { label: "Khối lượng", key: "weight" },
-//             { label: "Thành phần", key: "ingredients", textarea: true },
-//             { label: "Hướng dẫn sử dụng", key: "usage" },
-//             { label: "Hướng dẫn bảo quản", key: "storage" },
-//             { label: "Cảnh báo an toàn", key: "warning" },
-//         ],
-//     },
-//     {
-//         title: "Hạn sử dụng",
-//         fields: [
-//             { label: "Ngày sản xuất", key: "manufactureDate", type: "date" },
-//             { label: "Hạn sử dụng", key: "expiry", required: true, type: "date" },
-//             { label: "Hạn dùng mô tả", key: "shelfLife" },
-//         ],
-//     },
-//     {
-//         title: "Đơn vị chịu trách nhiệm",
-//         fields: [
-//             { label: "Nhà sản xuất", key: "manufacturer" },
-//             { label: "Tổ chức chịu trách nhiệm", key: "organization" },
-//         ],
-//     },
-//     {
-//         title: "Giá",
-//         fields: [
-//             {
-//                 label: "Giá gốc (₫)",
-//                 key: "originalPrice",
-//                 required: true,
-//                 type: "number",
-//             },
-//             {
-//                 label: "Giá bán (₫)",
-//                 key: "salePrice",
-//                 required: true,
-//                 type: "number",
-//             },
-//         ],
-//     },
-// ];

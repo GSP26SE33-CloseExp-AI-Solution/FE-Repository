@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 interface Props {
     images: string[];
@@ -6,6 +6,10 @@ interface Props {
 
 const ProductImagesPreview: React.FC<Props> = ({ images }) => {
     const [activeIndex, setActiveIndex] = useState(0);
+
+    useEffect(() => {
+        setActiveIndex(0);
+    }, [images]);
 
     if (!images || images.length === 0) {
         return (
@@ -26,16 +30,17 @@ const ProductImagesPreview: React.FC<Props> = ({ images }) => {
                 />
             </div>
 
-            {/* Thumbnail list */}
+            {/* Thumbnail */}
             <div className="flex gap-2 overflow-x-auto">
                 {images.map((img, index) => (
                     <button
                         key={index}
                         onClick={() => setActiveIndex(index)}
                         className={`w-[64px] h-[64px] rounded border overflow-hidden flex-shrink-0
-                            ${index === activeIndex
-                                ? "border-blue-500 ring-2 ring-blue-200"
-                                : "border-gray-300"
+                            ${
+                                index === activeIndex
+                                    ? "border-blue-500 ring-2 ring-blue-200"
+                                    : "border-gray-300"
                             }
                         `}
                     >

@@ -35,7 +35,7 @@ const AppRouter: React.FC = () => {
         <Route path="/register" element={<Register />} />
 
         <Route path="/redirect" element={<RoleRedirect />} />
-        
+
         {/* ===== PRIVATE ===== */}
         <Route element={<PrivateRoute />}>
 
@@ -50,11 +50,8 @@ const AppRouter: React.FC = () => {
               <Route path="/supplier/dashboard" element={<SDashboard />} />
               <Route path="/supplier/products" element={<ProductList />} />
               <Route path="/supplier/products/add" element={<AddProduct />} />
-              <Route path="/supplier/products/confirm" element={<ConfirmProduct />} />
-              <Route
-                path="/supplier/products/:productId/ai-pricing"
-                element={<AiPricingDetailPage />}
-              />
+              <Route path="/supplier/products/:productId/confirm" element={<ConfirmProduct />} />
+              <Route path="/supplier/products/:productId/ai-pricing" element={<AiPricingDetailPage />} />
               <Route path="/supplier/profile" element={<ProfilePage />} />
             </Route>
           </Route>

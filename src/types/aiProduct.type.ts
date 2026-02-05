@@ -1,43 +1,85 @@
+export enum ProductState {
+    Draft = 0,
+    Verified = 1,
+    Priced = 2,
+    Published = 3,
+    Expired = 4,
+    SoldOut = 5,
+    Hidden = 6,
+    Deleted = 7,
+}
+
+export interface ProductImage {
+    productImageId: string
+    productId: string
+    imageUrl: string
+    uploadedAt: string
+}
+
+export interface NutritionFacts {
+    [key: string]: string
+}
+
+export interface BarcodeLookupInfo {
+    barcode: string
+    productName: string
+    brand: string
+    category: string
+    description: string
+    imageUrl: string
+    manufacturer: string
+    weight: string
+    ingredients: string
+    nutritionFacts: NutritionFacts
+    country: string
+    source: string
+    confidence: number
+    isVietnameseProduct: boolean
+    gs1Prefix: string
+    scanCount: number
+    isVerified: boolean
+}
+
 export interface Product {
-    productId: string;
-    supermarketId: string;
+    productId: string
+    supermarketId: string
 
-    name: string;
-    brand: string;
-    category: string;
-    barcode: string;
+    name: string
+    brand: string
+    category: string
+    barcode: string
 
-    originalPrice: number;
-    salePrice: number;
-    suggestedPrice: number;
-    finalPrice: number;
+    isFreshFood: boolean
+    status: ProductState
 
-    expiryDate: string;
-    manufactureDate: string;
-    daysToExpiry: number | null;
+    weightType: number
+    weightTypeName: string
+    defaultPricePerKg: number
 
-    status: number;
+    originalPrice: number
+    suggestedPrice: number
+    finalPrice: number
 
-    isFreshFood: boolean;
-    weightType: number;
-    weightTypeName: string;
+    expiryDate?: string | null
+    manufactureDate?: string | null
+    daysToExpiry: number
 
-    ocrConfidence: number;
-    pricingConfidence: number;
-    pricingReasons: string[] | null;
+    ocrConfidence: number
+    pricingConfidence: number
+    pricingReasons?: string | null
 
-    mainImageUrl: string | null;
-    productImages: string[];
-    totalImages: number;
+    createdBy: string
+    createdAt: string
+    verifiedBy?: string
+    verifiedAt?: string
+    pricedBy?: string
+    pricedAt?: string
 
-    createdAt: string;
-    createdBy: string;
+    mainImageUrl?: string | null
+    totalImages: number
+    productImages: ProductImage[]
 
-    verifiedAt: string | null;
-    verifiedBy: string | null;
-
-    pricedAt: string | null;
-    pricedBy: string | null;
-
-    defaultPricePerKg: number | null;
+    ingredients?: string | null
+    nutritionFacts?: NutritionFacts | null
+    barcodeLookupInfo?: BarcodeLookupInfo
 }
