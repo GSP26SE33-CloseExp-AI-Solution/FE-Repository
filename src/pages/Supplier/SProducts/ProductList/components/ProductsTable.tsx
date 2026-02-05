@@ -13,6 +13,9 @@ interface ProductsTableProps {
     calcDiscount: (original: number, sale: number) => number
     getExpiryStatus: (expiry: string) => { label: string; color: string }
     getDaysLeft: (expiry: string) => number
+
+    onConfirmPrice?: (lot: ProductLotUI) => void
+    onPublish?: (lot: ProductLotUI) => void
 }
 
 const ProductsTable: React.FC<ProductsTableProps> = ({
@@ -24,6 +27,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
     calcDiscount,
     getExpiryStatus,
     getDaysLeft,
+    onConfirmPrice,
+    onPublish,
 }) => {
     return (
         <div className="bg-white border border-gray-200 shadow-sm overflow-hidden rounded-t-lg">
@@ -47,7 +52,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                 </div>
             </div>
 
-            <div className="grid grid-cols-[90px_2.2fr_110px_140px_130px_120px_140px_150px_110px] bg-[#F5F5F5] border-b border-gray-200 px-5 h-[64px] items-center text-[15px] font-semibold text-gray-700">
+            <div className="grid grid-cols-[90px_2.2fr_110px_140px_130px_120px_140px_150px_140px] bg-[#F5F5F5] border-b border-gray-200 px-5 h-[64px] items-center text-[15px] font-semibold text-gray-700">
                 <div>Hình ảnh</div>
                 <div>Thông tin sản phẩm</div>
                 <div className="text-center">Số lượng</div>
@@ -56,7 +61,7 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                 <div className="text-center">Giảm giá</div>
                 <div className="text-center">Giá bán</div>
                 <div className="text-center">Trạng thái</div>
-                <div className="text-center">Action</div>
+                <div className="text-center">Thao tác</div>
             </div>
 
             {lots.map((lot) => (
@@ -68,6 +73,8 @@ const ProductsTable: React.FC<ProductsTableProps> = ({
                     calcDiscount={calcDiscount}
                     getExpiryStatus={getExpiryStatus}
                     getDaysLeft={getDaysLeft}
+                    onConfirmPrice={onConfirmPrice}
+                    onPublish={onPublish}
                 />
             ))}
         </div>

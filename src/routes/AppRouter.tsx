@@ -17,6 +17,7 @@ import ConfirmProduct from "@/pages/Supplier/SProducts/ConfirmProduct/ConfirmPro
 import AiPricingDetailPage from "@/pages/Supplier/SProducts/ConfirmProduct/components/AiPricing/AiPricingDetail/AiPricingDetailPage"
 import ProfilePage from "@/pages/Supplier/SProfile/ProfilePage"
 
+
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 
 import NotFound from "@/pages/Common/NotFound"
@@ -35,7 +36,7 @@ const AppRouter: React.FC = () => {
         <Route path="/register" element={<Register />} />
 
         <Route path="/redirect" element={<RoleRedirect />} />
-        
+
         {/* ===== PRIVATE ===== */}
         <Route element={<PrivateRoute />}>
 
@@ -55,6 +56,7 @@ const AppRouter: React.FC = () => {
                 path="/supplier/products/:productId/ai-pricing"
                 element={<AiPricingDetailPage />}
               />
+
               <Route path="/supplier/profile" element={<ProfilePage />} />
             </Route>
           </Route>

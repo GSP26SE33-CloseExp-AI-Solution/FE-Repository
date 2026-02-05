@@ -18,4 +18,8 @@ export interface ProductLotUI {
     originalPrice: number
     salePrice: number
     suggestedPrice?: number
+
+    // Product workflow status: Draft, Verified, PriceConfirmed, Published
+    productStatus?: string
 }
+

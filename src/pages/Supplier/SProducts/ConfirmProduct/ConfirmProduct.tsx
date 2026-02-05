@@ -9,7 +9,7 @@ import ActionButtons from "./components/ActionButtons";
 
 import { Product } from "@/types/aiProduct.type";
 import { validateProduct } from "./utils/validateProduct";
-import { productService } from "@/services/product.service";
+import { verifyProduct } from "@/services/product.service";
 
 const ConfirmProduct: React.FC = () => {
     const location = useLocation();
@@ -63,7 +63,7 @@ const ConfirmProduct: React.FC = () => {
         }
 
         try {
-            const verifiedProduct = await productService.verifyProduct(
+            const verifiedProduct = await verifyProduct(
                 currentProduct.productId,
                 {
                     name: currentProduct.name,
