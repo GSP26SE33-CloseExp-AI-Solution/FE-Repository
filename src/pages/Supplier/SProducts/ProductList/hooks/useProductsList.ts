@@ -1,7 +1,7 @@
 import { useEffect, useState, ChangeEvent, useMemo } from "react"
 import { ProductLotUI } from "@/types/productLotUI.type"
 import { getExpiryStatus } from "../utils/productHelpers"
-import { getProductsBySupermarket } from "@/services/product.service"
+import { productService  } from "@/services/product.service"
 import { mapProductsToLotsUI } from "@/mappers/product.mapper"
 
 const ITEMS_PER_PAGE = 10
@@ -71,8 +71,8 @@ export const useProductsList = (supermarketId: string) => {
         const fetchProducts = async () => {
             try {
                 setLoading(true)
-                const res = await getProductsBySupermarket(supermarketId)
-                const items = res.items ?? res ?? []
+                const res = await productService.getMySupermarket()
+                const items = res.data?.data?.items ?? res.data?.items ?? []
                 setLots(mapProductsToLotsUI(items))
             } catch (err) {
                 console.error("Failed to fetch products:", err)
