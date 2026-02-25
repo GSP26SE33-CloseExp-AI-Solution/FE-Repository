@@ -13,6 +13,24 @@ interface Props {
 
 const NO_DATA = "Chưa có dữ liệu";
 
+/* ================= FORMAT HELPERS ================= */
+
+/* number -> 10.000 đ */
+const formatCurrencyVN = (num: number) =>
+    num.toLocaleString("vi-VN") + " đ";
+
+/* "10.000 đ" -> 10000 */
+const parseCurrencyVN = (value: string) =>
+    Number(value.replace(/[^\d]/g, ""));
+
+/* yyyy-mm-dd -> dd/MM/yyyy */
+const formatDateVN = (value?: string) => {
+    if (!value) return "";
+    const [y, m, d] = value.split("-");
+    if (!y || !m || !d) return value;
+    return `${d}/${m}/${y}`;
+};
+
 const isTrulyEmpty = (value: any) => {
     if (value === null || value === undefined) return true;
     if (typeof value === "string") return value.trim() === "";
@@ -42,7 +60,11 @@ const ProductFieldRow: React.FC<Props> = ({
         let displayValue: string = NO_DATA;
 
         if (!isTrulyEmpty(value)) {
-            if (typeof value === "object") {
+            if (field.format === "currency" && typeof value === "number") {
+                displayValue = formatCurrencyVN(value);
+            } else if (field.format === "date" && typeof value === "string") {
+                displayValue = formatDateVN(value);
+            } else if (typeof value === "object") {
                 displayValue = JSON.stringify(value, null, 2);
             } else {
                 displayValue = String(value);
@@ -81,7 +103,23 @@ const ProductFieldRow: React.FC<Props> = ({
             </div>
 
             <div className="col-span-7">
-                {field.type === "boolean" ? (
+                {/* ===== SELECT ===== */}
+                {field.type === "select" ? (
+                    <select
+                        value={typeof value === "string" ? value : ""}
+                        onChange={(e) => onChange(e.target.value)}
+                        className={`w-full px-3 py-2 border rounded ${
+                            missing ? "border-red-500" : ""
+                        }`}
+                    >
+                        <option value="">-- Chọn --</option>
+                        {field.options?.map((opt) => (
+                            <option key={opt.value} value={opt.value}>
+                                {opt.label}
+                            </option>
+                        ))}
+                    </select>
+                ) : field.type === "boolean" ? (
                     <input
                         type="checkbox"
                         checked={Boolean(value)}
@@ -96,6 +134,50 @@ const ProductFieldRow: React.FC<Props> = ({
                             missing ? "border-red-500" : ""
                         }`}
                     />
+                ) : field.format === "currency" ? (
+                    /* ===== GIÁ TIỀN ÉP FORMAT ===== */
+                    <input
+                        type="text"
+                        value={
+                            typeof value === "number"
+                                ? formatCurrencyVN(value)
+                                : ""
+                        }
+                        onChange={(e) => {
+                            const raw = parseCurrencyVN(e.target.value);
+                            onChange(isNaN(raw) ? 0 : raw);
+                        }}
+                        inputMode="numeric"
+                        className={`w-full px-3 py-2 border rounded ${
+                            missing ? "border-red-500" : ""
+                        }`}
+                    />
+                ) : field.format === "date" ? (
+                    /* ===== NGÀY: HIỂN THỊ dd/MM/yyyy + CÓ LỊCH ===== */
+                    <div className="relative">
+                        {/* input hiển thị */}
+                        <input
+                            type="text"
+                            value={
+                                typeof value === "string"
+                                    ? formatDateVN(value)
+                                    : ""
+                            }
+                            placeholder="dd/MM/yyyy"
+                            readOnly
+                            className={`w-full px-3 py-2 border rounded bg-white cursor-pointer ${
+                                missing ? "border-red-500" : ""
+                            }`}
+                        />
+
+                        {/* input date thật để mở calendar */}
+                        <input
+                            type="date"
+                            value={typeof value === "string" ? value : ""}
+                            onChange={(e) => onChange(e.target.value)}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                    </div>
                 ) : (
                     <input
                         type={field.type ?? "text"}

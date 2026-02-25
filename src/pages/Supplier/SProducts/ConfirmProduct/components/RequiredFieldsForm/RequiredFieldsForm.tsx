@@ -91,7 +91,9 @@ const RequiredFieldsForm: React.FC<RequiredFieldsFormProps> = ({
                             <button
                                 type="button"
                                 onClick={() =>
-                                    onResetSection(section.fields.map((f) => f.key))
+                                    onResetSection(
+                                        section.fields.map((f) => f.key)
+                                    )
                                 }
                                 className="text-sm text-red-300 hover:underline"
                             >
@@ -104,10 +106,15 @@ const RequiredFieldsForm: React.FC<RequiredFieldsFormProps> = ({
                                 key={String(field.key)}
                                 field={field}
                                 value={product[field.key]}
-                                missing={isMissing(field.key, field.required)}
+                                missing={isMissing(
+                                    field.key,
+                                    field.required
+                                )}
                                 disabled={!canEdit(field.key)}
                                 index={index}
-                                onChange={(value) => update(field.key, value)}
+                                onChange={(value) =>
+                                    update(field.key, value)
+                                }
                             />
                         ))}
                     </div>

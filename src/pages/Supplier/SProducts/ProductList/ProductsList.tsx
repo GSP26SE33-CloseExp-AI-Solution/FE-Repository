@@ -7,6 +7,7 @@ import ProductsTopBar from "./components/ProductsTopBar"
 import ExpiryLegend from "./components/ExpiryLegend"
 import ProductsTable from "./components/ProductsTable"
 import PaginationBar from "./components/PaginationBar"
+import ProductsLotsPage from "./ProductsLotsPage"
 
 const ProductsList = () => {
     const navigate = useNavigate()

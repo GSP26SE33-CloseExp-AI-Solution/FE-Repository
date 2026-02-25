@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 
 import MainLayout from "@/components/layouts/MainLayout"
+import PublicLayout from "@/components/layouts/PublicLayout"
 import PrivateRoute from "@/routes/PrivateRoute"
 import RoleRoute from "@/routes/RoleRoute"
 import RoleRedirect from "@/routes/RoleRedirect"
@@ -17,6 +18,7 @@ import ConfirmProduct from "@/pages/Supplier/SProducts/ConfirmProduct/ConfirmPro
 import PricingProduct from "@/pages/Supplier/SProducts/PricingProduct/PricingProduct"
 import PublishProduct from "@/pages/Supplier/SProducts/PublishProduct/PublishPage"
 import ProfilePage from "@/pages/Supplier/SProfile/ProfilePage"
+import ProductsLotsPage from "@/pages/Supplier/SProducts/ProductList/ProductsLotsPage"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 
@@ -28,9 +30,10 @@ const AppRouter: React.FC = () => {
     <BrowserRouter>
       <Routes>
 
-        {/* ===== HOME ===== */}
-        <Route path="/" element={<Home />} />
-
+        <Route element={<PublicLayout />}>
+          {/* ===== HOME ===== */}
+          <Route path="/" element={<Home />} />
+        </Route>
         {/* ===== PUBLIC ===== */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
@@ -55,12 +58,15 @@ const AppRouter: React.FC = () => {
               <Route path="/supplier/products/:productId/pricing" element={<PricingProduct />} />
               <Route path="/supplier/products/:productId/publish" element={<PublishProduct />} />
               <Route path="/supplier/profile" element={<ProfilePage />} />
+              <Route path="/supplier/setting" element={<ProductsLotsPage />} />
             </Route>
           </Route>
 
           {/* ===== VENDOR ===== */}
           <Route element={<RoleRoute allow={["Vendor"]} />}>
-            <Route path="/vendor/dashboard" element={<AdminDashboard />} />
+            <Route element={<PublicLayout />}>
+              <Route path="/vendor" element={<Home />} />
+            </Route>
           </Route>
 
           {/* ===== COMMON ===== */}
