@@ -115,12 +115,7 @@ const ConfirmProduct: React.FC = () => {
                 verifiedBy: user.userId,
             };
 
-            console.log("🧪 VERIFY PAYLOAD", payload);
-
-            const res = await productService.verify(
-                product.productId,
-                payload
-            );
+            const res = await productService.verify(product.productId!, payload);
 
             toast.success("Xác nhận sản phẩm thành công");
 

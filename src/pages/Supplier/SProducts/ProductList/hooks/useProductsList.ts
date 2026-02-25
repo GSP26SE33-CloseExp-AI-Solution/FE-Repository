@@ -1,6 +1,8 @@
 import { useEffect, useState, ChangeEvent, useMemo } from "react"
 import { ProductLotUI } from "@/types/productLotUI.type"
 import { getExpiryStatus } from "../utils/productHelpers"
+import { getProductsBySupermarket } from "@/services/product.service"
+import { mapProductsToLotsUI } from "@/mappers/product.mapper"
 
 const ITEMS_PER_PAGE = 10
 
@@ -64,6 +66,28 @@ export const useProductsList = (supermarketId: string) => {
 
     const goNext = () => currentPage < totalPages && setCurrentPage(p => p + 1)
     const goPrev = () => currentPage > 1 && setCurrentPage(p => p - 1)
+
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                setLoading(true)
+                const res = await getProductsBySupermarket(supermarketId)
+                const items = res.items ?? res ?? []
+                setLots(mapProductsToLotsUI(items))
+            } catch (err) {
+                console.error("Failed to fetch products:", err)
+                setLots([])
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        if (supermarketId) fetchProducts()
+    }, [supermarketId])
+
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [keyword, searchType, expiryFilter])
 
     return {
         keyword,

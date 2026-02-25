@@ -20,6 +20,7 @@ import PublishProduct from "@/pages/Supplier/SProducts/PublishProduct/PublishPag
 import ProfilePage from "@/pages/Supplier/SProfile/ProfilePage"
 import ProductsLotsPage from "@/pages/Supplier/SProducts/ProductList/ProductsLotsPage"
 
+
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 
 import NotFound from "@/pages/Common/NotFound"
@@ -54,9 +55,12 @@ const AppRouter: React.FC = () => {
               <Route path="/supplier/dashboard" element={<SDashboard />} />
               <Route path="/supplier/products" element={<ProductList />} />
               <Route path="/supplier/products/add" element={<AddProduct />} />
+              <Route path="/supplier/products/confirm" element={<ConfirmProduct />} />
+              
               <Route path="/supplier/products/:productId/confirm" element={<ConfirmProduct />} />
               <Route path="/supplier/products/:productId/pricing" element={<PricingProduct />} />
               <Route path="/supplier/products/:productId/publish" element={<PublishProduct />} />
+
               <Route path="/supplier/profile" element={<ProfilePage />} />
               <Route path="/supplier/setting" element={<ProductsLotsPage />} />
             </Route>
