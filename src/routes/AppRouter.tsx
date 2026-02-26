@@ -11,6 +11,10 @@ import Register from "@/pages/Auth/Register/Register"
 
 import Home from "@/pages/Home/Home"
 
+import CartPage from "@/pages/Vendor/VendorOrders/CartPage"
+import CheckoutPage from "@/pages/Vendor/VendorPayments/CheckoutPage"
+import PaymentReturnPage from "@/pages/Vendor/VendorPayments"
+
 import SDashboard from "@/pages/Supplier/SDashboard"
 import ProductList from "@/pages/Supplier/SProducts/ProductList/ProductsList"
 import AddProduct from "@/pages/Supplier/SProducts/AddProduct/AddProduct"
@@ -34,6 +38,9 @@ const AppRouter: React.FC = () => {
         <Route element={<PublicLayout />}>
           {/* ===== HOME ===== */}
           <Route path="/" element={<Home />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment-return" element={<PaymentReturnPage />} />
         </Route>
         {/* ===== PUBLIC ===== */}
         <Route path="/login" element={<Login />} />
@@ -70,6 +77,9 @@ const AppRouter: React.FC = () => {
           <Route element={<RoleRoute allow={["Vendor"]} />}>
             <Route element={<PublicLayout />}>
               <Route path="/vendor" element={<Home />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/payment-return" element={<PaymentReturnPage />} />
             </Route>
           </Route>
 

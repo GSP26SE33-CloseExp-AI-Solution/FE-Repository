@@ -16,6 +16,21 @@ const CustomerHeader = () => {
 
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
+    const CART_KEY = "customer_cart_v1"
+
+    type CartItem = { qty: number }
+
+    const getCartTotalQty = () => {
+        try {
+            const raw = localStorage.getItem(CART_KEY)
+            const items = raw ? (JSON.parse(raw) as CartItem[]) : []
+            return items.reduce((sum, it) => sum + (it.qty ?? 0), 0)
+        } catch {
+            return 0
+        }
+    }
+
+    const [cartCount, setCartCount] = useState<number>(() => getCartTotalQty())
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -25,6 +40,30 @@ const CustomerHeader = () => {
         }
         document.addEventListener("mousedown", handleClickOutside)
         return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    useEffect(() => {
+        const sync = () => setCartCount(getCartTotalQty())
+
+        // 1) sync khi user đổi tab/quay lại
+        window.addEventListener("focus", sync)
+
+        // 2) sync khi có storage event (đa tab)
+        window.addEventListener("storage", (e) => {
+            if (e.key === CART_KEY) sync()
+        })
+
+        // 3) sync qua custom event trong cùng tab (add-to-cart)
+        window.addEventListener("cart:updated", sync as EventListener)
+
+        // init
+        sync()
+
+        return () => {
+            window.removeEventListener("focus", sync)
+            window.removeEventListener("cart:updated", sync as EventListener)
+            // storage listener anonymous khó remove, nên viết thành function riêng nếu bạn muốn clean tuyệt đối
+        }
     }, [])
 
     const avatarText = user?.fullName ? user.fullName.charAt(0).toUpperCase() : "?"
@@ -92,10 +131,11 @@ const CustomerHeader = () => {
                             <ShoppingCart className="text-gray-800" size={22} />
                         </div>
 
-                        {/* mock badge */}
-                        <span className="absolute -right-2 -top-2 rounded-full bg-green-400 px-2 py-0.5">
-                            <span className="text-[10px] font-bold text-gray-900">3</span>
-                        </span>
+                        {cartCount > 0 && (
+                            <span className="absolute -right-2 -top-2 rounded-full bg-green-400 px-2 py-0.5">
+                                <span className="text-[10px] font-bold text-gray-900">{cartCount}</span>
+                            </span>
+                        )}
                     </button>
 
                     {/* AUTH AREA */}
