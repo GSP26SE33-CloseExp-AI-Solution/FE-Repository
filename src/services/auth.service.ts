@@ -1,39 +1,115 @@
+import axios from "axios"
 import axiosClient from "@/utils/axiosClient"
-import { AuthData, ApiResponse } from "@/types/auth.types"
+import {
+    AuthData,
+    ApiResponse,
+    RegisterPayload,
+    VerifyOtpPayload,
+    ResendOtpPayload,
+} from "@/types/auth.types"
+
+const unwrap = <T>(res: ApiResponse<T>): T => {
+    if (!res?.success) {
+        const msg = res?.errors?.[0] || res?.message || "Request failed"
+        throw new Error(msg)
+    }
+    return res.data
+}
+
+const getAxiosErrorMessage = (error: unknown, fallback: string) => {
+    if (axios.isAxiosError(error)) {
+        const data = error.response?.data as
+            | { message?: string; errors?: string[]; error?: string }
+            | undefined
+
+        return (
+            data?.errors?.[0] ||
+            data?.message ||
+            data?.error ||
+            fallback
+        )
+    }
+
+    return fallback
+}
 
 export const loginApi = async (payload: {
     email: string
     password: string
 }): Promise<AuthData> => {
-    const res = await axiosClient.post<ApiResponse<AuthData>>("/Auth/login", payload)
+    try {
+        const res = await axiosClient.post<ApiResponse<AuthData>>("/Auth/login", payload)
+        return unwrap(res.data)
+    } catch (error) {
+        throw new Error(getAxiosErrorMessage(error, "Đăng nhập thất bại"))
+    }
+}
 
-    console.log("🌐 RAW API:", res.data)
+export const registerApi = async (
+    payload: RegisterPayload
+): Promise<ApiResponse<null>> => {
+    try {
+        const res = await axiosClient.post<ApiResponse<null>>("/Auth/register", payload)
+        if (!res.data?.success) {
+            const msg = res.data?.errors?.[0] || res.data?.message || "Đăng ký thất bại"
+            throw new Error(msg)
+        }
+        return res.data
+    } catch (error) {
+        throw new Error(getAxiosErrorMessage(error, "Đăng ký thất bại"))
+    }
+}
 
-    return res.data.data
+export const verifyOtpApi = async (
+    payload: VerifyOtpPayload
+): Promise<ApiResponse<string>> => {
+    try {
+        const res = await axiosClient.post<ApiResponse<string>>("/Auth/verify-otp", payload)
+
+        if (!res.data?.success) {
+            const msg = res.data?.errors?.[0] || res.data?.message || "Xác minh OTP thất bại"
+            throw new Error(msg)
+        }
+
+        return res.data
+    } catch (error) {
+        throw new Error(getAxiosErrorMessage(error, "Xác minh OTP thất bại"))
+    }
+}
+
+export const resendOtpApi = async (
+    payload: ResendOtpPayload
+): Promise<ApiResponse<string>> => {
+    try {
+        const res = await axiosClient.post<ApiResponse<string>>("/Auth/resend-otp", payload)
+
+        if (!res.data?.success) {
+            const msg = res.data?.errors?.[0] || res.data?.message || "Gửi lại OTP thất bại"
+            throw new Error(msg)
+        }
+
+        return res.data
+    } catch (error) {
+        throw new Error(getAxiosErrorMessage(error, "Gửi lại OTP thất bại"))
+    }
+}
+
+export const refreshTokenApi = async (refreshToken: string): Promise<AuthData> => {
+    try {
+        const res = await axiosClient.post<ApiResponse<AuthData>>("/Auth/refresh-token", { refreshToken })
+        return unwrap(res.data)
+    } catch (error) {
+        throw new Error(getAxiosErrorMessage(error, "Làm mới phiên đăng nhập thất bại"))
+    }
 }
 
 export const authService = {
     async logout(refreshToken: string) {
-        console.log("🚪 [LOGOUT API] call")
-        console.log("🔑 refreshToken:", refreshToken)
-
-        const res = await axiosClient.post("/Auth/logout", {
-            refreshToken,
-        })
-
-        console.log("✅ [LOGOUT API] response:", res.data)
-        return res.data
+        try {
+            const res = await axiosClient.post<ApiResponse<boolean>>("/Auth/logout", { refreshToken })
+            return res.data
+        } catch (error) {
+            throw new Error(getAxiosErrorMessage(error, "Đăng xuất thất bại"))
+        }
     },
-}
-
-export const registerApi = async (payload: any): Promise<AuthData> => {
-    const res = await axiosClient.post<ApiResponse<AuthData>>("/Auth/register", payload)
-    return res.data.data
-}
-
-export const refreshTokenApi = async (refreshToken: string): Promise<AuthData> => {
-    const res = await axiosClient.post<ApiResponse<AuthData>>("/Auth/refresh-token", {
-        refreshToken,
-    })
-    return res.data.data
 }

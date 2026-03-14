@@ -24,8 +24,8 @@ import PublishProduct from "@/pages/Supplier/SProducts/PublishProduct/PublishPag
 import ProfilePage from "@/pages/Supplier/SProfile/ProfilePage"
 import ProductsLotsPage from "@/pages/Supplier/SProducts/ProductList/ProductsLotsPage"
 
-
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
+import AdminUsers from "@/pages/Admin/AdminUsers"
 
 import NotFound from "@/pages/Common/NotFound"
 import Forbidden from "@/pages/Common/Forbidden"
@@ -34,26 +34,34 @@ const AppRouter: React.FC = () => {
   return (
     <BrowserRouter>
       <Routes>
-
-        <Route element={<PublicLayout />}>
-          {/* ===== HOME ===== */}
-          <Route path="/" element={<Home />} />
-          <Route path="/cart" element={<CartPage />} />
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/payment-return" element={<PaymentReturnPage />} />
-        </Route>
         {/* ===== PUBLIC ===== */}
+        <Route element={<PublicLayout />}>
+          <Route path="/" element={<Home />} />
+        </Route>
+
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-
         <Route path="/redirect" element={<RoleRedirect />} />
+        <Route path="/forbidden" element={<Forbidden />} />
 
         {/* ===== PRIVATE ===== */}
         <Route element={<PrivateRoute />}>
-
           {/* ===== ADMIN ===== */}
           <Route element={<RoleRoute allow={["Admin"]} />}>
-            <Route path="/admin/dashboard" element={<AdminDashboard />} />
+            <Route element={<MainLayout />}>
+              <Route path="/admin" element={<AdminDashboard />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              {/* <Route path="/admin/approvals" element={<AdminApprovals />} /> */}
+              {/* <Route path="/admin/internal-staff" element={<AdminInternalStaff />} /> */}
+              {/* <Route path="/admin/roles" element={<AdminRoles />} /> */}
+              {/* <Route path="/admin/transactions" element={<AdminTransactions />} /> */}
+              {/* <Route path="/admin/delivery" element={<AdminDelivery />} /> */}
+              {/* <Route path="/admin/operations" element={<AdminOperations />} /> */}
+              {/* <Route path="/admin/moderation" element={<AdminModeration />} /> */}
+              {/* <Route path="/admin/feedbacks" element={<AdminFeedbacks />} /> */}
+              {/* <Route path="/admin/reports" element={<AdminReports />} /> */}
+              {/* <Route path="/admin/settings" element={<AdminSettings />} /> */}
+            </Route>
           </Route>
 
           {/* ===== SUPPLIER STAFF ===== */}
@@ -63,34 +71,27 @@ const AppRouter: React.FC = () => {
               <Route path="/supplier/products" element={<ProductList />} />
               <Route path="/supplier/products/add" element={<AddProduct />} />
               <Route path="/supplier/products/confirm" element={<ConfirmProduct />} />
-              
               <Route path="/supplier/products/:productId/confirm" element={<ConfirmProduct />} />
               <Route path="/supplier/products/:productId/pricing" element={<PricingProduct />} />
               <Route path="/supplier/products/:productId/publish" element={<PublishProduct />} />
-
               <Route path="/supplier/profile" element={<ProfilePage />} />
               <Route path="/supplier/setting" element={<ProductsLotsPage />} />
             </Route>
           </Route>
 
-          {/* ===== VENDOR ===== */}
+          {/* ===== VENDOR / CUSTOMER FLOW ===== */}
           <Route element={<RoleRoute allow={["Vendor"]} />}>
             <Route element={<PublicLayout />}>
-              <Route path="/vendor" element={<Home />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/payment-return" element={<PaymentReturnPage />} />
+              <Route path="/vendor" element={<Home />} />
             </Route>
           </Route>
-
-          {/* ===== COMMON ===== */}
-          <Route path="/forbidden" element={<Forbidden />} />
-
         </Route>
 
         {/* ===== NOT FOUND ===== */}
         <Route path="*" element={<NotFound />} />
-
       </Routes>
     </BrowserRouter>
   )

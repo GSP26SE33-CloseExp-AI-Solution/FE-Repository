@@ -3,7 +3,7 @@ import { authStorage } from "@/utils/authStorage"
 import { refreshTokenApi } from "@/services/auth.service"
 
 const axiosClient = axios.create({
-    baseURL: "/api",
+    baseURL: `${process.env.REACT_APP_API_URL}/api`,
     headers: {
         "Content-Type": "application/json",
     },

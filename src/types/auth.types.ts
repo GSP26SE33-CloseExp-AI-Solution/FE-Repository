@@ -31,7 +31,7 @@ export interface User {
     marketStaffInfo?: MarketStaffInfo
 }
 
-// ================= MARKET STAFF =================
+// ================= SUPPLIER STAFF =================
 
 export interface MarketStaffInfo {
     marketStaffId: string
@@ -47,4 +47,56 @@ export interface Supermarket {
     name: string
     address: string
     contactPhone: string
+    contactEmail?: string
+}
+
+// ================= REGISTER TYPES =================
+
+export type RegistrationType = "Vendor" | "SupplierStaff"
+
+export interface NewSupermarketPayload {
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    contactPhone: string
+    contactEmail: string
+}
+
+export interface VendorRegisterPayload {
+    fullName: string
+    email: string
+    phone: string
+    password: string
+    registrationType: "Vendor"
+}
+
+export interface SupplierStaffRegisterPayload {
+    fullName: string
+    email: string
+    phone: string
+    password: string
+    registrationType: "SupplierStaff"
+    newSupermarket: NewSupermarketPayload
+    position: string
+}
+
+export type RegisterPayload = VendorRegisterPayload | SupplierStaffRegisterPayload
+
+// ================= REGISTER / OTP =================
+
+export interface RegisterResponse {
+    success: boolean
+    message: string
+    data: null
+    errors: string[] | null
+}
+
+export interface VerifyOtpPayload {
+    email: string
+    otpCode: string
+}
+
+export interface ResendOtpPayload {
+    email: string
 }

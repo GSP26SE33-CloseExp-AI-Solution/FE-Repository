@@ -1,46 +1,56 @@
 import { useState } from "react"
-import { loginApi, registerApi } from "@/services/auth.service"
-import { AuthData } from "@/types/auth.types"
+import {
+    loginApi,
+    registerApi,
+    verifyOtpApi,
+    resendOtpApi,
+} from "@/services/auth.service"
+import {
+    AuthData,
+    RegisterPayload,
+    VerifyOtpPayload,
+    ResendOtpPayload,
+    ApiResponse,
+} from "@/types/auth.types"
 import { useAuthContext } from "@/contexts/AuthContext"
 
 export const useAuth = () => {
     const [loading, setLoading] = useState(false)
     const { user, loginSuccess, logout: contextLogout } = useAuthContext()
 
-    const login = async (
-        email: string,
-        password: string
-    ): Promise<AuthData | null> => {
+    const login = async (email: string, password: string): Promise<AuthData> => {
         try {
             setLoading(true)
-
             const session = await loginApi({ email, password })
-            console.log("✅ LOGIN SESSION:", session)
-
             loginSuccess(session)
-
             return session
-        } catch (e) {
-            console.error("❌ LOGIN ERROR", e)
-            return null
         } finally {
             setLoading(false)
         }
     }
 
-    const register = async (payload: any): Promise<AuthData | null> => {
+    const register = async (payload: RegisterPayload): Promise<ApiResponse<null>> => {
         try {
             setLoading(true)
+            return await registerApi(payload)
+        } finally {
+            setLoading(false)
+        }
+    }
 
-            const session = await registerApi(payload)
-            console.log("✅ REGISTER SESSION:", session)
+    const verifyOtp = async (payload: VerifyOtpPayload): Promise<ApiResponse<string>> => {
+        try {
+            setLoading(true)
+            return await verifyOtpApi(payload)
+        } finally {
+            setLoading(false)
+        }
+    }
 
-            loginSuccess(session)
-
-            return session
-        } catch (e) {
-            console.error("❌ REGISTER ERROR", e)
-            return null
+    const resendOtp = async (payload: ResendOtpPayload): Promise<ApiResponse<string>> => {
+        try {
+            setLoading(true)
+            return await resendOtpApi(payload)
         } finally {
             setLoading(false)
         }
@@ -54,6 +64,8 @@ export const useAuth = () => {
         user,
         login,
         register,
+        verifyOtp,
+        resendOtp,
         logout,
         loading,
     }

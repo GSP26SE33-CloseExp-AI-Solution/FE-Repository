@@ -31,19 +31,24 @@ const StaffHeader = () => {
             }
         }
         document.addEventListener("mousedown", handleClickOutside)
-        return () =>
-            document.removeEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
 
     const avatarText = user?.fullName
         ? user.fullName.charAt(0).toUpperCase()
         : "U"
 
+    const profilePath =
+        roleName === "Admin" ? "/admin" : "/supplier/profile"
+
+    const roleMeta =
+        roleName === "Admin"
+            ? "Admin Console"
+            : `${roleName}${supermarketName ? ` · ${supermarketName}` : ""}`
+
     return (
         <header className="fixed top-0 left-0 w-full h-20 backdrop-blur-xl bg-white/70 border-b border-white/40 z-50 shadow-sm">
             <div className="w-full h-full px-8 flex items-center">
-
-                {/* LEFT */}
                 <div className="flex items-center gap-3 w-[260px]">
                     <img src={Logo} alt="CloseExp AI" className="w-10 h-10" />
                     <div className="leading-tight">
@@ -54,7 +59,6 @@ const StaffHeader = () => {
                     </div>
                 </div>
 
-                {/* CENTER */}
                 <div className="flex items-center gap-2 flex-1 text-sm text-gray-500">
                     {breadcrumbs.map((crumb, index) => (
                         <span key={index} className="flex items-center gap-2">
@@ -72,7 +76,6 @@ const StaffHeader = () => {
                     ))}
                 </div>
 
-                {/* RIGHT */}
                 <div className="flex items-center gap-6">
                     <button className="text-gray-500 hover:text-green-600">
                         <Bell size={22} />
@@ -93,9 +96,7 @@ const StaffHeader = () => {
                                 </span>
 
                                 <span className="text-xs text-gray-500">
-                                    {roleName}
-                                    {supermarketName &&
-                                        ` · ${supermarketName}`}
+                                    {roleMeta}
                                 </span>
                             </div>
                         </button>
@@ -103,7 +104,7 @@ const StaffHeader = () => {
                         {open && (
                             <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg overflow-hidden">
                                 <button
-                                    onClick={() => navigate("/supplier/profile")}
+                                    onClick={() => navigate(profilePath)}
                                     className="w-full px-4 py-2 text-left hover:bg-gray-100"
                                 >
                                     Hồ sơ
@@ -111,7 +112,6 @@ const StaffHeader = () => {
 
                                 <button
                                     onClick={async () => {
-                                        console.log("🖱️ [UI] Logout button clicked")
                                         setOpen(false)
                                         await logout()
                                         navigate("/", { replace: true })

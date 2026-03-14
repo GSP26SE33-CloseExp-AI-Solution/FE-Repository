@@ -25,9 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (session?.user) {
             setUser(session.user)
             setRoleName(session.user.roleName)
-            setSupermarketName(
-                session.user.marketStaffInfo?.supermarket?.name ?? ""
-            )
+            setSupermarketName(session.user.marketStaffInfo?.supermarket?.name ?? "")
         }
         setInitialized(true)
     }, [])
@@ -36,41 +34,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         saveAuth(session)
         setUser(session.user)
         setRoleName(session.user.roleName)
-        setSupermarketName(
-            session.user.marketStaffInfo?.supermarket?.name ?? ""
-        )
+        setSupermarketName(session.user.marketStaffInfo?.supermarket?.name ?? "")
         setInitialized(true)
     }
 
     const logout = async () => {
-        console.log("🚪 [LOGOUT] Click logout")
-
         const session = getAuthSession()
-        console.log("📦 [LOGOUT] Session from storage:", session)
-
         const refreshToken = session?.refreshToken
-        console.log("🔑 [LOGOUT] Refresh token:", refreshToken)
 
         try {
             if (refreshToken) {
-                console.log("🌐 [LOGOUT] Calling logout API...")
-                const res = await authService.logout(refreshToken)
-                console.log("✅ [LOGOUT] Logout API success:", res)
-            } else {
-                console.warn("⚠️ [LOGOUT] No refresh token, skip API")
+                await authService.logout(refreshToken)
             }
-        } catch (error) {
-            console.error("❌ [LOGOUT] Logout API failed:", error)
         } finally {
-            console.log("🧹 [LOGOUT] Clearing auth & reset state")
-
             clearAuth()
             setUser(null)
             setRoleName(null)
             setSupermarketName("")
             setInitialized(true)
-
-            console.log("🏁 [LOGOUT] Done")
         }
     }
 

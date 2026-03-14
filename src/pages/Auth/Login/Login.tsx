@@ -4,6 +4,7 @@ import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
 
 import { useAuth } from "@/hooks/useAuth"
 import { useAuthContext } from "@/contexts/AuthContext"
+import { showError, showSuccess } from "@/utils/toast"
 import Logo from "@/assets/logo.png"
 
 const Login = () => {
@@ -15,7 +16,6 @@ const Login = () => {
     const [password, setPassword] = useState("")
     const [showPassword, setShowPassword] = useState(false)
 
-    // 👉 đã login rồi thì không cho ở trang login nữa
     useEffect(() => {
         if (initialized && user) {
             navigate("/redirect", { replace: true })
@@ -26,8 +26,19 @@ const Login = () => {
         e.preventDefault()
         if (loading) return
 
-        await login(email, password)
-        // ❌ KHÔNG navigate ở đây
+        if (!email.trim() || !password.trim()) {
+            showError("Vui lòng nhập đầy đủ email và mật khẩu")
+            return
+        }
+
+        try {
+            await login(email.trim(), password)
+            showSuccess("Đăng nhập thành công")
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Đăng nhập thất bại"
+            showError(message)
+        }
     }
 
     return (
@@ -35,8 +46,6 @@ const Login = () => {
             <div className="bg-glow" />
 
             <div className="relative z-10 w-full max-w-md backdrop-blur-xl bg-white/80 shadow-2xl rounded-2xl p-8 space-y-6 border border-white/40 animate-[fadeInUp_0.6s_ease-out]">
-
-                {/* LOGO */}
                 <div className="text-center space-y-2">
                     <img
                         src={Logo}
@@ -51,10 +60,7 @@ const Login = () => {
                     </p>
                 </div>
 
-                {/* FORM */}
                 <form onSubmit={onSubmit} className="space-y-4">
-
-                    {/* EMAIL */}
                     <div>
                         <label className="text-sm font-medium text-gray-600">
                             Email
@@ -75,7 +81,6 @@ const Login = () => {
                         </div>
                     </div>
 
-                    {/* PASSWORD */}
                     <div>
                         <label className="text-sm font-medium text-gray-600">
                             Mật khẩu
@@ -103,7 +108,6 @@ const Login = () => {
                         </div>
                     </div>
 
-                    {/* SUBMIT */}
                     <button
                         type="submit"
                         disabled={loading}
@@ -122,7 +126,6 @@ const Login = () => {
                         )}
                     </button>
 
-                    {/* REGISTER */}
                     <button
                         type="button"
                         onClick={() => navigate("/register")}
