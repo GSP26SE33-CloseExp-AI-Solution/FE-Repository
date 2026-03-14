@@ -1,7 +1,7 @@
-import { Outlet } from "react-router-dom";
-import Header from "./Header";
-import Sidebar from "./Sidebar";
-import Footer from "./Footer";
+import { Outlet } from "react-router-dom"
+import Header from "@/components/layouts/Header"
+import Sidebar from "@/components/layouts/Sidebar"
+import Footer from "@/components/layouts/Footer"
 
 const MainLayout: React.FC = () => {
     return (
@@ -10,14 +10,14 @@ const MainLayout: React.FC = () => {
 
             <div className="flex flex-1 pt-20">
                 <Sidebar />
-                <main className="flex-1 p-5 bg-white min-w-0">
+                <main className="flex-1 min-w-0 p-5 bg-white">
                     <Outlet />
                 </main>
             </div>
 
             <Footer />
         </div>
-    );
-};
+    )
+}
 
-export default MainLayout;
+export default MainLayout

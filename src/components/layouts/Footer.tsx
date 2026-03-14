@@ -2,23 +2,35 @@ import React from "react"
 import { useAuthContext } from "@/contexts/AuthContext"
 
 import CustomerFooter from "./footers/CustomerFooter"
+import AdminFooter from "./footers/AdminFooter"
 import SupplierFooter from "./footers/SupplierFooter"
-import StaffFooter from "./footers/StaffFooter"
-
-const INTERNAL_ROLES = new Set(["Admin", "Staff", "MarketingStaff", "DeliveryStaff"])
+import PackageFooter from "./footers/PackageFooter"
+import MarketingFooter from "./footers/MarketingFooter"
 
 const Footer: React.FC = () => {
     const { user, roleName } = useAuthContext()
 
     if (!user || !roleName) return <CustomerFooter />
 
-    if (roleName === "Vendor") return <CustomerFooter />
+    switch (roleName) {
+        case "Admin":
+            return <AdminFooter />
 
-    if (roleName === "SupplierStaff") return <SupplierFooter />
+        case "SupplierStaff":
+            return <SupplierFooter />
 
-    if (INTERNAL_ROLES.has(roleName)) return <StaffFooter />
+        case "PackageStaff":
+            return <PackageFooter />
 
-    return <CustomerFooter />
+        case "MarketingStaff":
+            return <MarketingFooter />
+
+        case "Vendor":
+            return <CustomerFooter />
+
+        default:
+            return <CustomerFooter />
+    }
 }
 
 export default Footer

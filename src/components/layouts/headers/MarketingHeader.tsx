@@ -3,12 +3,11 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { Bell, LogOut } from "lucide-react"
 
 import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs"
-import { useAuthContext } from "../../../contexts/AuthContext"
-
+import { useAuthContext } from "@/contexts/AuthContext"
 import Logo from "@/assets/logo.png"
 
-const StaffHeader = () => {
-    const { user, roleName, supermarketName, logout } = useAuthContext()
+const MarketingHeader = () => {
+    const { user, logout } = useAuthContext()
     const navigate = useNavigate()
 
     const [open, setOpen] = useState(false)
@@ -30,6 +29,7 @@ const StaffHeader = () => {
                 setOpen(false)
             }
         }
+
         document.addEventListener("mousedown", handleClickOutside)
         return () => document.removeEventListener("mousedown", handleClickOutside)
     }, [])
@@ -37,14 +37,6 @@ const StaffHeader = () => {
     const avatarText = user?.fullName
         ? user.fullName.charAt(0).toUpperCase()
         : "U"
-
-    const profilePath =
-        roleName === "Admin" ? "/admin" : "/supplier/profile"
-
-    const roleMeta =
-        roleName === "Admin"
-            ? "Admin Console"
-            : `${roleName}${supermarketName ? ` · ${supermarketName}` : ""}`
 
     return (
         <header className="fixed top-0 left-0 w-full h-20 backdrop-blur-xl bg-white/70 border-b border-white/40 z-50 shadow-sm">
@@ -54,7 +46,7 @@ const StaffHeader = () => {
                     <div className="leading-tight">
                         <p className="font-bold text-gray-800">CloseExp AI</p>
                         <p className="text-xs text-gray-500">
-                            Nền tảng mua bán thông minh
+                            Trung tâm marketing và tăng trưởng
                         </p>
                     </div>
                 </div>
@@ -77,13 +69,14 @@ const StaffHeader = () => {
                 </div>
 
                 <div className="flex items-center gap-6">
-                    <button className="text-gray-500 hover:text-green-600">
+                    <button type="button" className="text-gray-500 hover:text-green-600">
                         <Bell size={22} />
                     </button>
 
                     <div className="relative" ref={ref}>
                         <button
-                            onClick={() => setOpen(!open)}
+                            type="button"
+                            onClick={() => setOpen((v) => !v)}
                             className="flex items-center gap-3 hover:bg-white/60 px-3 py-2 rounded-lg"
                         >
                             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 text-white flex items-center justify-center font-bold">
@@ -96,21 +89,23 @@ const StaffHeader = () => {
                                 </span>
 
                                 <span className="text-xs text-gray-500">
-                                    {roleMeta}
+                                    Nhân viên marketing
                                 </span>
                             </div>
                         </button>
 
                         {open && (
-                            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg overflow-hidden">
+                            <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                                 <button
-                                    onClick={() => navigate(profilePath)}
+                                    type="button"
+                                    onClick={() => navigate("/marketing/profile")}
                                     className="w-full px-4 py-2 text-left hover:bg-gray-100"
                                 >
                                     Hồ sơ
                                 </button>
 
                                 <button
+                                    type="button"
                                     onClick={async () => {
                                         setOpen(false)
                                         await logout()
@@ -130,4 +125,4 @@ const StaffHeader = () => {
     )
 }
 
-export default StaffHeader
+export default MarketingHeader
