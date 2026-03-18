@@ -11,55 +11,95 @@ type Props = {
 
 mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN || ""
 
-const MapboxLocationPicker = ({ lat, lng, onPick }: Props) => {
+const MapboxLocationPicker = ({
+    lat,
+    lng,
+    onPick,
+    onMapStatusChange,
+}: Props) => {
     const containerRef = useRef<HTMLDivElement | null>(null)
     const mapRef = useRef<mapboxgl.Map | null>(null)
     const markerRef = useRef<mapboxgl.Marker | null>(null)
 
+    const onPickRef = useRef(onPick)
+    const onMapStatusChangeRef = useRef(onMapStatusChange)
+
+    useEffect(() => {
+        onPickRef.current = onPick
+    }, [onPick])
+
+    useEffect(() => {
+        onMapStatusChangeRef.current = onMapStatusChange
+    }, [onMapStatusChange])
+
     useEffect(() => {
         if (!containerRef.current) return
         if (mapRef.current) return
-        if (!mapboxgl.accessToken) return
 
-        const map = new mapboxgl.Map({
-            container: containerRef.current,
-            style: "mapbox://styles/mapbox/streets-v12",
-            center: [lng, lat],
-            zoom: 15,
-        })
+        if (!mapboxgl.accessToken) {
+            onMapStatusChangeRef.current?.("error")
+            return
+        }
 
-        map.addControl(new mapboxgl.NavigationControl(), "top-right")
+        try {
+            onMapStatusChangeRef.current?.("loading")
 
-        const marker = new mapboxgl.Marker({ draggable: true })
-            .setLngLat([lng, lat])
-            .addTo(map)
+            const map = new mapboxgl.Map({
+                container: containerRef.current,
+                style: "mapbox://styles/mapbox/streets-v12",
+                center: [lng, lat],
+                zoom: 15,
+            })
 
-        marker.on("dragend", () => {
-            const pos = marker.getLngLat()
-            onPick({ lat: pos.lat, lng: pos.lng })
-        })
+            map.addControl(new mapboxgl.NavigationControl(), "top-right")
 
-        map.on("click", (e) => {
-            const nextLat = e.lngLat.lat
-            const nextLng = e.lngLat.lng
-            marker.setLngLat([nextLng, nextLat])
-            onPick({ lat: nextLat, lng: nextLng })
-        })
+            const marker = new mapboxgl.Marker({ draggable: true })
+                .setLngLat([lng, lat])
+                .addTo(map)
 
-        mapRef.current = map
-        markerRef.current = marker
+            marker.on("dragend", () => {
+                const pos = marker.getLngLat()
+                onPickRef.current({ lat: pos.lat, lng: pos.lng })
+            })
+
+            map.on("click", (e) => {
+                const nextLat = e.lngLat.lat
+                const nextLng = e.lngLat.lng
+                marker.setLngLat([nextLng, nextLat])
+                onPickRef.current({ lat: nextLat, lng: nextLng })
+            })
+
+            map.on("load", () => {
+                onMapStatusChangeRef.current?.("loaded")
+            })
+
+            map.on("error", () => {
+                onMapStatusChangeRef.current?.("error")
+            })
+
+            mapRef.current = map
+            markerRef.current = marker
+        } catch {
+            onMapStatusChangeRef.current?.("error")
+        }
 
         return () => {
-            map.remove()
+            mapRef.current?.remove()
             mapRef.current = null
             markerRef.current = null
         }
-    }, [lat, lng, onPick])
+    }, [])
 
     useEffect(() => {
         if (!mapRef.current || !markerRef.current) return
-        mapRef.current.setCenter([lng, lat])
+
         markerRef.current.setLngLat([lng, lat])
+
+        mapRef.current.flyTo({
+            center: [lng, lat],
+            zoom: Math.max(mapRef.current.getZoom(), 15),
+            essential: true,
+        })
     }, [lat, lng])
 
     return (
