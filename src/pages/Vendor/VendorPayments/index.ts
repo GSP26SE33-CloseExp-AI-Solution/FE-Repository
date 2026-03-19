@@ -1,1 +1,1 @@
-export { default } from './PaymentReturnPage.tsx';
+export { default } from './PaymentReturnPage';
