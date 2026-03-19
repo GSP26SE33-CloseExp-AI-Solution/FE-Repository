@@ -14,6 +14,9 @@ const CustomerHeader = () => {
     const { user, roleName, logout } = useAuthContext()
     const navigate = useNavigate()
 
+    const CART_ROUTE = "/cart"
+    const LOGIN_ROUTE = "/login"
+
     const [open, setOpen] = useState(false)
     const ref = useRef<HTMLDivElement>(null)
     const CART_KEY = "customer_cart_v1"
@@ -28,6 +31,17 @@ const CustomerHeader = () => {
         } catch {
             return 0
         }
+    }
+
+    const handleViewCart = () => {
+        if (!user) {
+            navigate(LOGIN_ROUTE, {
+                state: { redirectTo: CART_ROUTE },
+            })
+            return
+        }
+
+        navigate(CART_ROUTE)
     }
 
     const [cartCount, setCartCount] = useState<number>(() => getCartTotalQty())
@@ -45,24 +59,20 @@ const CustomerHeader = () => {
     useEffect(() => {
         const sync = () => setCartCount(getCartTotalQty())
 
-        // 1) sync khi user đổi tab/quay lại
-        window.addEventListener("focus", sync)
-
-        // 2) sync khi có storage event (đa tab)
-        window.addEventListener("storage", (e) => {
+        const handleStorage = (e: StorageEvent) => {
             if (e.key === CART_KEY) sync()
-        })
+        }
 
-        // 3) sync qua custom event trong cùng tab (add-to-cart)
+        window.addEventListener("focus", sync)
+        window.addEventListener("storage", handleStorage)
         window.addEventListener("cart:updated", sync as EventListener)
 
-        // init
         sync()
 
         return () => {
             window.removeEventListener("focus", sync)
+            window.removeEventListener("storage", handleStorage)
             window.removeEventListener("cart:updated", sync as EventListener)
-            // storage listener anonymous khó remove, nên viết thành function riêng nếu bạn muốn clean tuyệt đối
         }
     }, [])
 
@@ -72,7 +82,6 @@ const CustomerHeader = () => {
         <header className="fixed top-0 left-0 w-full h-20 backdrop-blur-xl bg-white/70 border-b border-white/40 z-50 shadow-sm">
             <div className="w-full h-full px-8 flex items-center justify-between gap-6">
 
-                {/* LEFT: Brand */}
                 <div className="flex items-center gap-3">
                     <img src={Logo} alt="CloseExp AI" className="w-10 h-10" />
                     <div className="leading-tight">
@@ -81,7 +90,6 @@ const CustomerHeader = () => {
                     </div>
                 </div>
 
-                {/* CENTER: Search */}
                 <div className="hidden md:flex flex-1 max-w-2xl">
                     <div className="w-full bg-white/80 shadow-md rounded-xl border border-white/40 flex items-center gap-3 px-4 py-2 focus-within:ring-2 focus-within:ring-green-200">
                         <Search className="text-gray-400" size={18} />
@@ -92,10 +100,7 @@ const CustomerHeader = () => {
                     </div>
                 </div>
 
-                {/* RIGHT */}
                 <div className="flex items-center gap-4">
-
-                    {/* NAV */}
                     <nav className="hidden lg:flex items-center gap-5 text-sm mr-2">
                         <button
                             className="font-semibold text-gray-800"
@@ -120,10 +125,9 @@ const CustomerHeader = () => {
                         </button>
                     </nav>
 
-                    {/* CART */}
                     <button
                         type="button"
-                        onClick={() => navigate("/cart")}
+                        onClick={handleViewCart}
                         className="relative h-[47px] w-[44px] rounded-xl bg-white shadow-md border border-gray-100 hover:bg-gray-50 transition"
                         aria-label="Giỏ hàng"
                     >
@@ -138,7 +142,6 @@ const CustomerHeader = () => {
                         )}
                     </button>
 
-                    {/* AUTH AREA */}
                     {!user ? (
                         <div className="flex items-center gap-2">
                             <button

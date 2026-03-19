@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
 import {
   Clock3,
   Leaf,
@@ -23,6 +24,18 @@ const cn = (...classes: Array<string | false | undefined | null>) =>
 
 const DELIVERY_CONTEXT_KEY = "customer_delivery_context_v3"
 const CART_KEY = "customer_cart_v1"
+
+const CART_ROUTE = "/cart"
+const LOGIN_ROUTE = "/login"
+
+const isUserLoggedIn = () => {
+  const token =
+    localStorage.getItem("accessToken") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("authToken")
+
+  return !!token
+}
 
 const primaryBtn =
   "rounded-2xl bg-slate-900 text-white font-semibold transition hover:bg-slate-800 active:scale-[0.99]"
@@ -520,6 +533,7 @@ const StatIcon = ({ kind }: { kind: StatCard["icon"] }) => {
 }
 
 const Home: React.FC = () => {
+  const navigate = useNavigate()
   const [gateOpen, setGateOpen] = useState(false)
   const [deliveryCtx, setDeliveryCtx] = useState<DeliveryContext>(() => deliveryStorage.get())
   const [cartCount, setCartCount] = useState(() => cartStorage.getTotalQty())
@@ -711,6 +725,19 @@ const Home: React.FC = () => {
     setCartCount(cartStorage.getTotalQty())
   }
 
+  const handleViewCart = () => {
+    if (!isUserLoggedIn()) {
+      navigate(LOGIN_ROUTE, {
+        state: {
+          redirectTo: CART_ROUTE,
+        },
+      })
+      return
+    }
+
+    navigate(CART_ROUTE)
+  }
+
   const displayMarkets: Supermarket[] = useMemo(() => {
     return deliveryCtx.nearbySupermarkets ?? []
   }, [deliveryCtx.nearbySupermarkets])
@@ -814,20 +841,29 @@ const Home: React.FC = () => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-3">
-                <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">
-                    Giỏ hàng
-                  </div>
-                  <div className="mt-1 text-[22px] font-bold tracking-[-0.02em] text-white">
-                    {cartCount}
-                  </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 backdrop-blur">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-white/60">
+                  Giỏ hàng
                 </div>
+                <div className="mt-1 text-[22px] font-bold tracking-[-0.02em] text-white">
+                  {cartCount}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleViewCart}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                >
+                  <ShoppingCart size={16} />
+                  Xem giỏ hàng
+                </button>
 
                 <button
                   type="button"
                   onClick={() => setGateOpen(true)}
-                  className="rounded-2xl bg-white px-4 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
+                  className="rounded-2xl border border-white/15 bg-white/10 px-4 py-3 text-sm font-semibold text-white transition hover:bg-white/15"
                 >
                   Chọn lại khu vực
                 </button>
@@ -1024,6 +1060,7 @@ const Home: React.FC = () => {
               </div>
               <button
                 type="button"
+                onClick={handleViewCart}
                 className="relative grid h-10 w-10 place-items-center rounded-2xl border border-slate-200 bg-white"
                 aria-label="Giỏ hàng"
               >

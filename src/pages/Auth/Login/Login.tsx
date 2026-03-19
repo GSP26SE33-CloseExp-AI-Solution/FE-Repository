@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useNavigate } from "react-router-dom"
+import { useLocation, useNavigate } from "react-router-dom"
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
 
 import { useAuth } from "@/hooks/useAuth"
@@ -11,6 +11,8 @@ const Login = () => {
     const { login, loading } = useAuth()
     const { user, initialized } = useAuthContext()
     const navigate = useNavigate()
+    const location = useLocation()
+    const redirectTo = location.state?.redirectTo || "/redirect"
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -18,9 +20,9 @@ const Login = () => {
 
     useEffect(() => {
         if (initialized && user) {
-            navigate("/redirect", { replace: true })
+            navigate(redirectTo, { replace: true })
         }
-    }, [initialized, user, navigate])
+    }, [initialized, user, navigate, redirectTo])
 
     const onSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
