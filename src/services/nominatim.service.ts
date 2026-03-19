@@ -46,8 +46,6 @@ type NominatimReverseResponse = {
     }
 }
 
-const USER_AGENT = "CloseExp-AI-FE/1.0"
-
 const buildStreet = (streetLine: string) => streetLine.trim()
 
 const buildStreetLineFromReverse = (item: NominatimReverseResult) =>

@@ -10,8 +10,6 @@ export type AdministrativeWard = {
     name: string
 }
 
-type ProvinceApiResponse<T> = T | { results?: T }
-
 const administrativeClient = axios.create({
     baseURL: "https://provinces.open-api.vn/api",
     headers: {
@@ -19,15 +17,9 @@ const administrativeClient = axios.create({
     },
 })
 
-const normalizeArray = <T,>(payload: ProvinceApiResponse<T[]>): T[] => {
-    if (Array.isArray(payload)) return payload
-    if (Array.isArray(payload?.results)) return payload.results
-    return []
-}
-
 export const administrativeService = {
     async getHcmDistricts(): Promise<AdministrativeDistrict[]> {
-        const res = await administrativeClient.get<ProvinceApiResponse<any[]>>("/p/79?depth=2")
+        const res = await administrativeClient.get<any[]>("/p/79?depth=2")
         const payload = res.data as any
 
         const districts = Array.isArray(payload?.districts) ? payload.districts : []
@@ -39,7 +31,7 @@ export const administrativeService = {
     },
 
     async getWardsByDistrictCode(districtCode: number): Promise<AdministrativeWard[]> {
-        const res = await administrativeClient.get<ProvinceApiResponse<any>>(`/d/${districtCode}?depth=2`)
+        const res = await administrativeClient.get<any>(`/d/${districtCode}?depth=2`)
         const payload = res.data as any
 
         const wards = Array.isArray(payload?.wards) ? payload.wards : []

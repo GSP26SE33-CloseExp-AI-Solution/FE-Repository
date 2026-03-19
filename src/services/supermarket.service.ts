@@ -1,18 +1,14 @@
 import axiosClient from "@/utils/axiosClient"
 
-export type GeocodeItem = {
-    id: string
-    addressText: string
-    lat: number
-    lng: number
-}
-
 export type Supermarket = {
     supermarketId: string
     name: string
     address: string
     latitude: number
     longitude: number
+    contactPhone?: string
+    status?: number
+    createdAt?: string
     distanceKm?: number
 }
 
@@ -29,6 +25,29 @@ type ApiResponse<T> = {
     message?: string
     data?: T
     errors?: string[]
+}
+
+type SupermarketApiItem = {
+    supermarketId: string
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    contactPhone?: string
+    status?: number
+    createdAt?: string
+}
+
+type SupermarketsResponse = {
+    success: boolean
+    message: string
+    data?: {
+        items?: SupermarketApiItem[]
+        totalResult?: number
+        page?: number
+        pageSize?: number
+    }
+    errors?: string[] | null
 }
 
 const toRad = (value: number) => (value * Math.PI) / 180
@@ -51,61 +70,25 @@ const haversineKm = (
 }
 
 export const supermarketService = {
-    async forwardGeocode(address: string): Promise<GeocodeItem[]> {
-        const trimmed = address.trim()
-        if (!trimmed) return []
-
-        const res = await axiosClient.get<
-            ApiResponse<{
-                latitude: number
-                longitude: number
-                fullAddress: string
-                placeName: string
-                region: string
-                district: string
-                country: string
-                countryCode: string
-                accuracy: string
-            }>
-        >("/Supermarkets/geocode/forward", {
-            params: { address: trimmed },
+    async getSupermarkets(params?: { pageNumber?: number; pageSize?: number }): Promise<Supermarket[]> {
+        const res = await axiosClient.get<SupermarketsResponse>("/Supermarkets", {
+            params: {
+                pageNumber: params?.pageNumber ?? 1,
+                pageSize: params?.pageSize ?? 100,
+            },
         })
 
-        const item = res.data?.data
-        if (!item) return []
+        const items = res.data?.data?.items ?? []
 
-        return [
-            {
-                id: `${item.latitude}_${item.longitude}`,
-                addressText: item.fullAddress || item.placeName || trimmed,
-                lat: Number(item.latitude),
-                lng: Number(item.longitude),
-            },
-        ]
-    },
-
-    async getAvailableSupermarkets(): Promise<Supermarket[]> {
-        const res = await axiosClient.get<
-            ApiResponse<
-                Array<{
-                    supermarketId: string
-                    name: string
-                    address: string
-                    latitude: number
-                    longitude: number
-                    contactPhone: string
-                    status: number
-                    createdAt: string
-                }>
-            >
-        >("/Supermarkets/available")
-
-        return (res.data?.data ?? []).map((item) => ({
+        return items.map((item) => ({
             supermarketId: item.supermarketId,
             name: item.name,
             address: item.address,
             latitude: Number(item.latitude),
             longitude: Number(item.longitude),
+            contactPhone: item.contactPhone,
+            status: item.status,
+            createdAt: item.createdAt,
         }))
     },
 
@@ -114,7 +97,11 @@ export const supermarketService = {
         lng: number
         radiusKm?: number
     }): Promise<Supermarket[]> {
-        const all = await this.getAvailableSupermarkets()
+        const all = await this.getSupermarkets({
+            pageNumber: 1,
+            pageSize: 100,
+        })
+
         const radiusKm = params.radiusKm ?? 5
 
         return all
