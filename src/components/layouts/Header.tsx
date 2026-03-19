@@ -1,5 +1,5 @@
 import { useAuthContext } from "@/contexts/AuthContext"
-import CustomerHeader from "./headers/CustomerHeader"
+import CustomerHeader from "./headers/VendorHeader"
 import AdminHeader from "./headers/AdminHeader"
 import SupermarketStaffHeader from "./headers/SupermarketStaffHeader"
 import PackageHeader from "./headers/PackagingStaffHeader"

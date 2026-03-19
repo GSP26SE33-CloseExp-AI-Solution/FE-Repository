@@ -1,7 +1,7 @@
 import React from "react"
 import { useAuthContext } from "@/contexts/AuthContext"
 
-import CustomerFooter from "./footers/CustomerFooter"
+import CustomerFooter from "./footers/VendorFooter"
 import AdminFooter from "./footers/AdminFooter"
 import SupermarketStaffFooter from "./footers/SupermarketStaffFooter"
 import PackageFooter from "./footers/PackagingStaffFooter"
