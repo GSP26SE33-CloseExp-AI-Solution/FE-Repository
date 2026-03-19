@@ -15,16 +15,16 @@ type MenuItem = {
     end?: boolean
 }
 
-const supplierMenuItems: MenuItem[] = [
-    { label: "Tổng quan", path: "/supplier/dashboard", icon: LayoutDashboard, end: true },
-    { label: "Sản phẩm", path: "/supplier/products", icon: Box },
-    { label: "Thống kê", path: "/supplier/statistic", icon: BarChart3, end: true },
-    { label: "Hồ sơ", path: "/supplier/profile", icon: User, end: true },
-    { label: "Thông báo", path: "/supplier/notification", icon: Bell, end: true },
-    { label: "Cài đặt", path: "/supplier/setting", icon: Settings, end: true },
+const supermarketStaffMenuItems: MenuItem[] = [
+    { label: "Tổng quan", path: "/supermarketStaff/dashboard", icon: LayoutDashboard, end: true },
+    { label: "Sản phẩm", path: "/supermarketStaff/products", icon: Box },
+    { label: "Thống kê", path: "/supermarketStaff/statistic", icon: BarChart3, end: true },
+    { label: "Hồ sơ", path: "/supermarketStaff/profile", icon: User, end: true },
+    { label: "Thông báo", path: "/supermarketStaff/notification", icon: Bell, end: true },
+    { label: "Cài đặt", path: "/supermarketStaff/setting", icon: Settings, end: true },
 ]
 
-const SupplierSidebar = () => {
+const SupermarketStaffSidebar = () => {
     return (
         <aside className="w-fit min-w-[230px] bg-white/70 backdrop-blur-xl border-r border-white/40 pt-24 px-2">
             <p className="px-3 mb-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">
@@ -32,7 +32,7 @@ const SupplierSidebar = () => {
             </p>
 
             <nav className="flex flex-col gap-1">
-                {supplierMenuItems.map((item) => {
+                {supermarketStaffMenuItems.map((item) => {
                     const Icon = item.icon
 
                     return (
@@ -64,4 +64,4 @@ const SupplierSidebar = () => {
     )
 }
 
-export default SupplierSidebar
+export default SupermarketStaffSidebar

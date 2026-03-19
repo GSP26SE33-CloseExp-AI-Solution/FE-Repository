@@ -105,7 +105,7 @@ const PricingPage: React.FC = () => {
             });
 
             toast.success("Chốt giá thành công – Sản phẩm sẵn sàng publish");
-            navigate(`/supplier/products/${product.productId}/publish`);
+            navigate(`/supermarketStaff/products/${product.productId}/publish`);
         } catch (err) {
             console.error("❌ CONFIRM PRICE FAILED", err);
             toast.error("Chốt giá thất bại");

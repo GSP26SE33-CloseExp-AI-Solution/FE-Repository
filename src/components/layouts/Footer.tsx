@@ -3,9 +3,9 @@ import { useAuthContext } from "@/contexts/AuthContext"
 
 import CustomerFooter from "./footers/CustomerFooter"
 import AdminFooter from "./footers/AdminFooter"
-import SupplierFooter from "./footers/SupplierFooter"
-import PackageFooter from "./footers/PackageFooter"
-import MarketingFooter from "./footers/MarketingFooter"
+import SupermarketStaffFooter from "./footers/SupermarketStaffFooter"
+import PackageFooter from "./footers/PackagingStaffFooter"
+import MarketingFooter from "./footers/MarketingStaffFooter"
 
 const Footer: React.FC = () => {
     const { user, roleName } = useAuthContext()
@@ -16,10 +16,10 @@ const Footer: React.FC = () => {
         case "Admin":
             return <AdminFooter />
 
-        case "SupplierStaff":
-            return <SupplierFooter />
+        case "SupermarketStaff":
+            return <SupermarketStaffFooter />
 
-        case "PackageStaff":
+        case "PackagingStaff":
             return <PackageFooter />
 
         case "MarketingStaff":

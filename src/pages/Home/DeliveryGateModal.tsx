@@ -11,11 +11,11 @@ import {
     X,
 } from "lucide-react"
 
+import axiosClient from "@/utils/axiosClient"
 import MapboxLocationPicker from "./MapboxLocationPicker"
 import {
     supermarketService,
     type PickupPoint,
-    type Supermarket,
 } from "@/services/supermarket.service"
 import {
     administrativeService,
@@ -30,7 +30,17 @@ import {
 
 export type DeliveryMethodId = "DELIVERY" | "PICKUP"
 
-export type { Supermarket }
+export type Supermarket = {
+    supermarketId: string
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    contactPhone?: string
+    status?: number
+    createdAt?: string
+    distanceKm?: number
+}
 
 export type DeliveryContext = {
     deliveryMethodId?: DeliveryMethodId
@@ -47,6 +57,29 @@ export type DeliveryContext = {
     pickupLng?: number
 
     nearbySupermarkets?: Supermarket[]
+}
+
+type SupermarketApiItem = {
+    supermarketId: string
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    contactPhone: string
+    status: number
+    createdAt: string
+}
+
+type SupermarketsResponse = {
+    success: boolean
+    message: string
+    data?: {
+        items?: SupermarketApiItem[]
+        totalResult?: number
+        page?: number
+        pageSize?: number
+    }
+    errors?: string[] | null
 }
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
@@ -98,7 +131,10 @@ const normalizeText = (value?: string) =>
         .toLowerCase()
         .trim()
 
-const locationSourceLabel: Record<NonNullable<DeliveryContext["locationSource"]>, string> = {
+const locationSourceLabel: Record<
+    NonNullable<DeliveryContext["locationSource"]>,
+    string
+> = {
     gps: "GPS hiện tại",
     search: "Tìm kiếm địa chỉ",
     map: "Chỉnh trên bản đồ",
@@ -426,6 +462,47 @@ const DeliveryGateModal = ({
         setStep(2)
     }
 
+    const getNearbySupermarketsByClientFilter = async ({
+        lat,
+        lng,
+        radiusKm,
+    }: {
+        lat: number
+        lng: number
+        radiusKm: number
+    }): Promise<Supermarket[]> => {
+        const res = await axiosClient.get<SupermarketsResponse>("/api/Supermarkets", {
+            params: {
+                pageNumber: 1,
+                pageSize: 100,
+            },
+        })
+
+        const items = res.data?.data?.items ?? []
+
+        return items
+            .map((item) => {
+                const distanceKm = haversineKm(
+                    { lat, lng },
+                    { lat: item.latitude, lng: item.longitude }
+                )
+
+                return {
+                    supermarketId: item.supermarketId,
+                    name: item.name,
+                    address: item.address,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                    contactPhone: item.contactPhone,
+                    status: item.status,
+                    createdAt: item.createdAt,
+                    distanceKm,
+                }
+            })
+            .filter((item) => item.distanceKm <= radiusKm)
+            .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
+    }
+
     const handleSubmit = async () => {
         try {
             setError("")
@@ -450,16 +527,11 @@ const DeliveryGateModal = ({
 
                 setSubmitInfo("Đang tìm siêu thị phục vụ gần vị trí của bạn...")
 
-                const supermarkets = await supermarketService.getNearbySupermarketsByClientFilter({
+                const supermarkets = await getNearbySupermarketsByClientFilter({
                     lat,
                     lng,
                     radiusKm: 5,
                 })
-
-                if (!supermarkets.length) {
-                    setError("Không tìm thấy siêu thị phù hợp trong bán kính phục vụ.")
-                    return
-                }
 
                 onDone({
                     deliveryMethodId: "DELIVERY",
@@ -472,7 +544,7 @@ const DeliveryGateModal = ({
                     pickupPointAddress: "",
                     pickupLat: undefined,
                     pickupLng: undefined,
-                    nearbySupermarkets: supermarkets,
+                    nearbySupermarkets: supermarkets ?? [],
                 })
                 return
             }
@@ -484,16 +556,11 @@ const DeliveryGateModal = ({
 
             setSubmitInfo("Đang tải các siêu thị phục vụ quanh điểm tập kết...")
 
-            const supermarkets = await supermarketService.getNearbySupermarketsByClientFilter({
+            const supermarkets = await getNearbySupermarketsByClientFilter({
                 lat: selectedPickupPoint.lat,
                 lng: selectedPickupPoint.lng,
                 radiusKm: 5,
             })
-
-            if (!supermarkets.length) {
-                setError("Không tìm thấy siêu thị phù hợp quanh điểm tập kết đã chọn.")
-                return
-            }
 
             onDone({
                 deliveryMethodId: "PICKUP",
@@ -506,7 +573,7 @@ const DeliveryGateModal = ({
                 lng: undefined,
                 addressText: undefined,
                 locationSource: undefined,
-                nearbySupermarkets: supermarkets,
+                nearbySupermarkets: supermarkets ?? [],
             })
         } catch (e: any) {
             setError(
@@ -886,7 +953,7 @@ const DeliveryGateModal = ({
                                     </div>
 
                                     <div className="rounded-2xl bg-sky-50 p-4 text-sm text-slate-600">
-                                        Sau khi bấm hoàn tất, hệ thống sẽ lọc các siêu thị trong bán kính 5km từ vị trí đã xác nhận ở trên.
+                                        Sau khi bấm hoàn tất, hệ thống sẽ tìm siêu thị trong bán kính 5km từ vị trí đã xác nhận ở trên. Nếu chưa có siêu thị phù hợp, địa chỉ vẫn sẽ được lưu để bạn ra trang chủ bình thường.
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-between gap-3">

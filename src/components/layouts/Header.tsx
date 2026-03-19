@@ -1,9 +1,9 @@
 import { useAuthContext } from "@/contexts/AuthContext"
 import CustomerHeader from "./headers/CustomerHeader"
 import AdminHeader from "./headers/AdminHeader"
-import SupplierHeader from "./headers/SupplierHeader"
-import PackageHeader from "./headers/PackageHeader"
-import MarketingHeader from "./headers/MarketingHeader"
+import SupermarketStaffHeader from "./headers/SupermarketStaffHeader"
+import PackageHeader from "./headers/PackagingStaffHeader"
+import MarketingHeader from "./headers/MarketingStaffHeader"
 
 const Header = () => {
     const { user, roleName } = useAuthContext()
@@ -14,10 +14,10 @@ const Header = () => {
         case "Admin":
             return <AdminHeader />
 
-        case "SupplierStaff":
-            return <SupplierHeader />
+        case "SupermarketStaff":
+            return <SupermarketStaffHeader />
 
-        case "PackageStaff":
+        case "PackagingStaff":
             return <PackageHeader />
 
         case "MarketingStaff":

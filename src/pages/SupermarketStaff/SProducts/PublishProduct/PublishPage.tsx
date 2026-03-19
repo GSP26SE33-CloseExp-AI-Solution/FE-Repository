@@ -41,7 +41,7 @@ const PublishPage: React.FC = () => {
             setPublishing(true);
             await productService.publish(product.productId, user.userId);
             toast.success("Đăng bán sản phẩm thành công");
-            navigate("/supplier/products");
+            navigate("/supermarketStaff/products");
         } catch {
             toast.error("Đăng bán thất bại");
         } finally {

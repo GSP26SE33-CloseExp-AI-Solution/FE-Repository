@@ -54,7 +54,7 @@ const AddProduct: React.FC = () => {
             });
 
             navigate(
-                `/supplier/products/${draftProduct.productId}/confirm`,
+                `/supermarketStaff/products/${draftProduct.productId}/confirm`,
                 {
                     state: {
                         draftProduct, // ⭐ GIỮ NGUYÊN OBJECT AI

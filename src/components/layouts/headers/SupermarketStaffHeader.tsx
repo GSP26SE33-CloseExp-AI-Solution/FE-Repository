@@ -6,7 +6,7 @@ import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs"
 import { useAuthContext } from "@/contexts/AuthContext"
 import Logo from "@/assets/logo.png"
 
-const SupplierHeader = () => {
+const SupermarketStaffHeader = () => {
     const { user, supermarketName, logout } = useAuthContext()
     const navigate = useNavigate()
 
@@ -102,7 +102,7 @@ const SupplierHeader = () => {
                             <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                                 <button
                                     type="button"
-                                    onClick={() => navigate("/supplier/profile")}
+                                    onClick={() => navigate("/supermarketStaff/profile")}
                                     className="w-full px-4 py-2 text-left hover:bg-gray-100"
                                 >
                                     Hồ sơ
@@ -129,4 +129,4 @@ const SupplierHeader = () => {
     )
 }
 
-export default SupplierHeader
+export default SupermarketStaffHeader

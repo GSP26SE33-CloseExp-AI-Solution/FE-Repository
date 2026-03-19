@@ -1,5 +1,3 @@
-// ================= API RESPONSE =================
-
 export interface ApiResponse<T> {
     success: boolean
     message: string
@@ -7,16 +5,12 @@ export interface ApiResponse<T> {
     errors: string[] | null
 }
 
-// ================= AUTH DATA =================
-
 export interface AuthData {
     accessToken: string
     refreshToken: string
     expiresAt: string
     user: User
 }
-
-// ================= USER =================
 
 export interface User {
     userId: string
@@ -28,10 +22,8 @@ export interface User {
     status: number
     createdAt: string
     updatedAt: string
-    marketStaffInfo?: MarketStaffInfo
+    marketStaffInfo: MarketStaffInfo | null
 }
-
-// ================= SUPPLIER STAFF =================
 
 export interface MarketStaffInfo {
     marketStaffId: string
@@ -39,8 +31,6 @@ export interface MarketStaffInfo {
     joinedAt: string
     supermarket: Supermarket
 }
-
-// ================= SUPERMARKET =================
 
 export interface Supermarket {
     supermarketId: string
@@ -50,9 +40,7 @@ export interface Supermarket {
     contactEmail?: string
 }
 
-// ================= REGISTER TYPES =================
-
-export type RegistrationType = "Vendor" | "SupplierStaff"
+export type RegistrationType = "Vendor" | "SupermarketStaff"
 
 export interface NewSupermarketPayload {
     name: string
@@ -71,26 +59,17 @@ export interface VendorRegisterPayload {
     registrationType: "Vendor"
 }
 
-export interface SupplierStaffRegisterPayload {
+export interface SupermarketStaffRegisterPayload {
     fullName: string
     email: string
     phone: string
     password: string
-    registrationType: "SupplierStaff"
+    registrationType: "SupermarketStaff"
     newSupermarket: NewSupermarketPayload
     position: string
 }
 
-export type RegisterPayload = VendorRegisterPayload | SupplierStaffRegisterPayload
-
-// ================= REGISTER / OTP =================
-
-export interface RegisterResponse {
-    success: boolean
-    message: string
-    data: null
-    errors: string[] | null
-}
+export type RegisterPayload = VendorRegisterPayload | SupermarketStaffRegisterPayload
 
 export interface VerifyOtpPayload {
     email: string

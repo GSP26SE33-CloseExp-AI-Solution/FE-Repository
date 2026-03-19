@@ -2,7 +2,7 @@ import React from "react"
 import { useAuthContext } from "@/contexts/AuthContext"
 import { Package, Sparkles, BadgeCheck } from "lucide-react"
 
-const SupplierFooter: React.FC = () => {
+const SupermarketStaffFooter: React.FC = () => {
     const { supermarketName } = useAuthContext()
 
     return (
@@ -54,4 +54,4 @@ const SupplierFooter: React.FC = () => {
     )
 }
 
-export default SupplierFooter
+export default SupermarketStaffFooter

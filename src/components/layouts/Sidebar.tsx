@@ -1,8 +1,8 @@
 import { useAuthContext } from "@/contexts/AuthContext"
 import AdminSidebar from "./sidebars/AdminSidebar"
-import SupplierSidebar from "./sidebars/SupplierSidebar"
-import PackageSidebar from "./sidebars/PackageSidebar"
-import MarketingSidebar from "./sidebars/MarketingSidebar"
+import SupermarketStaffSidebar from "./sidebars/SupermarketStaffSidebar"
+import PackageSidebar from "./sidebars/PackagingStaffSidebar"
+import MarketingSidebar from "./sidebars/MarketingStaffSidebar"
 
 const Sidebar = () => {
     const { roleName } = useAuthContext()
@@ -11,10 +11,10 @@ const Sidebar = () => {
         case "Admin":
             return <AdminSidebar />
 
-        case "SupplierStaff":
-            return <SupplierSidebar />
+        case "SupermarketStaff":
+            return <SupermarketStaffSidebar />
 
-        case "PackageStaff":
+        case "PackagingStaff":
             return <PackageSidebar />
 
         case "MarketingStaff":

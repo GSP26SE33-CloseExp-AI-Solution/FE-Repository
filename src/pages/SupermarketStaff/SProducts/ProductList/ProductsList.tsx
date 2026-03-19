@@ -21,7 +21,7 @@ const ProductsList = () => {
   const navigate = useNavigate()
 
   const handleAddProduct = () => {
-    navigate("/supplier/products/add")
+    navigate("/supermarketStaff/products/add")
   }
 
   const session = authStorage.get()

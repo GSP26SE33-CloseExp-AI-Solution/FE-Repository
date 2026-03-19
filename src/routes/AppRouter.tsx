@@ -15,14 +15,14 @@ import CartPage from "@/pages/Vendor/VendorOrders/CartPage"
 import CheckoutPage from "@/pages/Vendor/VendorPayments/CheckoutPage"
 import PaymentReturnPage from "@/pages/Vendor/VendorPayments"
 
-import SDashboard from "@/pages/Supplier/SDashboard"
-import ProductList from "@/pages/Supplier/SProducts/ProductList/ProductsList"
-import AddProduct from "@/pages/Supplier/SProducts/AddProduct/AddProduct"
-import ConfirmProduct from "@/pages/Supplier/SProducts/ConfirmProduct/ConfirmProduct"
-import PricingProduct from "@/pages/Supplier/SProducts/PricingProduct/PricingProduct"
-import PublishProduct from "@/pages/Supplier/SProducts/PublishProduct/PublishPage"
-import ProfilePage from "@/pages/Supplier/SProfile/ProfilePage"
-import ProductsLotsPage from "@/pages/Supplier/SProducts/ProductList/ProductsLotsPage"
+import SDashboard from "@/pages/SupermarketStaff/SDashboard"
+import ProductList from "@/pages/SupermarketStaff/SProducts/ProductList/ProductsList"
+import AddProduct from "@/pages/SupermarketStaff/SProducts/AddProduct/AddProduct"
+import ConfirmProduct from "@/pages/SupermarketStaff/SProducts/ConfirmProduct/ConfirmProduct"
+import PricingProduct from "@/pages/SupermarketStaff/SProducts/PricingProduct/PricingProduct"
+import PublishProduct from "@/pages/SupermarketStaff/SProducts/PublishProduct/PublishPage"
+import ProfilePage from "@/pages/SupermarketStaff/SProfile/ProfilePage"
+import ProductsLotsPage from "@/pages/SupermarketStaff/SProducts/ProductList/ProductsLotsPage"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 import AdminUsers from "@/pages/Admin/AdminUsers"
@@ -64,34 +64,34 @@ const AppRouter: React.FC = () => {
                         </Route>
                     </Route>
 
-                    {/* ===== SUPPLIER STAFF ===== */}
-                    <Route element={<RoleRoute allow={["SupplierStaff"]} />}>
+                    {/* ===== SUPERMARKET_STAFF STAFF ===== */}
+                    <Route element={<RoleRoute allow={["SupermarketStaff"]} />}>
                         <Route element={<MainLayout />}>
-                            <Route path="/supplier/dashboard" element={<SDashboard />} />
-                            <Route path="/supplier/products" element={<ProductList />} />
-                            <Route path="/supplier/products/add" element={<AddProduct />} />
-                            <Route path="/supplier/products/confirm" element={<ConfirmProduct />} />
+                            <Route path="/supermarketStaff/dashboard" element={<SDashboard />} />
+                            <Route path="/supermarketStaff/products" element={<ProductList />} />
+                            <Route path="/supermarketStaff/products/add" element={<AddProduct />} />
+                            <Route path="/supermarketStaff/products/confirm" element={<ConfirmProduct />} />
                             <Route
-                                path="/supplier/products/:productId/confirm"
+                                path="/supermarketStaff/products/:productId/confirm"
                                 element={<ConfirmProduct />}
                             />
                             <Route
-                                path="/supplier/products/:productId/pricing"
+                                path="/supermarketStaff/products/:productId/pricing"
                                 element={<PricingProduct />}
                             />
                             <Route
-                                path="/supplier/products/:productId/publish"
+                                path="/supermarketStaff/products/:productId/publish"
                                 element={<PublishProduct />}
                             />
-                            <Route path="/supplier/profile" element={<ProfilePage />} />
-                            <Route path="/supplier/setting" element={<ProductsLotsPage />} />
-                            {/* <Route path="/supplier/notification" element={<SupplierNotification />} /> */}
-                            {/* <Route path="/supplier/statistic" element={<SupplierStatistic />} /> */}
+                            <Route path="/supermarketStaff/profile" element={<ProfilePage />} />
+                            <Route path="/supermarketStaff/setting" element={<ProductsLotsPage />} />
+                            {/* <Route path="/supermarketStaff/notification" element={<SupermarketStaffNotification />} /> */}
+                            {/* <Route path="/supermarketStaff/statistic" element={<SupermarketStaffStatistic />} /> */}
                         </Route>
                     </Route>
 
                     {/* ===== PACKAGE STAFF ===== */}
-                    <Route element={<RoleRoute allow={["PackageStaff"]} />}>
+                    <Route element={<RoleRoute allow={["PackagingStaff"]} />}>
                         <Route element={<MainLayout />}>
                             {/* <Route path="/package/dashboard" element={<PackageDashboard />} /> */}
                             {/* <Route path="/package/orders" element={<PackageOrders />} /> */}

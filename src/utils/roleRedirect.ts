@@ -7,7 +7,7 @@ export const getRedirectByRole = (roleId?: number): string => {
         case 3:
             return "/marketing"
         case 4:
-            return "/supplier/dashboard"
+            return "/supermarketStaff/dashboard"
         case 5:
             return "/delivery"
         case 6:

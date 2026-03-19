@@ -71,7 +71,7 @@ const Register = () => {
     const [otpCountdown, setOtpCountdown] = useState(OTP_RESEND_SECONDS)
     const otpRefs = useRef<Array<HTMLInputElement | null>>([])
 
-    // SupplierStaff only
+    // SupermarketStaff only
     const [position, setPosition] = useState("")
     const [marketName, setMarketName] = useState("")
     const [marketAddress, setMarketAddress] = useState("")
@@ -80,7 +80,7 @@ const Register = () => {
     const [contactPhone, setContactPhone] = useState("")
     const [contactEmail, setContactEmail] = useState("")
 
-    const isSupplier = selectedRole === "SupplierStaff"
+    const isSupermarketStaff = selectedRole === "SupermarketStaff"
     const otp = otpDigits.join("")
 
     useEffect(() => {
@@ -124,31 +124,31 @@ const Register = () => {
                         ? "Số điện thoại Việt Nam không hợp lệ"
                         : "",
             password: password ? passwordError : "",
-            position: isSupplier && !position.trim() ? "Vui lòng nhập chức vụ" : "",
-            marketName: isSupplier && !marketName.trim() ? "Vui lòng nhập tên siêu thị" : "",
-            marketAddress: isSupplier && !marketAddress.trim() ? "Vui lòng nhập địa chỉ siêu thị" : "",
+            position: isSupermarketStaff && !position.trim() ? "Vui lòng nhập chức vụ" : "",
+            marketName: isSupermarketStaff && !marketName.trim() ? "Vui lòng nhập tên siêu thị" : "",
+            marketAddress: isSupermarketStaff && !marketAddress.trim() ? "Vui lòng nhập địa chỉ siêu thị" : "",
             latitude:
-                isSupplier && !latitude.trim()
+                isSupermarketStaff && !latitude.trim()
                     ? "Vui lòng nhập vĩ độ"
-                    : isSupplier && Number.isNaN(Number(latitude))
+                    : isSupermarketStaff && Number.isNaN(Number(latitude))
                         ? "Vĩ độ phải là số hợp lệ"
                         : "",
             longitude:
-                isSupplier && !longitude.trim()
+                isSupermarketStaff && !longitude.trim()
                     ? "Vui lòng nhập kinh độ"
-                    : isSupplier && Number.isNaN(Number(longitude))
+                    : isSupermarketStaff && Number.isNaN(Number(longitude))
                         ? "Kinh độ phải là số hợp lệ"
                         : "",
             contactPhone:
-                isSupplier && !contactPhone.trim()
+                isSupermarketStaff && !contactPhone.trim()
                     ? "Vui lòng nhập số điện thoại liên hệ"
-                    : isSupplier && !validateVietnamPhone(contactPhone.trim())
+                    : isSupermarketStaff && !validateVietnamPhone(contactPhone.trim())
                         ? "Số điện thoại liên hệ không hợp lệ"
                         : "",
             contactEmail:
-                isSupplier && !contactEmail.trim()
+                isSupermarketStaff && !contactEmail.trim()
                     ? "Vui lòng nhập email liên hệ"
-                    : isSupplier && !validateEmail(contactEmail.trim())
+                    : isSupermarketStaff && !validateEmail(contactEmail.trim())
                         ? "Email liên hệ không đúng định dạng"
                         : "",
         }
@@ -158,7 +158,7 @@ const Register = () => {
         phone,
         password,
         passwordError,
-        isSupplier,
+        isSupermarketStaff,
         position,
         marketName,
         marketAddress,
@@ -179,7 +179,7 @@ const Register = () => {
             validateStrongPassword(password)
 
         if (!basicOk) return false
-        if (!isSupplier) return true
+        if (!isSupermarketStaff) return true
 
         return Boolean(
             position.trim() &&
@@ -199,7 +199,7 @@ const Register = () => {
         email,
         phone,
         password,
-        isSupplier,
+        isSupermarketStaff,
         position,
         marketName,
         marketAddress,
@@ -214,7 +214,7 @@ const Register = () => {
     }
 
     const buildPayload = (): RegisterPayload => {
-        if (!isSupplier) {
+        if (!isSupermarketStaff) {
             return {
                 fullName: fullName.trim(),
                 email: email.trim(),
@@ -236,7 +236,7 @@ const Register = () => {
             email: email.trim(),
             phone: phone.trim(),
             password,
-            registrationType: "SupplierStaff",
+            registrationType: "SupermarketStaff",
             position: position.trim(),
             newSupermarket: {
                 name: marketName.trim(),
@@ -297,7 +297,7 @@ const Register = () => {
             })
 
             showSuccess(
-                isSupplier
+                isSupermarketStaff
                     ? "Xác minh OTP thành công. Tài khoản của bạn đã được gửi đăng ký và đang chờ quản trị viên phê duyệt."
                     : "Xác minh tài khoản thành công."
             )
@@ -409,7 +409,7 @@ const Register = () => {
                         {step === "form" && "Chọn loại tài khoản và điền thông tin đăng ký"}
                         {step === "otp" && "Nhập mã OTP đã được gửi về email của bạn"}
                         {step === "done" &&
-                            (isSupplier
+                            (isSupermarketStaff
                                 ? "Tài khoản của bạn đã được gửi đăng ký thành công. Vui lòng chờ quản trị viên phê duyệt để kích hoạt hoạt động."
                                 : "Tài khoản của bạn đã được xác minh thành công. Bạn có thể đăng nhập để tiếp tục.")}
                     </p>
@@ -426,11 +426,11 @@ const Register = () => {
                                 onClick={() => setSelectedRole("Vendor")}
                             />
                             <RoleCard
-                                active={selectedRole === "SupplierStaff"}
+                                active={selectedRole === "SupermarketStaff"}
                                 title="Đối tác"
-                                subtitle="SupplierStaff"
+                                subtitle="SupermarketStaff"
                                 icon={<Building2 size={18} />}
-                                onClick={() => setSelectedRole("SupplierStaff")}
+                                onClick={() => setSelectedRole("SupermarketStaff")}
                             />
                         </div>
 
@@ -482,7 +482,7 @@ const Register = () => {
                             </div>
                         </div>
 
-                        {isSupplier && (
+                        {isSupermarketStaff && (
                             <div className="space-y-5 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/90 to-white p-5">
                                 <div className="border-b border-emerald-100 pb-4">
                                     <h2 className="text-base font-semibold text-emerald-800">
@@ -684,13 +684,13 @@ const Register = () => {
                             </div>
 
                             <h2 className="mt-4 text-xl font-bold text-gray-800">
-                                {isSupplier
+                                {isSupermarketStaff
                                     ? "Đã gửi đăng ký thành công"
                                     : "Xác minh tài khoản thành công"}
                             </h2>
 
                             <p className="mt-2 text-sm text-gray-600">
-                                {isSupplier
+                                {isSupermarketStaff
                                     ? "Tài khoản của bạn đã được ghi nhận. Vui lòng chờ quản trị viên phê duyệt để bắt đầu sử dụng hệ thống."
                                     : "Email của bạn đã được xác minh. Bây giờ bạn có thể đăng nhập vào hệ thống."}
                             </p>

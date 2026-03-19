@@ -38,7 +38,7 @@ export const useAuth = () => {
         }
     }
 
-    const verifyOtp = async (payload: VerifyOtpPayload): Promise<ApiResponse<string>> => {
+    const verifyOtp = async (payload: VerifyOtpPayload): Promise<ApiResponse<boolean>> => {
         try {
             setLoading(true)
             return await verifyOtpApi(payload)
@@ -47,7 +47,7 @@ export const useAuth = () => {
         }
     }
 
-    const resendOtp = async (payload: ResendOtpPayload): Promise<ApiResponse<string>> => {
+    const resendOtp = async (payload: ResendOtpPayload): Promise<ApiResponse<unknown>> => {
         try {
             setLoading(true)
             return await resendOtpApi(payload)

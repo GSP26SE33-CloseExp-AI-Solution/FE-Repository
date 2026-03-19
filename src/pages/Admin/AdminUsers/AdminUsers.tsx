@@ -85,10 +85,10 @@ const AdminUsers = () => {
         loadUsers()
     }, [])
 
-    const supplierUsers = useMemo(() => {
+    const supermarketStaffUsers = useMemo(() => {
         return users.filter((user) => {
             const role = user.roleName?.toLowerCase()
-            return role === "supplier" || role === "supplierstaff"
+            return role === "supermarketStaff" || role === "SupermarketStaff"
         })
     }, [users])
 
@@ -119,10 +119,10 @@ const AdminUsers = () => {
                         <div>
                             <div className="flex items-center gap-2 text-slate-800">
                                 <Users className="h-6 w-6" />
-                                <h1 className="text-2xl font-bold">Quản lý tài khoản supplier</h1>
+                                <h1 className="text-2xl font-bold">Quản lý tài khoản supermarketStaff</h1>
                             </div>
                             <p className="mt-1 text-sm text-slate-500">
-                                Duyệt, từ chối hoặc theo dõi trạng thái các tài khoản supplier đăng ký mới.
+                                Duyệt, từ chối hoặc theo dõi trạng thái các tài khoản supermarketStaff đăng ký mới.
                             </p>
                         </div>
 
@@ -140,9 +140,9 @@ const AdminUsers = () => {
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                     <div className="rounded-2xl bg-white p-5 shadow-sm border border-slate-200">
-                        <p className="text-sm text-slate-500">Tổng supplier</p>
+                        <p className="text-sm text-slate-500">Tổng supermarketStaff</p>
                         <p className="mt-2 text-3xl font-bold text-slate-800">
-                            {supplierUsers.length}
+                            {supermarketStaffUsers.length}
                         </p>
                     </div>
 
@@ -150,7 +150,7 @@ const AdminUsers = () => {
                         <p className="text-sm text-slate-500">Chờ duyệt</p>
                         <p className="mt-2 text-3xl font-bold text-amber-600">
                             {
-                                supplierUsers.filter(
+                                supermarketStaffUsers.filter(
                                     (user) => user.status === USER_STATUS.PENDING_APPROVAL
                                 ).length
                             }
@@ -161,7 +161,7 @@ const AdminUsers = () => {
                         <p className="text-sm text-slate-500">Đang hoạt động</p>
                         <p className="mt-2 text-3xl font-bold text-emerald-600">
                             {
-                                supplierUsers.filter(
+                                supermarketStaffUsers.filter(
                                     (user) => user.status === USER_STATUS.ACTIVE
                                 ).length
                             }
@@ -172,7 +172,7 @@ const AdminUsers = () => {
                 <div className="overflow-hidden rounded-3xl bg-white shadow-sm border border-slate-200">
                     <div className="border-b border-slate-200 px-6 py-4">
                         <h2 className="text-lg font-semibold text-slate-800">
-                            Danh sách tài khoản supplier
+                            Danh sách tài khoản supermarketStaff
                         </h2>
                     </div>
 
@@ -180,9 +180,9 @@ const AdminUsers = () => {
                         <div className="px-6 py-10 text-center text-slate-500">
                             Đang tải dữ liệu...
                         </div>
-                    ) : supplierUsers.length === 0 ? (
+                    ) : supermarketStaffUsers.length === 0 ? (
                         <div className="px-6 py-10 text-center text-slate-500">
-                            Chưa có tài khoản supplier nào.
+                            Chưa có tài khoản supermarketStaff nào.
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -199,7 +199,7 @@ const AdminUsers = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {supplierUsers.map((user) => {
+                                    {supermarketStaffUsers.map((user) => {
                                         const isPending = user.status === USER_STATUS.PENDING_APPROVAL
                                         const isActive = user.status === USER_STATUS.ACTIVE
                                         const isActing = actionUserId === user.userId
