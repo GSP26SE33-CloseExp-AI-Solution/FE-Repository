@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🎨 Debug FE (Brave)",
+      "type": "chrome",
+      "request": "launch",
+      "runtimeExecutable": "C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/FE-CloseExp/src",
+      "runtimeArgs": ["--remote-debugging-port=9222"]
+    }
+  ]
+}

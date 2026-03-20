@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Clock, CreditCard, MapPin, ShoppingCart } from "lucide-react"
+import toast from "react-hot-toast"
+import { useAuthContext } from "@/contexts/AuthContext"
+import { createOrder, createPaymentLink } from "@/services/payment.service"
 
 /* ========= Helpers ========= */
 const cn = (...classes: Array<string | false | undefined | null>) =>
@@ -22,9 +25,15 @@ type CartItem = {
 
 /* ========= Pickup time slots ========= */
 type PickupSlotId = "SLOT_1" | "SLOT_2"
-const PICKUP_SLOTS: Array<{ id: PickupSlotId; title: string; desc: string }> = [
-  { id: "SLOT_1", title: "Khung 1", desc: "19:00 – 20:30" },
-  { id: "SLOT_2", title: "Khung 2", desc: "21:00 – 22:30" },
+
+const PICKUP_SLOTS: Array<{
+  id: PickupSlotId
+  timeSlotGuid: string
+  title: string
+  desc: string
+}> = [
+  { id: "SLOT_1", timeSlotGuid: "cccc0001-0001-0001-0001-000000000001", title: "Khung 1", desc: "19:00 – 20:30" },
+  { id: "SLOT_2", timeSlotGuid: "cccc0002-0002-0002-0002-000000000002", title: "Khung 2", desc: "21:00 – 22:30" },
 ]
 
 type CheckoutContext = {
@@ -62,6 +71,7 @@ const safeRead = <T,>(key: string, fallback: T): T => {
 
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate()
+  const { user } = useAuthContext()
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [ctx, setCtx] = useState<CheckoutContext>({})
@@ -110,21 +120,42 @@ const CheckoutPage: React.FC = () => {
     saveCtx({ ...ctx, pickupSlotId: slotId })
   }
 
-  // ✅ PAY -> redirect sang payment return (tạo order ở trang kia)
   const handlePayAndRedirect = async () => {
-    if (!canCheckout || !hasSlot) return
+    if (!canCheckout || !hasSlot || !user) return
     setPaying(true)
 
-    // mock gateway processing
-    await new Promise((r) => setTimeout(r, 900))
+    const slot = PICKUP_SLOTS.find((s) => s.id === ctx.pickupSlotId)
+    if (!slot) return
 
-    setPaying(false)
+    try {
+      const order = await createOrder({
+        userId: user.userId,
+        timeSlotId: slot.timeSlotGuid,
+        deliveryType: ctx.deliveryMethodId!,
+        totalAmount: subtotal,
+        discountAmount: 0,
+        finalAmount: total,
+        deliveryFee: serviceFee,
+        orderItems: cart.map((item) => ({
+          lotId: item.productId,
+          quantity: item.qty,
+          unitPrice: item.price,
+        })),
+      })
 
-    // ✅ redirect to payment return
-    navigate("/payment-return?status=success")
+      const { checkoutUrl } = await createPaymentLink({
+        orderId: order.orderId,
+        returnUrl: `${window.location.origin}/payment-return`,
+        cancelUrl: `${window.location.origin}/payment-return`,
+      })
 
-    // demo fail:
-    // navigate("/payment-return?status=failed")
+      window.location.href = checkoutUrl
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Không thể tạo thanh toán"
+      toast.error(message)
+      setPaying(false)
+    }
   }
 
   if (!canCheckout) {
@@ -279,7 +310,7 @@ const CheckoutPage: React.FC = () => {
                 <div className="font-semibold text-slate-900">Thẻ / Ví điện tử</div>
               </div>
               <div className={cn("mt-1 text-xs", muted)}>
-                Demo: bấm để mô phỏng gateway xử lý, sau đó redirect về trang return.
+                Thanh toán qua PayOS (chuyển khoản / ví điện tử).
               </div>
 
               <button
@@ -292,7 +323,7 @@ const CheckoutPage: React.FC = () => {
                   (paying || !hasSlot) && "opacity-60 cursor-not-allowed"
                 )}
               >
-                {!hasSlot ? "Chọn khung giờ trước" : paying ? "Đang chuyển sang cổng thanh toán..." : "Thanh toán & đặt đơn"}
+                {!hasSlot ? "Chọn khung giờ trước" : paying ? "Đang tạo đơn & chuyển sang PayOS..." : "Thanh toán qua PayOS"}
               </button>
 
               {!hasSlot ? (

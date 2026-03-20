@@ -13,10 +13,10 @@ import {
   LocateFixed,
   Pencil,
   Check,
-  Building2,
   PackageCheck,
   Truck,
 } from "lucide-react"
+import { productService, StockLotDetail } from "@/services/product.service"
 
 /* =========================================================
    ✅ CUSTOMER LOCATION + SUPERMARKET(5km) + DELIVERY GATE
@@ -68,6 +68,9 @@ const cacheSet = <T,>(key: string, data: T) => {
 
 const googleMapsUrl = (lat: number, lng: number) =>
   `https://www.google.com/maps?q=${lat},${lng}`
+
+const fmtVnd = (n: number) =>
+  n.toLocaleString("vi-VN", { style: "currency", currency: "VND" })
 
 /* ================= Constants ================= */
 
@@ -415,9 +418,9 @@ async function mockBE_FindSupermarketsWithin5Km(input: {
   return { success: true, message: "OK", data: { radiusKm: 5, items } }
 }
 
-/* ================= Mock products by supermarket ================= */
+/* ================= Product deal (mapped from BE StockLotDetailDto) ================= */
 
-type MockProduct = {
+type ProductDeal = {
   productId: string
   supermarketId: string
   name: string
@@ -431,72 +434,80 @@ type MockProduct = {
   imageVariant?: "milk" | "bread" | "beef" | "avocado"
 }
 
-const makeProductsForSupermarket = (sm: Supermarket): MockProduct[] => {
-  // seed theo id để mỗi siêu thị ra list khác nhau
-  const seed = sm.supermarketId.split("").reduce((a, c) => a + c.charCodeAt(0), 0)
-  const bump = (n: number) => ((seed % 7) + 1) * n
+const BE_SUPERMARKETS = [
+  { id: "11111111-1111-1111-1111-111111111111", name: "CoopMart Quận 1" },
+  { id: "22222222-2222-2222-2222-222222222222", name: "Big C Thảo Điền" },
+  { id: "33333333-3333-3333-3333-333333333333", name: "VinMart Landmark 81" },
+]
 
-  return [
-    {
-      productId: `${sm.supermarketId}_P_MILK`,
-      supermarketId: sm.supermarketId,
-      name: "Sữa tươi tiệt trùng 1L",
-      subtitle: `Tại ${sm.name}`,
-      originalPrice: 42000 + bump(200),
-      price: 19000 + bump(100),
-      discountLabel: "-55%",
-      timeLeft: "Còn 01:20:10",
-      bestBeforeTitle: "Sử dụng tốt nhất trước",
-      bestBeforeValue: "Ngày mai, 10:00",
-      imageVariant: "milk",
-    },
-    {
-      productId: `${sm.supermarketId}_P_BREAD`,
-      supermarketId: sm.supermarketId,
-      name: "Bánh mì sandwich 750g",
-      subtitle: `Tại ${sm.name}`,
-      originalPrice: 60000 + bump(150),
-      price: 21000 + bump(80),
-      discountLabel: "-65%",
-      timeLeft: "Còn 00:55:40",
-      bestBeforeTitle: "Sử dụng tốt nhất trước",
-      bestBeforeValue: "Tối nay, 20:00",
-      imageVariant: "bread",
-    },
-    {
-      productId: `${sm.supermarketId}_P_BEEF`,
-      supermarketId: sm.supermarketId,
-      name: "Thịt bò 450g",
-      subtitle: `Tại ${sm.name}`,
-      originalPrice: 120000 + bump(500),
-      price: 69000 + bump(250),
-      discountLabel: "-40%",
-      timeLeft: "Còn 03:10:05",
-      bestBeforeTitle: "Sử dụng tốt nhất trước",
-      bestBeforeValue: "Ngày mai, 18:00",
-      imageVariant: "beef",
-    },
-    {
-      productId: `${sm.supermarketId}_P_AVO`,
-      supermarketId: sm.supermarketId,
-      name: "Bơ sáp (3 quả)",
-      subtitle: `Tại ${sm.name}`,
-      originalPrice: 55000 + bump(120),
-      price: 32000 + bump(70),
-      discountLabel: "-42%",
-      timeLeft: "Còn 05:05:30",
-      bestBeforeTitle: "Sử dụng tốt nhất trước",
-      bestBeforeValue: "Hôm nay, 18:00",
-      imageVariant: "avocado",
-    },
-  ]
+const guessImageVariant = (
+  name: string,
+): ProductDeal["imageVariant"] | undefined => {
+  const n = name.toLowerCase()
+  if (n.includes("sữa") || n.includes("milk")) return "milk"
+  if (n.includes("bánh") || n.includes("bread")) return "bread"
+  if (n.includes("thịt") || n.includes("bò") || n.includes("gà")) return "beef"
+  if (n.includes("bơ") || n.includes("rau") || n.includes("quả")) return "avocado"
+  return undefined
 }
 
-const buildMockProductsFromContext = (ctx: CustomerContext): MockProduct[] => {
-  const sms = ctx.supermarketsWithin5Km ?? []
-  if (!sms.length) return []
-  // gom sản phẩm từ tất cả siêu thị trong 5km
-  return sms.flatMap(makeProductsForSupermarket)
+const formatExpiryDate = (iso: string): string => {
+  try {
+    const d = new Date(iso)
+    return d.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    })
+  } catch {
+    return iso
+  }
+}
+
+const computeTimeLeft = (iso: string): string => {
+  try {
+    const diff = new Date(iso).getTime() - Date.now()
+    if (diff <= 0) return "Đã hết hạn"
+    const days = Math.floor(diff / 86_400_000)
+    if (days > 0) return `Còn ${days} ngày`
+    const h = Math.floor(diff / 3_600_000)
+    const m = Math.floor((diff % 3_600_000) / 60_000)
+    return `Còn ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+  } catch {
+    return ""
+  }
+}
+
+const mapLotToDeal = (lot: StockLotDetail, smName: string): ProductDeal => {
+  const orig = lot.originalUnitPrice || 0
+  const final = lot.finalUnitPrice || lot.suggestedUnitPrice || orig
+  const pct = orig > 0 ? Math.round(((orig - final) / orig) * 100) : 0
+
+  return {
+    productId: lot.lotId,
+    supermarketId: lot.productId,
+    name: lot.productName || "Sản phẩm",
+    subtitle: `Tại ${smName} — ${lot.brand || lot.category || ""}`.trim(),
+    originalPrice: orig,
+    price: final,
+    discountLabel: pct > 0 ? `-${pct}%` : "",
+    timeLeft: computeTimeLeft(lot.expiryDate),
+    bestBeforeTitle: "Hạn sử dụng",
+    bestBeforeValue: formatExpiryDate(lot.expiryDate),
+    imageVariant: guessImageVariant(lot.productName),
+  }
+}
+
+async function fetchProductDealsFromBE(): Promise<ProductDeal[]> {
+  const results = await Promise.allSettled(
+    BE_SUPERMARKETS.map(async (sm) => {
+      const lots = await productService.getStockLotsBySupermarket(sm.id)
+      return lots.map((lot) => mapLotToDeal(lot, sm.name))
+    }),
+  )
+  return results
+    .filter((r): r is PromiseFulfilledResult<ProductDeal[]> => r.status === "fulfilled")
+    .flatMap((r) => r.value)
 }
 
 /* ================= Pickup points (mock TP.HCM) ================= */
@@ -1387,20 +1398,7 @@ type CategoryItem = {
   label: string
 }
 
-type FlashDeal = {
-  id: string
-  name: string
-  subtitle: string
-  originalPrice: string
-  price: string
-  discountLabel: string
-  timeLeft: string
-  bestBeforeTitle: string
-  bestBeforeValue: string
-  imageVariant?: "milk" | "bread" | "beef" | "avocado"
-}
-
-const imageBg = (variant?: FlashDeal["imageVariant"]) => {
+const imageBg = (variant?: ProductDeal["imageVariant"]) => {
   switch (variant) {
     case "milk":
       return "bg-[radial-gradient(circle_at_30%_20%,rgba(52,211,153,0.35),transparent_45%),linear-gradient(135deg,#ffffff,#ecfdf5)]"
@@ -1422,7 +1420,7 @@ const StatIcon = ({ kind }: { kind: StatCard["icon"] }) => {
   return <Tag size={26} className={common} />
 }
 
-const ProductCard: React.FC<{ deal: MockProduct; onAdd?: (p: MockProduct) => void }> = ({
+const ProductCard: React.FC<{ deal: ProductDeal; onAdd?: (p: ProductDeal) => void }> = ({
   deal,
   onAdd,
 }) => {
@@ -1458,8 +1456,8 @@ const ProductCard: React.FC<{ deal: MockProduct; onAdd?: (p: MockProduct) => voi
           </div>
 
           <div className="shrink-0 text-right">
-            <div className="text-[12px] text-red-500">{deal.originalPrice}</div>
-            <div className="text-[20px] font-bold text-gray-800">{deal.price}</div>
+            <div className="text-[12px] text-red-500 line-through">{fmtVnd(deal.originalPrice)}</div>
+            <div className="text-[20px] font-bold text-gray-800">{fmtVnd(deal.price)}</div>
           </div>
         </div>
 
@@ -1528,13 +1526,24 @@ const Home: React.FC = () => {
     []
   )
 
-  const deals: MockProduct[] = useMemo(() => {
-    const c = ctxStorage.get()
-    const items = buildMockProductsFromContext(c)
+  const [deals, setDeals] = useState<ProductDeal[]>([])
+  const [dealsLoading, setDealsLoading] = useState(false)
 
-    if (items.length === 0) return []
-
-    return items
+  useEffect(() => {
+    if (gateOpen) return
+    let cancelled = false
+    setDealsLoading(true)
+    fetchProductDealsFromBE()
+      .then((items) => {
+        if (!cancelled) setDeals(items)
+      })
+      .catch(() => {
+        if (!cancelled) setDeals([])
+      })
+      .finally(() => {
+        if (!cancelled) setDealsLoading(false)
+      })
+    return () => { cancelled = true }
   }, [gateOpen])
 
   const filteredDeals = useMemo(() => {
@@ -1546,7 +1555,7 @@ const Home: React.FC = () => {
     return deals
   }, [activeCategory, deals])
 
-  const handleAdd = (p: MockProduct) => {
+  const handleAdd = (p: ProductDeal) => {
     cartStorage.add({
       productId: p.productId,
       supermarketId: p.supermarketId,
@@ -1682,9 +1691,19 @@ const Home: React.FC = () => {
               </div>
 
               <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredDeals.map((d) => (
-                  <ProductCard key={d.productId} deal={d} onAdd={handleAdd} />
-                ))}
+                {dealsLoading ? (
+                  <div className="col-span-full py-12 text-center text-gray-400">
+                    Đang tải sản phẩm...
+                  </div>
+                ) : filteredDeals.length === 0 ? (
+                  <div className="col-span-full py-12 text-center text-gray-400">
+                    Không có sản phẩm nào.
+                  </div>
+                ) : (
+                  filteredDeals.map((d) => (
+                    <ProductCard key={d.productId} deal={d} onAdd={handleAdd} />
+                  ))
+                )}
               </div>
 
               <div className={cn(surfaceCard, "mt-8 p-8 text-center space-y-4")}>

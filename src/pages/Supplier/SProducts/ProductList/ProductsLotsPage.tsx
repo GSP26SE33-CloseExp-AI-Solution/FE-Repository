@@ -1,146 +1,143 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import {
   Search,
   ChevronLeft,
   ChevronRight,
   Loader2,
   Check,
-  MoreVertical
-} from "lucide-react"
-import axiosClient from "@/utils/axiosClient"
+  MoreVertical,
+} from "lucide-react";
+import axiosClient from "@/utils/axiosClient";
 
 // ================================
 // TYPES
 // ================================
 export interface ProductLot {
-  lotId: string
-  productId: string
-  productName: string
-  brand: string
-  category: string
-  barcode: string
-  expiryDate: string
-  quantity: number
+  lotId: string;
+  productId: string;
+  productName: string;
+  brand: string;
+  category: string;
+  barcode: string;
+  expiryDate: string;
+  quantity: number;
 
-  unitName: string
-  originalUnitPrice: number
-  finalUnitPrice: number
+  unitName: string;
+  originalUnitPrice: number;
+  finalUnitPrice: number;
 
-  expiryStatus: number
-  expiryStatusText: string
-  daysRemaining: number
+  expiryStatus: number;
+  expiryStatusText: string;
+  daysRemaining: number;
 
-  mainImageUrl?: string
+  mainImageUrl?: string;
 }
 
 interface LotsPagedResponse {
-  items: ProductLot[]
-  totalResult: number
-  page: number
-  pageSize: number
+  items: ProductLot[];
+  totalResult: number;
+  page: number;
+  pageSize: number;
 }
 
 interface ApiResponse<T> {
-  success: boolean
-  data: T
+  success: boolean;
+  data: T;
 }
 
 // ================================
 // API
 // ================================
 async function fetchMySupermarketLots(params: {
-  pageNumber: number
-  pageSize: number
-  searchTerm?: string
-  expiryStatus?: number
-  sortBy?: "expiry" | "price"
+  pageNumber: number;
+  pageSize: number;
+  searchTerm?: string;
+  expiryStatus?: number;
+  sortBy?: "expiry" | "price";
 }): Promise<LotsPagedResponse> {
   const res = await axiosClient.get<ApiResponse<LotsPagedResponse>>(
     "/Products/my-supermarket/lots",
-    { params }
-  )
+    { params },
+  );
 
-  const data = res.data?.data
+  const data = res.data?.data;
 
   return {
     items: Array.isArray(data?.items) ? data.items : [],
     totalResult: data?.totalResult ?? 0,
     page: data?.page ?? params.pageNumber,
-    pageSize: data?.pageSize ?? params.pageSize
-  }
+    pageSize: data?.pageSize ?? params.pageSize,
+  };
 }
 
 // ================================
 // PAGE
 // ================================
 const ProductsLotsPage = () => {
-  const [lots, setLots] = useState<ProductLot[]>([])
-  const [loading, setLoading] = useState(false)
+  const [lots, setLots] = useState<ProductLot[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const [keyword, setKeyword] = useState("")
-  const [expiryFilter, setExpiryFilter] = useState<number | undefined>()
-  const [sortBy, setSortBy] = useState<"expiry" | "price">("expiry")
+  const [keyword, setKeyword] = useState("");
+  const [expiryFilter, setExpiryFilter] = useState<number | undefined>();
+  const [sortBy, setSortBy] = useState<"expiry" | "price">("expiry");
 
-  const [selected, setSelected] = useState<string[]>([])
+  const [selected, setSelected] = useState<string[]>([]);
 
-  const [page, setPage] = useState(1)
-  const pageSize = 20
-  const [totalPages, setTotalPages] = useState(1)
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
-    loadLots()
+    loadLots();
     // eslint-disable-next-line
-  }, [page, keyword, expiryFilter, sortBy])
+  }, [page, keyword, expiryFilter, sortBy]);
 
   const loadLots = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       const data = await fetchMySupermarketLots({
         pageNumber: page,
         pageSize,
         searchTerm: keyword || undefined,
         expiryStatus: expiryFilter,
-        sortBy
-      })
+        sortBy,
+      });
 
-      setLots(data.items)
+      setLots(data.items);
       setTotalPages(
-        data.totalResult > 0
-          ? Math.ceil(data.totalResult / pageSize)
-          : 1
-      )
-      setSelected([])
+        data.totalResult > 0 ? Math.ceil(data.totalResult / pageSize) : 1,
+      );
+      setSelected([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const toggleSelect = (id: string) => {
     setSelected((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    )
-  }
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const selectAll = () => {
     if (selected.length === lots.length) {
-      setSelected([])
+      setSelected([]);
     } else {
-      setSelected(lots.map((l) => l.lotId))
+      setSelected(lots.map((l) => l.lotId));
     }
-  }
+  };
 
   const bulkPublish = () => {
-    console.log("Publish lots:", selected)
-  }
+    console.log("Publish lots:", selected);
+  };
 
   const bulkQuickApprove = () => {
-    console.log("Quick approve lots:", selected)
-  }
+    console.log("Quick approve lots:", selected);
+  };
 
   return (
     <div className="min-h-screen bg-white px-6 py-6">
       <div className="max-w-[1500px] mx-auto space-y-6">
-
         {/* HEADER */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-800">
@@ -156,8 +153,8 @@ const ProductsLotsPage = () => {
               <input
                 value={keyword}
                 onChange={(e) => {
-                  setPage(1)
-                  setKeyword(e.target.value)
+                  setPage(1);
+                  setKeyword(e.target.value);
                 }}
                 placeholder="Tìm tên / barcode"
                 className="w-full pl-9 pr-3 py-2 border rounded-lg bg-white"
@@ -204,9 +201,7 @@ const ProductsLotsPage = () => {
                 <th className="p-3">
                   <input
                     type="checkbox"
-                    checked={
-                      selected.length === lots.length && lots.length > 0
-                    }
+                    checked={selected.length === lots.length && lots.length > 0}
                     onChange={selectAll}
                   />
                 </th>
@@ -240,19 +235,14 @@ const ProductsLotsPage = () => {
                     lot.originalUnitPrice > 0
                       ? Math.round(
                           100 -
-                            (lot.finalUnitPrice /
-                              lot.originalUnitPrice) *
-                              100
+                            (lot.finalUnitPrice / lot.originalUnitPrice) * 100,
                         )
-                      : 0
+                      : 0;
 
-                  const danger = lot.daysRemaining <= 3
+                  const danger = lot.daysRemaining <= 3;
 
                   return (
-                    <tr
-                      key={lot.lotId}
-                      className="border-t hover:bg-gray-50"
-                    >
+                    <tr key={lot.lotId} className="border-t hover:bg-gray-50">
                       <td className="p-3 text-center">
                         <input
                           type="checkbox"
@@ -279,9 +269,7 @@ const ProductsLotsPage = () => {
                         </div>
                       </td>
 
-                      <td className="p-3 text-center">
-                        {lot.quantity}
-                      </td>
+                      <td className="p-3 text-center">{lot.quantity}</td>
 
                       <td className="p-3 text-center">
                         <span
@@ -314,10 +302,13 @@ const ProductsLotsPage = () => {
                       </td>
 
                       <td className="p-3 text-center">
-                        <MoreVertical size={16} className="mx-auto text-gray-400" />
+                        <MoreVertical
+                          size={16}
+                          className="mx-auto text-gray-400"
+                        />
                       </td>
                     </tr>
-                  )
+                  );
                 })
               )}
             </tbody>
@@ -348,7 +339,7 @@ const ProductsLotsPage = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default ProductsLotsPage
+export default ProductsLotsPage;
