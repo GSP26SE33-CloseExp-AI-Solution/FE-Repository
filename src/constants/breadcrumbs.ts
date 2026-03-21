@@ -1,5 +1,5 @@
 export const BREAD_CRUMB_MAP: Record<string, string[]> = {
-    "/admin": ["Admin", "Dashboard"],
+    "/admin": ["Admin", "Tổng quan"],
     "/admin/users": ["Admin", "Tài khoản"],
     "/admin/approvals": ["Admin", "Phê duyệt"],
     "/admin/internal-staff": ["Admin", "Nhân sự nội bộ"],
@@ -20,4 +20,13 @@ export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/supermarketStaff/profile": ["SupermarketStaff", "Hồ sơ"],
     "/supermarketStaff/notification": ["SupermarketStaff", "Thông báo"],
     "/supermarketStaff/setting": ["SupermarketStaff", "Cài đặt"],
+
+    "/package/dashboard": ["PackagingStaff", "Tổng quan"],
+    "/package/orders": ["PackagingStaff", "Đơn chờ đóng gói"],
+    "/package/collect": ["PackagingStaff", "Thu gom sản phẩm"],
+    "/package/packing": ["PackagingStaff", "Hoàn tất đóng gói"],
+    "/package/reports": ["PackagingStaff", "Báo cáo"],
+    "/package/notification": ["PackagingStaff", "Thông báo"],
+    "/package/profile": ["PackagingStaff", "Hồ sơ"],
+    "/package/setting": ["PackagingStaff", "Cài đặt"],
 }

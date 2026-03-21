@@ -27,6 +27,11 @@ import ProductsLotsPage from "@/pages/SupermarketStaff/SProducts/ProductList/Pro
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 import AdminUsers from "@/pages/Admin/AdminUsers"
 
+import PackageOrders from "@/pages/PackagingStaff/PackageOrders"
+import PackageCollect from "@/pages/PackagingStaff/PackageCollect"
+import PackagePacking from "@/pages/PackagingStaff/PackagePacking"
+import PackageReports from "@/pages/PackagingStaff/PackageReports"
+
 import NotFound from "@/pages/Common/NotFound"
 import Forbidden from "@/pages/Common/Forbidden"
 
@@ -64,7 +69,7 @@ const AppRouter: React.FC = () => {
                         </Route>
                     </Route>
 
-                    {/* ===== SUPERMARKET_STAFF STAFF ===== */}
+                    {/* ===== SUPERMARKET STAFF ===== */}
                     <Route element={<RoleRoute allow={["SupermarketStaff"]} />}>
                         <Route element={<MainLayout />}>
                             <Route path="/supermarketStaff/dashboard" element={<SDashboard />} />
@@ -93,10 +98,13 @@ const AppRouter: React.FC = () => {
                     {/* ===== PACKAGE STAFF ===== */}
                     <Route element={<RoleRoute allow={["PackagingStaff"]} />}>
                         <Route element={<MainLayout />}>
+                            <Route path="/package/orders" element={<PackageOrders />} />
+                            <Route path="/package/collect" element={<PackageCollect />} />
+                            <Route path="/package/packing" element={<PackagePacking />} />
+                            <Route path="/package/reports" element={<PackageReports />} />
+
+                            {/* Chưa có code thì cứ để comment */}
                             {/* <Route path="/package/dashboard" element={<PackageDashboard />} /> */}
-                            {/* <Route path="/package/orders" element={<PackageOrders />} /> */}
-                            {/* <Route path="/package/checking" element={<PackageChecking />} /> */}
-                            {/* <Route path="/package/handover" element={<PackageHandover />} /> */}
                             {/* <Route path="/package/notification" element={<PackageNotification />} /> */}
                             {/* <Route path="/package/profile" element={<PackageProfile />} /> */}
                             {/* <Route path="/package/setting" element={<PackageSetting />} /> */}

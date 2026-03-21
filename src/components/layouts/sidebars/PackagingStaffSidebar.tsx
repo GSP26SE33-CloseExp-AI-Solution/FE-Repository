@@ -1,9 +1,9 @@
 import { NavLink } from "react-router-dom"
 import {
     LayoutDashboard,
+    ClipboardList,
+    ScanSearch,
     PackageCheck,
-    ClipboardCheck,
-    Truck,
     Bell,
     User,
     Settings,
@@ -18,9 +18,9 @@ type MenuItem = {
 
 const packageMenuItems: MenuItem[] = [
     { label: "Tổng quan", path: "/package/dashboard", icon: LayoutDashboard, end: true },
-    { label: "Đơn đóng gói", path: "/package/orders", icon: PackageCheck },
-    { label: "Kiểm tra chất lượng", path: "/package/checking", icon: ClipboardCheck },
-    { label: "Bàn giao vận chuyển", path: "/package/handover", icon: Truck },
+    { label: "Đơn chờ đóng gói", path: "/package/orders", icon: ClipboardList },
+    { label: "Thu gom sản phẩm", path: "/package/collect", icon: ScanSearch, end: true },
+    { label: "Hoàn tất đóng gói", path: "/package/packing", icon: PackageCheck, end: true },
     { label: "Thông báo", path: "/package/notification", icon: Bell, end: true },
     { label: "Hồ sơ", path: "/package/profile", icon: User, end: true },
     { label: "Cài đặt", path: "/package/setting", icon: Settings, end: true },
@@ -43,9 +43,10 @@ const PackageSidebar = () => {
                             to={item.path}
                             end={item.end}
                             className={({ isActive }) =>
-                                `flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${isActive
-                                    ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow"
-                                    : "text-gray-600 hover:bg-white hover:shadow-sm"
+                                `flex items-center gap-3 px-3 h-10 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
+                                    isActive
+                                        ? "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow"
+                                        : "text-gray-600 hover:bg-white hover:shadow-sm"
                                 }`
                             }
                         >
