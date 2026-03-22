@@ -1,3 +1,41 @@
+export type ApiEnvelope<T> = {
+    success: boolean
+    message: string
+    data: T
+    errors?: string[] | null
+}
+
+/* =========================
+   Shared
+========================= */
+export type PaginationResult<T> = {
+    items: T[]
+    totalResult: number
+    page: number
+    pageSize: number
+}
+
+export type TimeSpanDto = {
+    ticks: number
+    days: number
+    hours: number
+    milliseconds: number
+    microseconds: number
+    nanoseconds: number
+    minutes: number
+    seconds: number
+    totalDays: number
+    totalHours: number
+    totalMilliseconds: number
+    totalMicroseconds: number
+    totalNanoseconds: number
+    totalMinutes: number
+    totalSeconds: number
+}
+
+/* =========================
+   Customer Context
+========================= */
 export type DeliveryMethodId = "DELIVERY" | "PICKUP"
 
 export type PickupSlotId = "SLOT_1" | "SLOT_2"
@@ -42,7 +80,17 @@ export type CartItem = {
     imageUrl?: string
 }
 
+/* =========================
+   Orders
+========================= */
 export type OrderItemPayload = {
+    lotId: string
+    quantity: number
+    unitPrice: number
+}
+
+export type UpdateOrderItemPayload = {
+    orderItemId?: string
     lotId: string
     quantity: number
     unitPrice: number
@@ -64,6 +112,23 @@ export type CreateOrderPayload = {
     deliveryFee: number
     cancelDeadline?: string
     orderItems: OrderItemPayload[]
+}
+
+export type UpdateOrderPayload = {
+    timeSlotId?: string
+    collectionId?: string | null
+    deliveryType?: string
+    totalAmount: number
+    status: string
+    addressId?: string | null
+    promotionId?: string | null
+    deliveryGroupId?: string | null
+    deliveryNote?: string
+    discountAmount: number
+    finalAmount: number
+    deliveryFee: number
+    cancelDeadline?: string
+    orderItems: UpdateOrderItemPayload[]
 }
 
 export type OrderItemResponse = {
@@ -104,9 +169,34 @@ export type OrderDetails = {
     orderItems?: OrderItemResponse[]
 }
 
-export type ApiEnvelope<T> = {
-    success: boolean
-    message: string
-    data: T
-    errors?: string[] | null
+/* =========================
+   Order Meta
+========================= */
+export type OrderTimeSlot = {
+    timeSlotId: string
+    startTime: TimeSpanDto
+    endTime: TimeSpanDto
+    displayTimeRange: string
+}
+
+export type OrderCollectionPoint = {
+    pickupPointId: string
+    name: string
+    address: string
+}
+
+/* =========================
+   Order Items
+========================= */
+export type OrderItemCreatePayload = {
+    orderId: string
+    lotId: string
+    quantity: number
+    unitPrice: number
+}
+
+export type OrderItemUpdatePayload = {
+    lotId: string
+    quantity: number
+    unitPrice: number
 }

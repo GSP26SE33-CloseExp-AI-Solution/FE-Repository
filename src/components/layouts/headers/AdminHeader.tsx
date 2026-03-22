@@ -98,7 +98,7 @@ const AdminHeader = () => {
                             <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
                                 <button
                                     type="button"
-                                    onClick={() => navigate("/admin")}
+                                    onClick={() => navigate("/admin/profile")}
                                     className="w-full px-4 py-2 text-left hover:bg-gray-100"
                                 >
                                     Hồ sơ

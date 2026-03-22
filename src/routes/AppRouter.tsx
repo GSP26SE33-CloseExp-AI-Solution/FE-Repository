@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 
 import MainLayout from "@/components/layouts/MainLayout"
 import PublicLayout from "@/components/layouts/PublicLayout"
@@ -26,6 +26,16 @@ import ProductsLotsPage from "@/pages/SupermarketStaff/SProducts/ProductList/Pro
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 import AdminUsers from "@/pages/Admin/AdminUsers"
+import AdminTransactions from "@/pages/Admin/AdminTransactions"
+import AdminReports from "@/pages/Admin/AdminReports"
+import AdminFeedbacks from "@/pages/Admin/AdminFeedbacks"
+import AdminSettings from "@/pages/Admin/AdminSettings"
+import AdminApprovals from "@/pages/Admin/AdminApprovals"
+import AdminInternalStaff from "@/pages/Admin/AdminInternalStaff"
+import AdminRoles from "@/pages/Admin/AdminRoles"
+import AdminDelivery from "@/pages/Admin/AdminDelivery"
+import AdminOperations from "@/pages/Admin/AdminOperations"
+import AdminModeration from "@/pages/Admin/AdminModeration"
 
 import PackageOrders from "@/pages/PackagingStaff/PackageOrders"
 import PackageCollect from "@/pages/PackagingStaff/PackageCollect"
@@ -55,17 +65,24 @@ const AppRouter: React.FC = () => {
                     <Route element={<RoleRoute allow={["Admin"]} />}>
                         <Route element={<MainLayout />}>
                             <Route path="/admin" element={<AdminDashboard />} />
+                            <Route
+                                path="/admin/dashboard"
+                                element={<Navigate to="/admin" replace />}
+                            />
                             <Route path="/admin/users" element={<AdminUsers />} />
-                            {/* <Route path="/admin/approvals" element={<AdminApprovals />} /> */}
-                            {/* <Route path="/admin/internal-staff" element={<AdminInternalStaff />} /> */}
-                            {/* <Route path="/admin/roles" element={<AdminRoles />} /> */}
-                            {/* <Route path="/admin/transactions" element={<AdminTransactions />} /> */}
-                            {/* <Route path="/admin/delivery" element={<AdminDelivery />} /> */}
-                            {/* <Route path="/admin/operations" element={<AdminOperations />} /> */}
-                            {/* <Route path="/admin/moderation" element={<AdminModeration />} /> */}
-                            {/* <Route path="/admin/feedbacks" element={<AdminFeedbacks />} /> */}
-                            {/* <Route path="/admin/reports" element={<AdminReports />} /> */}
-                            {/* <Route path="/admin/settings" element={<AdminSettings />} /> */}
+                            <Route path="/admin/approvals" element={<AdminApprovals />} />
+                            <Route
+                                path="/admin/internal-staff"
+                                element={<AdminInternalStaff />}
+                            />
+                            <Route path="/admin/roles" element={<AdminRoles />} />
+                            <Route path="/admin/transactions" element={<AdminTransactions />} />
+                            <Route path="/admin/delivery" element={<AdminDelivery />} />
+                            <Route path="/admin/operations" element={<AdminOperations />} />
+                            <Route path="/admin/moderation" element={<AdminModeration />} />
+                            <Route path="/admin/feedbacks" element={<AdminFeedbacks />} />
+                            <Route path="/admin/reports" element={<AdminReports />} />
+                            <Route path="/admin/settings" element={<AdminSettings />} />
                         </Route>
                     </Route>
 
@@ -90,8 +107,6 @@ const AppRouter: React.FC = () => {
                             />
                             <Route path="/supermarketStaff/profile" element={<ProfilePage />} />
                             <Route path="/supermarketStaff/setting" element={<ProductsLotsPage />} />
-                            {/* <Route path="/supermarketStaff/notification" element={<SupermarketStaffNotification />} /> */}
-                            {/* <Route path="/supermarketStaff/statistic" element={<SupermarketStaffStatistic />} /> */}
                         </Route>
                     </Route>
 
@@ -102,26 +117,13 @@ const AppRouter: React.FC = () => {
                             <Route path="/package/collect" element={<PackageCollect />} />
                             <Route path="/package/packing" element={<PackagePacking />} />
                             <Route path="/package/reports" element={<PackageReports />} />
-
-                            {/* Chưa có code thì cứ để comment */}
-                            {/* <Route path="/package/dashboard" element={<PackageDashboard />} /> */}
-                            {/* <Route path="/package/notification" element={<PackageNotification />} /> */}
-                            {/* <Route path="/package/profile" element={<PackageProfile />} /> */}
-                            {/* <Route path="/package/setting" element={<PackageSetting />} /> */}
                         </Route>
                     </Route>
 
                     {/* ===== MARKETING STAFF ===== */}
                     <Route element={<RoleRoute allow={["MarketingStaff"]} />}>
                         <Route element={<MainLayout />}>
-                            {/* <Route path="/marketing/dashboard" element={<MarketingDashboard />} /> */}
-                            {/* <Route path="/marketing/campaigns" element={<MarketingCampaigns />} /> */}
-                            {/* <Route path="/marketing/promotions" element={<MarketingPromotions />} /> */}
-                            {/* <Route path="/marketing/statistic" element={<MarketingStatistic />} /> */}
-                            {/* <Route path="/marketing/feedbacks" element={<MarketingFeedbacks />} /> */}
-                            {/* <Route path="/marketing/notification" element={<MarketingNotification />} /> */}
-                            {/* <Route path="/marketing/profile" element={<MarketingProfile />} /> */}
-                            {/* <Route path="/marketing/setting" element={<MarketingSetting />} /> */}
+                            {/* thêm sau */}
                         </Route>
                     </Route>
 
