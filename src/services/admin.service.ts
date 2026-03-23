@@ -29,6 +29,7 @@ import type {
     ReportDeliveryFailurePayload,
     RevenueTrendItem,
     SlaAlertItem,
+    SlaAlertQuery,
     SystemParameter,
     TimeSpanDto,
     UnitItem,
@@ -89,74 +90,79 @@ export const adminService = {
     /* ========================= Dashboard ========================= */
 
     getDashboardOverview() {
-        return get<AdminDashboardOverview>("/api/admin/dashboard/overview")
+        return get<AdminDashboardOverview>("/admin/dashboard/overview")
     },
 
-    getRevenueTrend(params?: { fromDate?: string; toDate?: string; groupBy?: string }) {
+    getRevenueTrend(params?: {
+        days?: number
+        fromDate?: string
+        toDate?: string
+        groupBy?: string
+    }) {
         return get<RevenueTrendItem[]>(
-            `/api/admin/dashboard/revenue-trend${buildQueryString(params)}`
+            `/admin/dashboard/revenue-trend${buildQueryString(params)}`
         )
     },
 
-    getSlaAlerts(params?: { page?: number; pageSize?: number }) {
-        return get<PaginationResult<SlaAlertItem>>(
-            `/api/admin/dashboard/sla-alerts${buildQueryString(params)}`
+    getSlaAlerts(params?: SlaAlertQuery) {
+        return get<SlaAlertItem[]>(
+            `/admin/dashboard/sla-alerts${buildQueryString(params)}`
         )
     },
 
     /* ========================= System Config ========================= */
 
     getTimeSlots() {
-        return get<AdminTimeSlot[]>("/api/admin/system-config/time-slots")
+        return get<AdminTimeSlot[]>("/admin/system-config/time-slots")
     },
 
     createTimeSlot(payload: UpsertTimeSlotPayload) {
         return post<AdminTimeSlot, UpsertTimeSlotPayload>(
-            "/api/admin/system-config/time-slots",
+            "/admin/system-config/time-slots",
             payload
         )
     },
 
     updateTimeSlot(timeSlotId: string, payload: UpsertTimeSlotPayload) {
         return put<AdminTimeSlot, UpsertTimeSlotPayload>(
-            `/api/admin/system-config/time-slots/${timeSlotId}`,
+            `/admin/system-config/time-slots/${timeSlotId}`,
             payload
         )
     },
 
     deleteTimeSlot(timeSlotId: string) {
-        return remove<boolean>(`/api/admin/system-config/time-slots/${timeSlotId}`)
+        return remove<boolean>(`/admin/system-config/time-slots/${timeSlotId}`)
     },
 
     getCollectionPoints() {
-        return get<CollectionPoint[]>("/api/admin/system-config/collection-points")
+        return get<CollectionPoint[]>("/admin/system-config/collection-points")
     },
 
     createCollectionPoint(payload: UpsertCollectionPointPayload) {
         return post<CollectionPoint, UpsertCollectionPointPayload>(
-            "/api/admin/system-config/collection-points",
+            "/admin/system-config/collection-points",
             payload
         )
     },
 
     updateCollectionPoint(collectionId: string, payload: UpsertCollectionPointPayload) {
         return put<CollectionPoint, UpsertCollectionPointPayload>(
-            `/api/admin/system-config/collection-points/${collectionId}`,
+            `/admin/system-config/collection-points/${collectionId}`,
             payload
         )
     },
 
     deleteCollectionPoint(collectionId: string) {
-        return remove<boolean>(`/api/admin/system-config/collection-points/${collectionId}`)
+        return remove<boolean>(`/admin/system-config/collection-points/${collectionId}`)
     },
 
     getSystemParameters() {
-        return get<SystemParameter[]>("/api/admin/system-config/parameters")
+        return get<SystemParameter[]>("/admin/system-config/parameters")
     },
 
     updateSystemParameter(configKey: string, payload: UpdateSystemParameterPayload) {
         return put<SystemParameter, UpdateSystemParameterPayload>(
-            `/api/admin/system-config/parameters/${configKey}`,
+            `/admin/system-config/parameters/${configKey}`,
             payload
         )
     },
@@ -164,55 +170,55 @@ export const adminService = {
     /* ========================= Catalog ========================= */
 
     getUnits() {
-        return get<UnitItem[]>("/api/admin/catalog/units")
+        return get<UnitItem[]>("/admin/catalog/units")
     },
 
     createUnit(payload: UpsertUnitPayload) {
-        return post<UnitItem, UpsertUnitPayload>("/api/admin/catalog/units", payload)
+        return post<UnitItem, UpsertUnitPayload>("/admin/catalog/units", payload)
     },
 
     updateUnit(unitId: string, payload: UpsertUnitPayload) {
-        return put<UnitItem, UpsertUnitPayload>(`/api/admin/catalog/units/${unitId}`, payload)
+        return put<UnitItem, UpsertUnitPayload>(`/admin/catalog/units/${unitId}`, payload)
     },
 
     deleteUnit(unitId: string) {
-        return remove<boolean>(`/api/admin/catalog/units/${unitId}`)
+        return remove<boolean>(`/admin/catalog/units/${unitId}`)
     },
 
     getPromotions(params?: { status?: string }) {
-        return get<PromotionItem[]>(`/api/admin/catalog/promotions${buildQueryString(params)}`)
+        return get<PromotionItem[]>(`/admin/catalog/promotions${buildQueryString(params)}`)
     },
 
     createPromotion(payload: UpsertPromotionPayload) {
         return post<PromotionItem, UpsertPromotionPayload>(
-            "/api/admin/catalog/promotions",
+            "/admin/catalog/promotions",
             payload
         )
     },
 
     updatePromotion(promotionId: string, payload: UpsertPromotionPayload) {
         return put<PromotionItem, UpsertPromotionPayload>(
-            `/api/admin/catalog/promotions/${promotionId}`,
+            `/admin/catalog/promotions/${promotionId}`,
             payload
         )
     },
 
     updatePromotionStatus(promotionId: string, status: string) {
         return patch<PromotionItem, { status: string }>(
-            `/api/admin/catalog/promotions/${promotionId}/status`,
+            `/admin/catalog/promotions/${promotionId}/status`,
             { status }
         )
     },
 
     deletePromotion(promotionId: string) {
-        return remove<boolean>(`/api/admin/catalog/promotions/${promotionId}`)
+        return remove<boolean>(`/admin/catalog/promotions/${promotionId}`)
     },
 
     /* ========================= Monitoring ========================= */
 
     getAiPricingHistory(params?: { page?: number; pageSize?: number }) {
         return get<PaginationResult<AiPricingHistoryItem>>(
-            `/api/admin/monitoring/ai-pricing-history${buildQueryString(params)}`
+            `/admin/monitoring/ai-pricing-history${buildQueryString(params)}`
         )
     },
 
@@ -225,27 +231,27 @@ export const adminService = {
         roleId?: number
         status?: number
     }) {
-        return get<PaginationResult<AdminUser>>(`/api/Users${buildQueryString(params)}`)
+        return get<PaginationResult<AdminUser>>(`/Users${buildQueryString(params)}`)
     },
 
     getUserById(userId: string) {
-        return get<AdminUser>(`/api/Users/${userId}`)
+        return get<AdminUser>(`/Users/${userId}`)
     },
 
     createUser(payload: CreateUserPayload) {
-        return post<AdminUser, CreateUserPayload>("/api/Users", payload)
+        return post<AdminUser, CreateUserPayload>("/Users", payload)
     },
 
     updateUser(userId: string, payload: UpdateUserPayload) {
-        return put<AdminUser, UpdateUserPayload>(`/api/Users/${userId}`, payload)
+        return put<AdminUser, UpdateUserPayload>(`/Users/${userId}`, payload)
     },
 
     deleteUser(userId: string) {
-        return remove<boolean>(`/api/Users/${userId}`)
+        return remove<boolean>(`/Users/${userId}`)
     },
 
     patchUserStatus(userId: string, payload: PatchUserStatusPayload) {
-        return patch<AdminUser, PatchUserStatusPayload>(`/api/Users/${userId}`, payload)
+        return patch<AdminUser, PatchUserStatusPayload>(`/Users/${userId}`, payload)
     },
 
     async getApprovalRows(params?: {
@@ -337,52 +343,52 @@ export const adminService = {
         status?: string
         keyword?: string
     }) {
-        return get<PaginationResult<AdminOrder>>(`/api/Orders${buildQueryString(params)}`)
+        return get<PaginationResult<AdminOrder>>(`/Orders${buildQueryString(params)}`)
     },
 
     getOrderById(orderId: string) {
-        return get<AdminOrder>(`/api/Orders/${orderId}`)
+        return get<AdminOrder>(`/Orders/${orderId}`)
     },
 
     /* ========================= Feedbacks ========================= */
 
     getFeedbacks(params?: { pageNumber?: number; pageSize?: number }) {
-        return get<PaginationResult<FeedbackItem>>(`/api/Feedbacks${buildQueryString(params)}`)
+        return get<PaginationResult<FeedbackItem>>(`/Feedbacks${buildQueryString(params)}`)
     },
 
     getFeedbackById(feedbackId: string) {
-        return get<FeedbackItem>(`/api/Feedbacks/${feedbackId}`)
+        return get<FeedbackItem>(`/Feedbacks/${feedbackId}`)
     },
 
     deleteFeedback(feedbackId: string) {
-        return remove<boolean>(`/api/Feedbacks/${feedbackId}`)
+        return remove<boolean>(`/Feedbacks/${feedbackId}`)
     },
 
     /* ========================= Supermarkets ========================= */
 
     getSupermarkets(params?: { pageNumber?: number; pageSize?: number; keyword?: string }) {
         return get<PaginationResult<AdminSupermarketItem>>(
-            `/api/Supermarkets${buildQueryString(params)}`
+            `/Supermarkets${buildQueryString(params)}`
         )
     },
 
     getSupermarketById(supermarketId: string) {
-        return get<AdminSupermarketItem>(`/api/Supermarkets/${supermarketId}`)
+        return get<AdminSupermarketItem>(`/Supermarkets/${supermarketId}`)
     },
 
     createSupermarket(payload: CreateSupermarketPayload) {
-        return post<AdminSupermarketItem, CreateSupermarketPayload>("/api/Supermarkets", payload)
+        return post<AdminSupermarketItem, CreateSupermarketPayload>("/Supermarkets", payload)
     },
 
     updateSupermarket(supermarketId: string, payload: UpdateSupermarketPayload) {
         return put<AdminSupermarketItem, UpdateSupermarketPayload>(
-            `/api/Supermarkets/${supermarketId}`,
+            `/Supermarkets/${supermarketId}`,
             payload
         )
     },
 
     deleteSupermarket(supermarketId: string) {
-        return remove<boolean>(`/api/Supermarkets/${supermarketId}`)
+        return remove<boolean>(`/Supermarkets/${supermarketId}`)
     },
 
     /* ========================= Delivery Groups ========================= */
@@ -395,38 +401,38 @@ export const adminService = {
         deliveryDate?: string
     }) {
         return get<PaginationResult<DeliveryGroupListItem>>(
-            `/api/admin/delivery/groups${buildQueryString(params)}`
+            `/admin/delivery/groups${buildQueryString(params)}`
         )
     },
 
     getDeliveryGroupById(groupId: string) {
-        return get<DeliveryGroupDetail>(`/api/admin/delivery/groups/${groupId}`)
+        return get<DeliveryGroupDetail>(`/admin/delivery/groups/${groupId}`)
     },
 
     assignDeliveryGroup(groupId: string, payload: AssignDeliveryPayload) {
         return post<DeliveryGroupDetail, AssignDeliveryPayload>(
-            `/api/admin/delivery/groups/${groupId}/assign`,
+            `/admin/delivery/groups/${groupId}/assign`,
             payload
         )
     },
 
     startDeliveryGroup(groupId: string, payload?: DeliveryActionPayload) {
         return post<DeliveryGroupDetail, DeliveryActionPayload>(
-            `/api/admin/delivery/groups/${groupId}/start`,
+            `/admin/delivery/groups/${groupId}/start`,
             payload
         )
     },
 
     completeDeliveryGroup(groupId: string, payload?: DeliveryActionPayload) {
         return post<DeliveryGroupDetail, DeliveryActionPayload>(
-            `/api/admin/delivery/groups/${groupId}/complete`,
+            `/admin/delivery/groups/${groupId}/complete`,
             payload
         )
     },
 
     cancelDeliveryGroup(groupId: string, payload?: DeliveryActionPayload) {
         return post<DeliveryGroupDetail, DeliveryActionPayload>(
-            `/api/admin/delivery/groups/${groupId}/cancel`,
+            `/admin/delivery/groups/${groupId}/cancel`,
             payload
         )
     },
@@ -434,26 +440,26 @@ export const adminService = {
     /* ========================= Delivery Orders ========================= */
 
     getDeliveryOrderById(orderId: string) {
-        return get<DeliveryOrderDetail>(`/api/admin/delivery/orders/${orderId}`)
+        return get<DeliveryOrderDetail>(`/admin/delivery/orders/${orderId}`)
     },
 
     confirmDelivered(orderId: string, payload?: ConfirmDeliveryPayload) {
         return post<DeliveryOrderDetail, ConfirmDeliveryPayload>(
-            `/api/admin/delivery/orders/${orderId}/confirm-delivered`,
+            `/admin/delivery/orders/${orderId}/confirm-delivered`,
             payload
         )
     },
 
     reportDeliveryFailure(orderId: string, payload: ReportDeliveryFailurePayload) {
         return post<DeliveryOrderDetail, ReportDeliveryFailurePayload>(
-            `/api/admin/delivery/orders/${orderId}/report-failure`,
+            `/admin/delivery/orders/${orderId}/report-failure`,
             payload
         )
     },
 
     confirmCustomerReceived(orderId: string, payload?: CustomerConfirmationPayload) {
         return post<DeliveryOrderDetail, CustomerConfirmationPayload>(
-            `/api/admin/delivery/orders/${orderId}/customer-confirmation`,
+            `/admin/delivery/orders/${orderId}/customer-confirmation`,
             payload
         )
     },
@@ -465,12 +471,12 @@ export const adminService = {
         keyword?: string
     }) {
         return get<PaginationResult<DeliveryHistoryItem>>(
-            `/api/admin/delivery/history${buildQueryString(params)}`
+            `/admin/delivery/history${buildQueryString(params)}`
         )
     },
 
     getDeliveryStats(params?: { fromDate?: string; toDate?: string }) {
-        return get<DeliveryStats[]>(`/api/admin/delivery/stats${buildQueryString(params)}`)
+        return get<DeliveryStats[]>(`/admin/delivery/stats${buildQueryString(params)}`)
     },
 
     /* ========================= Packaging / Operations ========================= */
@@ -481,24 +487,24 @@ export const adminService = {
         keyword?: string
     }) {
         return get<PaginationResult<PackagingPendingOrderItem>>(
-            `/api/admin/operations/packaging/pending-orders${buildQueryString(params)}`
+            `/admin/operations/packaging/pending-orders${buildQueryString(params)}`
         )
     },
 
     getPackagingOrderDetail(orderId: string) {
-        return get<PackagingOrderDetail>(`/api/admin/operations/packaging/orders/${orderId}`)
+        return get<PackagingOrderDetail>(`/admin/operations/packaging/orders/${orderId}`)
     },
 
     markPackagingReady(orderId: string, payload?: PackagingActionPayload) {
         return post<PackagingOrderDetail, PackagingActionPayload>(
-            `/api/admin/operations/packaging/orders/${orderId}/ready`,
+            `/admin/operations/packaging/orders/${orderId}/ready`,
             payload
         )
     },
 
     markPackagingCollected(orderId: string, payload?: PackagingActionPayload) {
         return post<PackagingOrderDetail, PackagingActionPayload>(
-            `/api/admin/operations/packaging/orders/${orderId}/collected`,
+            `/admin/operations/packaging/orders/${orderId}/collected`,
             payload
         )
     },

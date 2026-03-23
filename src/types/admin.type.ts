@@ -32,6 +32,11 @@ export type TimeSpanDto = {
 
 /* ========================= Dashboard ========================= */
 
+export type SlaAlertQuery = {
+    thresholdMinutes?: number
+    top?: number
+}
+
 export type AdminDashboardOverview = {
     totalRevenue: number
     totalOrders: number
