@@ -12,6 +12,8 @@ import {
     MessageSquare,
     BarChart3,
     Settings,
+    Store,
+    UserCircle,
 } from "lucide-react"
 
 type MenuItem = {
@@ -23,16 +25,22 @@ type MenuItem = {
 
 const adminMenuItems: MenuItem[] = [
     { label: "Tổng quan", path: "/admin", icon: LayoutDashboard, end: true },
-    { label: "Tài khoản", path: "/admin/users", icon: Users },
-    { label: "Phê duyệt", path: "/admin/approvals", icon: BadgeCheck },
-    { label: "Nhân sự nội bộ", path: "/admin/internal-staff", icon: Briefcase },
-    { label: "Phân quyền", path: "/admin/roles", icon: ShieldCheck },
+    { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
+
     { label: "Giao dịch", path: "/admin/transactions", icon: CreditCard },
     { label: "Điều phối giao hàng", path: "/admin/delivery", icon: Truck },
     { label: "Đóng gói và giao hàng", path: "/admin/operations", icon: PackageCheck },
     { label: "Kiểm duyệt sản phẩm", path: "/admin/moderation", icon: ClipboardCheck },
     { label: "Phản hồi", path: "/admin/feedbacks", icon: MessageSquare },
-    { label: "Báo cáo", path: "/admin/reports", icon: BarChart3 },
+
+    { label: "Siêu thị", path: "/admin/supermarkets", icon: Store },
+
+    { label: "Tài khoản", path: "/admin/users", icon: Users },
+    { label: "Phê duyệt", path: "/admin/approvals", icon: BadgeCheck },
+    { label: "Nhân sự nội bộ", path: "/admin/internal-staff", icon: Briefcase },
+    { label: "Phân quyền", path: "/admin/roles", icon: ShieldCheck },
+
+    { label: "Hồ sơ", path: "/admin/profile", icon: UserCircle },
     { label: "Cấu hình hệ thống", path: "/admin/settings", icon: Settings },
 ]
 
