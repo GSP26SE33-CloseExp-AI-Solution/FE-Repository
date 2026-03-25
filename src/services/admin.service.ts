@@ -4,7 +4,9 @@ import type {
     AdminDashboardOverview,
     AdminOrder,
     AdminSupermarketItem,
+    AdminTimeSlot,
     AdminUser,
+    AiPricingHistoryItem,
     ApiResponse,
     AssignDeliveryPayload,
     CollectionPoint,
@@ -28,11 +30,13 @@ import type {
     PromotionItem,
     ReportDeliveryFailurePayload,
     RevenueTrendItem,
+    RevenueTrendQuery,
     SlaAlertItem,
     SlaAlertQuery,
     SystemParameter,
     TimeSpanDto,
     UnitItem,
+    UpdateCurrentUserProfilePayload,
     UpdateSupermarketPayload,
     UpdateSystemParameterPayload,
     UpdateUserPayload,
@@ -40,8 +44,7 @@ import type {
     UpsertPromotionPayload,
     UpsertTimeSlotPayload,
     UpsertUnitPayload,
-    AdminTimeSlot,
-    AiPricingHistoryItem,
+    DashboardOverviewQuery,
 } from "@/types/admin.type"
 
 type Query = Record<string, string | number | boolean | undefined | null>
@@ -89,16 +92,13 @@ const remove = async <T>(url: string) => {
 export const adminService = {
     /* ========================= Dashboard ========================= */
 
-    getDashboardOverview() {
-        return get<AdminDashboardOverview>("/admin/dashboard/overview")
+    getDashboardOverview(params?: DashboardOverviewQuery) {
+        return get<AdminDashboardOverview>(
+            `/admin/dashboard/overview${buildQueryString(params)}`
+        )
     },
 
-    getRevenueTrend(params?: {
-        days?: number
-        fromDate?: string
-        toDate?: string
-        groupBy?: string
-    }) {
+    getRevenueTrend(params?: RevenueTrendQuery) {
         return get<RevenueTrendItem[]>(
             `/admin/dashboard/revenue-trend${buildQueryString(params)}`
         )
@@ -185,8 +185,8 @@ export const adminService = {
         return remove<boolean>(`/admin/catalog/units/${unitId}`)
     },
 
-    getPromotions(params?: { status?: string }) {
-        return get<PromotionItem[]>(`/admin/catalog/promotions${buildQueryString(params)}`)
+    getPromotions() {
+        return get<PromotionItem[]>("/admin/catalog/promotions")
     },
 
     createPromotion(payload: UpsertPromotionPayload) {
@@ -216,7 +216,7 @@ export const adminService = {
 
     /* ========================= Monitoring ========================= */
 
-    getAiPricingHistory(params?: { page?: number; pageSize?: number }) {
+    getAiPricingHistory(params?: { pageNumber?: number; pageSize?: number }) {
         return get<PaginationResult<AiPricingHistoryItem>>(
             `/admin/monitoring/ai-pricing-history${buildQueryString(params)}`
         )
@@ -238,6 +238,17 @@ export const adminService = {
         return get<AdminUser>(`/Users/${userId}`)
     },
 
+    getCurrentUserProfile() {
+        return get<AdminUser>("/Users/current-user")
+    },
+
+    updateCurrentUserProfile(payload: UpdateCurrentUserProfilePayload) {
+        return put<AdminUser, UpdateCurrentUserProfilePayload>(
+            "/Users/current-user",
+            payload
+        )
+    },
+
     createUser(payload: CreateUserPayload) {
         return post<AdminUser, CreateUserPayload>("/Users", payload)
     },
@@ -251,7 +262,7 @@ export const adminService = {
     },
 
     patchUserStatus(userId: string, payload: PatchUserStatusPayload) {
-        return patch<AdminUser, PatchUserStatusPayload>(`/Users/${userId}`, payload)
+        return patch<AdminUser, PatchUserStatusPayload>(`/Users/${userId}/status`, payload)
     },
 
     async getApprovalRows(params?: {
@@ -265,8 +276,9 @@ export const adminService = {
             keyword: params?.keyword,
         })
 
+        // UserState: 0 Unverified, 1 PendingApproval, 2 Active, 3 Rejected...
         const items = users.items
-            .filter((item) => item.status === 0)
+            .filter((item) => item.status === 1)
             .map<AdminApprovalRow>((item) => ({
                 id: item.userId,
                 userId: item.userId,
@@ -290,11 +302,11 @@ export const adminService = {
     },
 
     async approveUser(userId: string) {
-        return this.patchUserStatus(userId, { status: 1 })
+        return this.patchUserStatus(userId, { status: 2 })
     },
 
     async rejectUser(userId: string) {
-        return this.patchUserStatus(userId, { status: 2 })
+        return this.patchUserStatus(userId, { status: 3 })
     },
 
     async getInternalStaffRows(params?: {
@@ -351,6 +363,7 @@ export const adminService = {
     },
 
     /* ========================= Feedbacks ========================= */
+    // Chưa sửa route nhóm này vì swagger snippet hiện tại chưa đủ rõ endpoint admin list/delete riêng.
 
     getFeedbacks(params?: { pageNumber?: number; pageSize?: number }) {
         return get<PaginationResult<FeedbackItem>>(`/Feedbacks${buildQueryString(params)}`)
@@ -366,7 +379,12 @@ export const adminService = {
 
     /* ========================= Supermarkets ========================= */
 
-    getSupermarkets(params?: { pageNumber?: number; pageSize?: number; keyword?: string }) {
+    getSupermarkets(params?: {
+        pageNumber?: number
+        pageSize?: number
+        keyword?: string
+        search?: string
+    }) {
         return get<PaginationResult<AdminSupermarketItem>>(
             `/Supermarkets${buildQueryString(params)}`
         )
@@ -394,45 +412,49 @@ export const adminService = {
     /* ========================= Delivery Groups ========================= */
 
     getDeliveryGroups(params?: {
+        deliveryDate?: string
         pageNumber?: number
         pageSize?: number
         status?: string
-        deliveryType?: string
-        deliveryDate?: string
     }) {
         return get<PaginationResult<DeliveryGroupListItem>>(
-            `/admin/delivery/groups${buildQueryString(params)}`
+            `/delivery/groups${buildQueryString({
+                DeliveryDate: params?.deliveryDate,
+                PageNumber: params?.pageNumber,
+                PageSize: params?.pageSize,
+                status: params?.status,
+            })}`
         )
     },
 
     getDeliveryGroupById(groupId: string) {
-        return get<DeliveryGroupDetail>(`/admin/delivery/groups/${groupId}`)
+        return get<DeliveryGroupDetail>(`/delivery/groups/${groupId}`)
     },
 
     assignDeliveryGroup(groupId: string, payload: AssignDeliveryPayload) {
         return post<DeliveryGroupDetail, AssignDeliveryPayload>(
-            `/admin/delivery/groups/${groupId}/assign`,
+            `/delivery/groups/${groupId}/assign`,
             payload
         )
     },
 
     startDeliveryGroup(groupId: string, payload?: DeliveryActionPayload) {
         return post<DeliveryGroupDetail, DeliveryActionPayload>(
-            `/admin/delivery/groups/${groupId}/start`,
+            `/delivery/groups/${groupId}/start`,
             payload
         )
     },
 
     completeDeliveryGroup(groupId: string, payload?: DeliveryActionPayload) {
         return post<DeliveryGroupDetail, DeliveryActionPayload>(
-            `/admin/delivery/groups/${groupId}/complete`,
+            `/delivery/groups/${groupId}/complete`,
             payload
         )
     },
 
     cancelDeliveryGroup(groupId: string, payload?: DeliveryActionPayload) {
         return post<DeliveryGroupDetail, DeliveryActionPayload>(
-            `/admin/delivery/groups/${groupId}/cancel`,
+            `/delivery/groups/${groupId}/cancel`,
             payload
         )
     },
@@ -440,71 +462,64 @@ export const adminService = {
     /* ========================= Delivery Orders ========================= */
 
     getDeliveryOrderById(orderId: string) {
-        return get<DeliveryOrderDetail>(`/admin/delivery/orders/${orderId}`)
+        return get<DeliveryOrderDetail>(`/delivery/orders/${orderId}`)
     },
 
     confirmDelivered(orderId: string, payload?: ConfirmDeliveryPayload) {
         return post<DeliveryOrderDetail, ConfirmDeliveryPayload>(
-            `/admin/delivery/orders/${orderId}/confirm-delivered`,
+            `/delivery/orders/${orderId}/confirm-delivery`,
             payload
         )
     },
 
     reportDeliveryFailure(orderId: string, payload: ReportDeliveryFailurePayload) {
         return post<DeliveryOrderDetail, ReportDeliveryFailurePayload>(
-            `/admin/delivery/orders/${orderId}/report-failure`,
+            `/delivery/orders/${orderId}/report-failure`,
             payload
         )
     },
 
     confirmCustomerReceived(orderId: string, payload?: CustomerConfirmationPayload) {
         return post<DeliveryOrderDetail, CustomerConfirmationPayload>(
-            `/admin/delivery/orders/${orderId}/customer-confirmation`,
+            `/delivery/orders/${orderId}/customer-confirmation`,
             payload
         )
     },
 
     getDeliveryHistory(params?: {
+        fromDate?: string
+        toDate?: string
         pageNumber?: number
         pageSize?: number
         status?: string
-        keyword?: string
     }) {
         return get<PaginationResult<DeliveryHistoryItem>>(
-            `/admin/delivery/history${buildQueryString(params)}`
+            `/delivery/history${buildQueryString(params)}`
         )
     },
 
-    getDeliveryStats(params?: { fromDate?: string; toDate?: string }) {
-        return get<DeliveryStats[]>(`/admin/delivery/stats${buildQueryString(params)}`)
+    getDeliveryStats() {
+        return get<DeliveryStats[]>(`/delivery/stats`)
     },
 
-    /* ========================= Packaging / Operations ========================= */
+    /* ========================= Packaging ========================= */
 
     getPackagingPendingOrders(params?: {
         pageNumber?: number
         pageSize?: number
-        keyword?: string
     }) {
         return get<PaginationResult<PackagingPendingOrderItem>>(
-            `/admin/operations/packaging/pending-orders${buildQueryString(params)}`
+            `/Packaging/orders/pending${buildQueryString(params)}`
         )
     },
 
     getPackagingOrderDetail(orderId: string) {
-        return get<PackagingOrderDetail>(`/admin/operations/packaging/orders/${orderId}`)
+        return get<PackagingOrderDetail>(`/Packaging/orders/${orderId}`)
     },
 
     markPackagingReady(orderId: string, payload?: PackagingActionPayload) {
         return post<PackagingOrderDetail, PackagingActionPayload>(
-            `/admin/operations/packaging/orders/${orderId}/ready`,
-            payload
-        )
-    },
-
-    markPackagingCollected(orderId: string, payload?: PackagingActionPayload) {
-        return post<PackagingOrderDetail, PackagingActionPayload>(
-            `/admin/operations/packaging/orders/${orderId}/collected`,
+            `/Packaging/orders/${orderId}/confirm`,
             payload
         )
     },

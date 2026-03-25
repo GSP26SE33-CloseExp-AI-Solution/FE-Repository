@@ -32,6 +32,15 @@ export type TimeSpanDto = {
 
 /* ========================= Dashboard ========================= */
 
+export type DashboardOverviewQuery = {
+    fromUtc?: string
+    toUtc?: string
+}
+
+export type RevenueTrendQuery = {
+    days?: number
+}
+
 export type SlaAlertQuery = {
     thresholdMinutes?: number
     top?: number
@@ -146,9 +155,7 @@ export type UpdatePromotionStatusPayload = {
 export type AiPricingHistoryItem = {
     aiPriceId: string
     lotId: string
-    originalPrice: number
-    suggestedUnitPrice: number
-    finalPrice: number
+    suggestedPrice: number
     marketAvgPrice: number
     aiConfidence: number
     acceptedSuggestion: boolean
@@ -200,10 +207,18 @@ export type UpdateUserPayload = {
     roleId: number
 }
 
+export type UpdateCurrentUserProfilePayload = {
+    fullName: string
+    phone?: string
+}
+
 export type PatchUserStatusPayload = {
     status: number
 }
 
+/**
+ * FE aggregate row: map từ AdminUser để dùng cho UI bảng account
+ */
 export type AdminAccountRow = {
     id: string
     fullName: string
@@ -219,6 +234,9 @@ export type AdminAccountRow = {
     position?: string
 }
 
+/**
+ * FE aggregate row: không phải response BE
+ */
 export type AdminApprovalRow = {
     id: string
     userId: string
@@ -234,6 +252,9 @@ export type AdminApprovalRow = {
     position?: string
 }
 
+/**
+ * FE aggregate row: không phải response BE
+ */
 export type InternalStaffRow = {
     id: string
     userId: string
