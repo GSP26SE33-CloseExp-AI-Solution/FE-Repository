@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { useLocation, useNavigate, Link } from "react-router-dom"
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
 
 import { useAuth } from "@/hooks/useAuth"
@@ -48,18 +48,27 @@ const Login = () => {
             <div className="bg-glow" />
 
             <div className="relative z-10 w-full max-w-md backdrop-blur-xl bg-white/80 shadow-2xl rounded-2xl p-8 space-y-6 border border-white/40 animate-[fadeInUp_0.6s_ease-out]">
-                <div className="text-center space-y-2">
-                    <img
-                        src={Logo}
-                        alt="CloseExp AI"
-                        className="w-14 h-14 mx-auto transition duration-300 hover:scale-105"
-                    />
-                    <h1 className="text-2xl font-bold text-gray-800">
-                        Nền tảng CloseExp AI
-                    </h1>
-                    <p className="text-sm text-gray-500">
-                        Quản lý thông minh, mua sắm tiện lợi
-                    </p>
+                <div className="text-center">
+                    <Link
+                        to="/"
+                        className="group inline-flex flex-col items-center"
+                    >
+                        <div className="mx-auto h-20 w-28 overflow-hidden">
+                            <img
+                                src={Logo}
+                                alt="CloseExp AI"
+                                className="h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 group-hover:drop-shadow-[0_0_18px_rgba(16,185,129,0.35)]"
+                            />
+                        </div>
+
+                        <h1 className="mt-2 text-2xl font-bold text-gray-800 transition-all duration-300 group-hover:text-emerald-600 group-hover:drop-shadow-[0_2px_10px_rgba(16,185,129,0.18)]">
+                            Nền tảng CloseExp AI
+                        </h1>
+
+                        <p className="mt-1 text-sm text-gray-500 transition-all duration-300 group-hover:text-gray-600">
+                            Quản lý thông minh, mua sắm tiện lợi
+                        </p>
+                    </Link>
                 </div>
 
                 <form onSubmit={onSubmit} className="space-y-4">

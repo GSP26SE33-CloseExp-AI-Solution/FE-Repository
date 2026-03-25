@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate, Navigate } from "react-router-dom"
+import { useNavigate, Navigate, Link } from "react-router-dom"
 import {
     Eye,
     EyeOff,
@@ -13,6 +13,9 @@ import {
     MapPin,
     ShieldCheck,
     Store,
+    LocateFixed,
+    Search,
+    MapPinned,
 } from "lucide-react"
 
 import { useAuth } from "@/hooks/useAuth"
@@ -20,6 +23,8 @@ import { showSuccess, showError } from "@/utils/toast"
 import { isAuthenticated } from "@/utils/authStorage"
 import { RegistrationType, RegisterPayload } from "@/types/auth.types"
 import Logo from "@/assets/logo.png"
+import MapboxLocationPicker from "@/pages/Home/MapboxLocationPicker"
+import { nominatimService, type NominatimSearchItem } from "@/services/nominatim.service"
 
 type RegisterStep = "form" | "otp" | "done"
 
@@ -75,8 +80,14 @@ const Register = () => {
     const [position, setPosition] = useState("")
     const [marketName, setMarketName] = useState("")
     const [marketAddress, setMarketAddress] = useState("")
-    const [latitude, setLatitude] = useState("")
-    const [longitude, setLongitude] = useState("")
+    const [latitude, setLatitude] = useState<number | null>(null)
+    const [longitude, setLongitude] = useState<number | null>(null)
+    const [locationSource, setLocationSource] = useState<"gps" | "search" | "map" | "manual" | "">("")
+    const [locationLoading, setLocationLoading] = useState(false)
+    const [locationError, setLocationError] = useState("")
+    const [searchKeyword, setSearchKeyword] = useState("")
+    const [searchResults, setSearchResults] = useState<NominatimSearchItem[]>([])
+    const [mapEnabled, setMapEnabled] = useState(false)
     const [contactPhone, setContactPhone] = useState("")
     const [contactEmail, setContactEmail] = useState("")
 
@@ -128,17 +139,13 @@ const Register = () => {
             marketName: isSupermarketStaff && !marketName.trim() ? "Vui lòng nhập tên siêu thị" : "",
             marketAddress: isSupermarketStaff && !marketAddress.trim() ? "Vui lòng nhập địa chỉ siêu thị" : "",
             latitude:
-                isSupermarketStaff && !latitude.trim()
-                    ? "Vui lòng nhập vĩ độ"
-                    : isSupermarketStaff && Number.isNaN(Number(latitude))
-                        ? "Vĩ độ phải là số hợp lệ"
-                        : "",
+                isSupermarketStaff && latitude == null
+                    ? "Vui lòng chọn vị trí siêu thị"
+                    : "",
             longitude:
-                isSupermarketStaff && !longitude.trim()
-                    ? "Vui lòng nhập kinh độ"
-                    : isSupermarketStaff && Number.isNaN(Number(longitude))
-                        ? "Kinh độ phải là số hợp lệ"
-                        : "",
+                isSupermarketStaff && longitude == null
+                    ? "Vui lòng chọn vị trí siêu thị"
+                    : "",
             contactPhone:
                 isSupermarketStaff && !contactPhone.trim()
                     ? "Vui lòng nhập số điện thoại liên hệ"
@@ -185,12 +192,10 @@ const Register = () => {
             position.trim() &&
             marketName.trim() &&
             marketAddress.trim() &&
-            latitude.trim() &&
-            longitude.trim() &&
+            latitude != null &&
+            longitude != null &&
             contactPhone.trim() &&
             contactEmail.trim() &&
-            !Number.isNaN(Number(latitude)) &&
-            !Number.isNaN(Number(longitude)) &&
             validateVietnamPhone(contactPhone.trim()) &&
             validateEmail(contactEmail.trim())
         )
@@ -224,11 +229,8 @@ const Register = () => {
             }
         }
 
-        const lat = Number(latitude)
-        const lng = Number(longitude)
-
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            throw new Error("Vĩ độ và kinh độ phải là số hợp lệ")
+        if (latitude == null || longitude == null) {
+            throw new Error("Vui lòng chọn vị trí siêu thị")
         }
 
         return {
@@ -241,8 +243,8 @@ const Register = () => {
             newSupermarket: {
                 name: marketName.trim(),
                 address: marketAddress.trim(),
-                latitude: lat,
-                longitude: lng,
+                latitude,
+                longitude,
                 contactPhone: contactPhone.trim(),
                 contactEmail: contactEmail.trim(),
             },
@@ -393,18 +395,137 @@ const Register = () => {
         return `${String(minutes).padStart(2, "0")}:${String(remainSeconds).padStart(2, "0")}`
     }
 
+    const applyPickedLocation = async (
+        nextLat: number,
+        nextLng: number,
+        source: "gps" | "search" | "map" | "manual"
+    ) => {
+        setLatitude(nextLat)
+        setLongitude(nextLng)
+        setLocationSource(source)
+        setLocationError("")
+
+        try {
+            const reverse = await nominatimService.reverseGeocode(nextLat, nextLng)
+
+            const prettyAddress =
+                nominatimService.buildPrettyAddressFromReverse(reverse) || reverse.displayName
+
+            if (prettyAddress) {
+                setMarketAddress(prettyAddress)
+            }
+        } catch {
+            setMarketAddress(`${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`)
+        }
+    }
+
+    const requestCurrentLocation = () => {
+        setLocationError("")
+        setLocationLoading(true)
+
+        if (!navigator.geolocation) {
+            setLocationLoading(false)
+            setLocationError("Trình duyệt không hỗ trợ định vị.")
+            return
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                try {
+                    await applyPickedLocation(
+                        pos.coords.latitude,
+                        pos.coords.longitude,
+                        "gps"
+                    )
+                } finally {
+                    setLocationLoading(false)
+                }
+            },
+            () => {
+                setLocationLoading(false)
+                setLocationError("Không lấy được vị trí hiện tại.")
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        )
+    }
+
+    const handleSearchAddress = async () => {
+        const keyword = searchKeyword.trim() || marketAddress.trim()
+
+        if (!keyword) {
+            setLocationError("Vui lòng nhập địa chỉ để tìm vị trí.")
+            return
+        }
+
+        try {
+            setLocationLoading(true)
+            setLocationError("")
+            setSearchResults([])
+
+            const results = await nominatimService.searchStructuredAddress({
+                streetLine: keyword,
+                districtName: "Hồ Chí Minh",
+                city: "Hồ Chí Minh",
+                country: "Việt Nam",
+                limit: 5,
+            })
+
+            setSearchResults(results)
+
+            if (!results.length) {
+                setLocationError("Không tìm thấy địa chỉ phù hợp.")
+                return
+            }
+
+            const first = results[0]
+            await applyPickedLocation(first.lat, first.lng, "search")
+
+            if (first.displayName) {
+                setMarketAddress(first.displayName)
+            }
+        } catch (e: any) {
+            setLocationError(e?.message || "Không tìm được vị trí từ địa chỉ này.")
+        } finally {
+            setLocationLoading(false)
+        }
+    }
+
+    const handlePickSearchResult = async (item: NominatimSearchItem) => {
+        setSearchKeyword(item.displayName || "")
+        setSearchResults([])
+
+        await applyPickedLocation(item.lat, item.lng, "search")
+
+        if (item.displayName) {
+            setMarketAddress(item.displayName)
+        }
+    }
+
+    const handlePickOnMap = async (value: { lat: number; lng: number }) => {
+        await applyPickedLocation(value.lat, value.lng, "map")
+    }
     return (
         <div className="eco-animated-bg min-h-screen flex items-center justify-center px-4 py-10 relative overflow-hidden">
             <div className="bg-glow" />
 
             <div className="relative z-10 w-full max-w-3xl backdrop-blur-xl bg-white/80 shadow-2xl rounded-2xl p-8 space-y-6 border border-white/40">
                 <div className="text-center space-y-2">
-                    <img src={Logo} alt="CloseExp AI" className="w-14 h-14 mx-auto" />
-                    <h1 className="text-2xl font-bold text-gray-800">
+                    <Link to="/" className="group inline-flex flex-col items-center">
+                        <div className="mx-auto h-20 w-28 overflow-hidden">
+                            <img
+                                src={Logo}
+                                alt="CloseExp AI"
+                                className="h-full w-full object-cover object-top transition-all duration-500 group-hover:scale-105 group-hover:drop-shadow-[0_0_24px_rgba(16,185,129,0.4)]"
+                            />
+                        </div>
+                    </Link>
+
+                    <h1 className="pt-1 text-2xl font-bold text-gray-800">
                         {step === "form" && "Tạo tài khoản"}
                         {step === "otp" && "Xác minh OTP"}
                         {step === "done" && "Đăng ký thành công"}
                     </h1>
+
                     <p className="text-sm text-gray-500">
                         {step === "form" && "Chọn loại tài khoản và điền thông tin đăng ký"}
                         {step === "otp" && "Nhập mã OTP đã được gửi về email của bạn"}
@@ -421,14 +542,14 @@ const Register = () => {
                             <RoleCard
                                 active={selectedRole === "Vendor"}
                                 title="Khách hàng"
-                                subtitle="Vendor"
+                                subtitle="Người mua hàng"
                                 icon={<Store size={18} />}
                                 onClick={() => setSelectedRole("Vendor")}
                             />
                             <RoleCard
                                 active={selectedRole === "SupermarketStaff"}
                                 title="Đối tác"
-                                subtitle="SupermarketStaff"
+                                subtitle="Người bán hàng"
                                 icon={<Building2 size={18} />}
                                 onClick={() => setSelectedRole("SupermarketStaff")}
                             />
@@ -439,7 +560,7 @@ const Register = () => {
                                 <div>
                                     <h2 className="text-base font-semibold text-gray-800">Thông tin tài khoản</h2>
                                     <p className="text-sm text-gray-500">
-                                        Điền thông tin cơ bản để tạo tài khoản
+                                        Vui lòng điền các thông tin cơ bản để tạo tài khoản
                                     </p>
                                 </div>
                                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-100">
@@ -509,21 +630,21 @@ const Register = () => {
                                             Thông tin siêu thị mới
                                         </h3>
                                         <p className="text-sm text-gray-500 mt-1">
-                                            Các trường này sẽ được gửi trong <code>newSupermarket</code>
+                                            *Lưu ý: Một tài khoản đăng ký sẽ tương ứng với một siêu thị/cửa hàng duy nhất
                                         </p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
                                             icon={<Building2 size={16} />}
-                                            label="Tên siêu thị"
+                                            label="Tên siêu thị/cửa hàng"
                                             value={marketName}
                                             setValue={setMarketName}
                                             error={fieldErrors.marketName}
                                         />
                                         <Input
                                             icon={<Phone size={16} />}
-                                            label="Số điện thoại liên hệ"
+                                            label="Số điện thoại liên hệ/Hotline"
                                             value={contactPhone}
                                             setValue={setContactPhone}
                                             error={fieldErrors.contactPhone}
@@ -536,27 +657,127 @@ const Register = () => {
                                             setValue={setContactEmail}
                                             error={fieldErrors.contactEmail}
                                         />
-                                        <Input
-                                            icon={<MapPin size={16} />}
-                                            label="Địa chỉ"
-                                            value={marketAddress}
-                                            setValue={setMarketAddress}
-                                            error={fieldErrors.marketAddress}
-                                        />
-                                        <Input
-                                            label="Latitude"
-                                            type="number"
-                                            value={latitude}
-                                            setValue={setLatitude}
-                                            error={fieldErrors.latitude}
-                                        />
-                                        <Input
-                                            label="Longitude"
-                                            type="number"
-                                            value={longitude}
-                                            setValue={setLongitude}
-                                            error={fieldErrors.longitude}
-                                        />
+                                        <div className="md:col-span-2 space-y-4">
+                                            <div>
+                                                <label className="text-sm font-medium text-gray-600">Địa chỉ siêu thị / cửa hàng</label>
+
+                                                <div className="relative">
+                                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                                                    <input
+                                                        type="text"
+                                                        value={marketAddress}
+                                                        onChange={(e) => {
+                                                            setMarketAddress(e.target.value)
+                                                            setSearchKeyword(e.target.value)
+                                                        }}
+                                                        placeholder="Nhập địa chỉ hoặc dùng vị trí hiện tại"
+                                                        className={`w-full mt-1 pl-9 pr-4 py-2 border rounded-lg focus:ring-2 ${fieldErrors.marketAddress || locationError
+                                                            ? "border-red-300 focus:ring-red-200"
+                                                            : "focus:ring-green-300"
+                                                            }`}
+                                                    />
+                                                </div>
+
+                                                {(fieldErrors.marketAddress || locationError) && (
+                                                    <p className="mt-1 text-xs text-red-500">
+                                                        {fieldErrors.marketAddress || locationError}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="flex flex-wrap gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={requestCurrentLocation}
+                                                    disabled={locationLoading}
+                                                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
+                                                >
+                                                    {locationLoading ? (
+                                                        <>
+                                                            <Loader2 className="animate-spin" size={16} />
+                                                            Đang lấy vị trí...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <LocateFixed size={16} />
+                                                            Lấy vị trí hiện tại
+                                                        </>
+                                                    )}
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSearchAddress}
+                                                    disabled={locationLoading}
+                                                    className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+                                                >
+                                                    <Search size={16} />
+                                                    Tìm theo địa chỉ
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMapEnabled((prev) => !prev)}
+                                                    className="inline-flex items-center gap-2 rounded-xl border border-sky-200 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
+                                                >
+                                                    <MapPinned size={16} />
+                                                    {mapEnabled ? "Ẩn bản đồ" : "Chỉnh trên bản đồ"}
+                                                </button>
+                                            </div>
+
+                                            {!!searchResults.length && (
+                                                <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+                                                    {searchResults.slice(0, 5).map((item, index) => (
+                                                        <button
+                                                            key={`${item.placeId}-${index}`}
+                                                            type="button"
+                                                            onClick={() => void handlePickSearchResult(item)}
+                                                            className="block w-full border-b border-gray-100 px-4 py-3 text-left last:border-b-0 hover:bg-gray-50"
+                                                        >
+                                                            <p className="text-sm font-medium text-gray-800">
+                                                                {item.displayName}
+                                                            </p>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                        Latitude
+                                                    </div>
+                                                    <div className="mt-1 text-sm font-semibold text-slate-800">
+                                                        {latitude != null ? latitude.toFixed(6) : "Chưa xác định"}
+                                                    </div>
+                                                </div>
+
+                                                <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                                                    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                        Longitude
+                                                    </div>
+                                                    <div className="mt-1 text-sm font-semibold text-slate-800">
+                                                        {longitude != null ? longitude.toFixed(6) : "Chưa xác định"}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {mapEnabled && latitude != null && longitude != null && (
+                                                <div className="space-y-3">
+                                                    <div className="rounded-2xl border border-sky-100 p-3">
+                                                        <p className="text-sm font-medium text-slate-700">
+                                                            Bạn có thể click trên bản đồ hoặc kéo ghim để chỉnh vị trí chính xác hơn.
+                                                        </p>
+                                                    </div>
+
+                                                    <MapboxLocationPicker
+                                                        lat={latitude}
+                                                        lng={longitude}
+                                                        onPick={(value) => void handlePickOnMap(value)}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
