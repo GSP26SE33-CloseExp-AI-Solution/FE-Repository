@@ -37,7 +37,7 @@ export const loginApi = async (payload: {
     password: string
 }): Promise<AuthData> => {
     try {
-        const res = await axiosClient.post<ApiResponse<AuthData>>("/authen/login", payload)
+        const res = await axiosClient.post<ApiResponse<AuthData>>("/auth/login", payload)
         return unwrap(res.data)
     } catch (error) {
         throw new Error(getAxiosErrorMessage(error, "Đăng nhập thất bại"))
@@ -48,7 +48,7 @@ export const registerApi = async (
     payload: RegisterPayload
 ): Promise<ApiResponse<null>> => {
     try {
-        const res = await axiosClient.post<ApiResponse<null>>("/authen/register", payload)
+        const res = await axiosClient.post<ApiResponse<null>>("/auth/register", payload)
 
         if (!res.data?.success) {
             const msg = res.data?.errors?.[0] || res.data?.message || "Đăng ký thất bại"
@@ -65,7 +65,7 @@ export const verifyOtpApi = async (
     payload: VerifyOtpPayload
 ): Promise<ApiResponse<boolean>> => {
     try {
-        const res = await axiosClient.post<ApiResponse<boolean>>("/authen/verify-otp", payload)
+        const res = await axiosClient.post<ApiResponse<boolean>>("/auth/verify-otp", payload)
 
         if (!res.data?.success) {
             const msg = res.data?.errors?.[0] || res.data?.message || "Xác minh OTP thất bại"
@@ -82,7 +82,7 @@ export const resendOtpApi = async (
     payload: ResendOtpPayload
 ): Promise<ApiResponse<unknown>> => {
     try {
-        const res = await axiosClient.post<ApiResponse<unknown>>("/authen/resend-otp", payload)
+        const res = await axiosClient.post<ApiResponse<unknown>>("/auth/resend-otp", payload)
 
         if (!res.data?.success) {
             const msg = res.data?.errors?.[0] || res.data?.message || "Gửi lại OTP thất bại"
@@ -97,7 +97,7 @@ export const resendOtpApi = async (
 
 export const refreshTokenApi = async (refreshToken: string): Promise<AuthData> => {
     try {
-        const res = await axiosClient.post<ApiResponse<AuthData>>("/authen/refresh-token", { refreshToken })
+        const res = await axiosClient.post<ApiResponse<AuthData>>("/auth/refresh-token", { refreshToken })
         return unwrap(res.data)
     } catch (error) {
         throw new Error(getAxiosErrorMessage(error, "Làm mới phiên đăng nhập thất bại"))
@@ -107,7 +107,7 @@ export const refreshTokenApi = async (refreshToken: string): Promise<AuthData> =
 export const authService = {
     async logout(refreshToken: string) {
         try {
-            const res = await axiosClient.post<ApiResponse<boolean>>("/authen/logout", { refreshToken })
+            const res = await axiosClient.post<ApiResponse<boolean>>("/auth/logout", { refreshToken })
             return res.data
         } catch (error) {
             throw new Error(getAxiosErrorMessage(error, "Đăng xuất thất bại"))
