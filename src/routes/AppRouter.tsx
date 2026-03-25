@@ -35,8 +35,8 @@ import AdminInternalStaff from "@/pages/Admin/AdminInternalStaff"
 import AdminRoles from "@/pages/Admin/AdminRoles"
 import AdminDelivery from "@/pages/Admin/AdminDelivery"
 import AdminOperations from "@/pages/Admin/AdminOperations"
-import AdminModeration from "@/pages/Admin/AdminModeration"
 import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets"
+import AdminProfile from "@/pages/Admin/AdminProfile"
 
 import PackageOrders from "@/pages/PackagingStaff/PackageOrders"
 import PackageCollect from "@/pages/PackagingStaff/PackageCollect"
@@ -80,11 +80,11 @@ const AppRouter: React.FC = () => {
                             <Route path="/admin/transactions" element={<AdminTransactions />} />
                             <Route path="/admin/delivery" element={<AdminDelivery />} />
                             <Route path="/admin/operations" element={<AdminOperations />} />
-                            <Route path="/admin/moderation" element={<AdminModeration />} />
                             <Route path="/admin/feedbacks" element={<AdminFeedbacks />} />
                             <Route path="/admin/reports" element={<AdminReports />} />
                             <Route path="/admin/supermarkets" element={<AdminSupermarkets />} />
                             <Route path="/admin/settings" element={<AdminSettings />} />
+                            <Route path="/admin/profile" element={<AdminProfile />} />
                         </Route>
                     </Route>
 

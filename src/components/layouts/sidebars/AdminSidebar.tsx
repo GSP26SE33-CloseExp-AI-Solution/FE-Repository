@@ -30,7 +30,6 @@ const adminMenuItems: MenuItem[] = [
     { label: "Giao dịch", path: "/admin/transactions", icon: CreditCard },
     { label: "Điều phối giao hàng", path: "/admin/delivery", icon: Truck },
     { label: "Đóng gói và giao hàng", path: "/admin/operations", icon: PackageCheck },
-    { label: "Kiểm duyệt sản phẩm", path: "/admin/moderation", icon: ClipboardCheck },
     { label: "Phản hồi", path: "/admin/feedbacks", icon: MessageSquare },
 
     { label: "Siêu thị", path: "/admin/supermarkets", icon: Store },
