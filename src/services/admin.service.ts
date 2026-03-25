@@ -14,6 +14,7 @@ import type {
     CreateSupermarketPayload,
     CreateUserPayload,
     CustomerConfirmationPayload,
+    DashboardOverviewQuery,
     DeliveryActionPayload,
     DeliveryGroupDetail,
     DeliveryGroupListItem,
@@ -37,6 +38,7 @@ import type {
     TimeSpanDto,
     UnitItem,
     UpdateCurrentUserProfilePayload,
+    UpdateDeliveryAssignmentPayload,
     UpdateSupermarketPayload,
     UpdateSystemParameterPayload,
     UpdateUserPayload,
@@ -44,7 +46,7 @@ import type {
     UpsertPromotionPayload,
     UpsertTimeSlotPayload,
     UpsertUnitPayload,
-    DashboardOverviewQuery,
+    UserImageItem,
 } from "@/types/admin.type"
 
 type Query = Record<string, string | number | boolean | undefined | null>
@@ -89,6 +91,26 @@ const remove = async <T>(url: string) => {
     return unwrap(response.data)
 }
 
+const paginateLocal = <T>(
+    items: T[],
+    params?: {
+        pageNumber?: number
+        pageSize?: number
+    }
+): PaginationResult<T> => {
+    const page = Math.max(1, params?.pageNumber ?? 1)
+    const pageSize = Math.max(1, params?.pageSize ?? 20)
+    const start = (page - 1) * pageSize
+    const end = start + pageSize
+
+    return {
+        items: items.slice(start, end),
+        totalResult: items.length,
+        page,
+        pageSize,
+    }
+}
+
 export const adminService = {
     /* ========================= Dashboard ========================= */
 
@@ -105,9 +127,7 @@ export const adminService = {
     },
 
     getSlaAlerts(params?: SlaAlertQuery) {
-        return get<SlaAlertItem[]>(
-            `/admin/dashboard/sla-alerts${buildQueryString(params)}`
-        )
+        return get<SlaAlertItem[]>(`/admin/dashboard/sla-alerts${buildQueryString(params)}`)
     },
 
     /* ========================= System Config ========================= */
@@ -223,15 +243,47 @@ export const adminService = {
     },
 
     /* ========================= Users ========================= */
+    /**
+     * Raw API: swagger hiện tại trả AdminUser[]
+     */
+    listUsersRaw() {
+        return get<AdminUser[]>("/Users")
+    },
 
-    getUsers(params?: {
+    /**
+     * FE wrapper: local filter + local paginate để không phá page hiện tại
+     */
+    async getUsers(params?: {
         pageNumber?: number
         pageSize?: number
         keyword?: string
         roleId?: number
         status?: number
-    }) {
-        return get<PaginationResult<AdminUser>>(`/Users${buildQueryString(params)}`)
+    }): Promise<PaginationResult<AdminUser>> {
+        const users = await this.listUsersRaw()
+
+        const keyword = params?.keyword?.trim().toLowerCase()
+
+        const filtered = users.filter((item) => {
+            const matchesKeyword = !keyword
+                ? true
+                : [
+                    item.fullName,
+                    item.email,
+                    item.phone,
+                    item.roleName,
+                    item.marketStaffInfo?.supermarket?.name,
+                ]
+                    .filter(Boolean)
+                    .some((value) => String(value).toLowerCase().includes(keyword))
+
+            const matchesRole = params?.roleId === undefined ? true : item.roleId === params.roleId
+            const matchesStatus = params?.status === undefined ? true : item.status === params.status
+
+            return matchesKeyword && matchesRole && matchesStatus
+        })
+
+        return paginateLocal(filtered, params)
     },
 
     getUserById(userId: string) {
@@ -243,10 +295,7 @@ export const adminService = {
     },
 
     updateCurrentUserProfile(payload: UpdateCurrentUserProfilePayload) {
-        return put<AdminUser, UpdateCurrentUserProfilePayload>(
-            "/Users/current-user",
-            payload
-        )
+        return put<AdminUser, UpdateCurrentUserProfilePayload>("/Users/current-user", payload)
     },
 
     createUser(payload: CreateUserPayload) {
@@ -271,12 +320,11 @@ export const adminService = {
         keyword?: string
     }): Promise<PaginationResult<AdminApprovalRow>> {
         const users = await this.getUsers({
-            pageNumber: params?.pageNumber ?? 1,
-            pageSize: params?.pageSize ?? 20,
+            pageNumber: 1,
+            pageSize: 99999,
             keyword: params?.keyword,
         })
 
-        // UserState: 0 Unverified, 1 PendingApproval, 2 Active, 3 Rejected...
         const items = users.items
             .filter((item) => item.status === 1)
             .map<AdminApprovalRow>((item) => ({
@@ -294,18 +342,14 @@ export const adminService = {
                 position: item.marketStaffInfo?.position,
             }))
 
-        return {
-            ...users,
-            items,
-            totalResult: items.length,
-        }
+        return paginateLocal(items, params)
     },
 
-    async approveUser(userId: string) {
+    approveUser(userId: string) {
         return this.patchUserStatus(userId, { status: 2 })
     },
 
-    async rejectUser(userId: string) {
+    rejectUser(userId: string) {
         return this.patchUserStatus(userId, { status: 3 })
     },
 
@@ -315,8 +359,8 @@ export const adminService = {
         keyword?: string
     }): Promise<PaginationResult<InternalStaffRow>> {
         const users = await this.getUsers({
-            pageNumber: params?.pageNumber ?? 1,
-            pageSize: params?.pageSize ?? 20,
+            pageNumber: 1,
+            pageSize: 99999,
             keyword: params?.keyword,
         })
 
@@ -340,11 +384,32 @@ export const adminService = {
                 organizationName: item.marketStaffInfo?.supermarket?.name,
             }))
 
-        return {
-            ...users,
-            items,
-            totalResult: items.length,
-        }
+        return paginateLocal(items, params)
+    },
+
+    /* ========================= User Images ========================= */
+
+    getCurrentUserImages() {
+        return get<UserImageItem[]>("/Users/current-user/images")
+    },
+
+    getCurrentUserPrimaryImage() {
+        return get<UserImageItem>("/Users/current-user/images/primary")
+    },
+
+    setCurrentUserPrimaryImage(imageId: string) {
+        return patch<UserImageItem, undefined>(
+            `/Users/current-user/images/${imageId}/set-primary`,
+            undefined
+        )
+    },
+
+    deleteCurrentUserImage(imageId: string) {
+        return remove<boolean>(`/Users/current-user/images/${imageId}`)
+    },
+
+    getUserImages(userId: string) {
+        return get<UserImageItem[]>(`/Users/${userId}/images`)
     },
 
     /* ========================= Orders / Transactions ========================= */
@@ -352,8 +417,6 @@ export const adminService = {
     getOrders(params?: {
         pageNumber?: number
         pageSize?: number
-        status?: string
-        keyword?: string
     }) {
         return get<PaginationResult<AdminOrder>>(`/Orders${buildQueryString(params)}`)
     },
@@ -362,19 +425,41 @@ export const adminService = {
         return get<AdminOrder>(`/Orders/${orderId}`)
     },
 
-    /* ========================= Feedbacks ========================= */
-    // Chưa sửa route nhóm này vì swagger snippet hiện tại chưa đủ rõ endpoint admin list/delete riêng.
+    getOrderDetails(orderId: string) {
+        return get<AdminOrder>(`/Orders/${orderId}/details`)
+    },
 
-    getFeedbacks(params?: { pageNumber?: number; pageSize?: number }) {
-        return get<PaginationResult<FeedbackItem>>(`/Feedbacks${buildQueryString(params)}`)
+    getOrderTimeSlots() {
+        return get<AdminTimeSlot[]>("/Orders/time-slots")
+    },
+
+    getOrderCollectionPoints() {
+        return get<CollectionPoint[]>("/Orders/collection-points")
+    },
+
+    /* ========================= Feedbacks ========================= */
+
+    listFeedbacksRaw() {
+        return get<FeedbackItem[]>("/feedback")
+    },
+
+    getFeedbacks(params?: {
+        pageNumber?: number
+        pageSize?: number
+    }) {
+        return this.listFeedbacksRaw().then((items) => paginateLocal(items, params))
     },
 
     getFeedbackById(feedbackId: string) {
-        return get<FeedbackItem>(`/Feedbacks/${feedbackId}`)
+        return get<FeedbackItem>(`/feedback/${feedbackId}`)
+    },
+
+    getFeedbacksByOrderId(orderId: string) {
+        return get<FeedbackItem[]>(`/feedback/order/${orderId}`)
     },
 
     deleteFeedback(feedbackId: string) {
-        return remove<boolean>(`/Feedbacks/${feedbackId}`)
+        return remove<boolean>(`/feedback/${feedbackId}`)
     },
 
     /* ========================= Supermarkets ========================= */
@@ -382,8 +467,6 @@ export const adminService = {
     getSupermarkets(params?: {
         pageNumber?: number
         pageSize?: number
-        keyword?: string
-        search?: string
     }) {
         return get<PaginationResult<AdminSupermarketItem>>(
             `/Supermarkets${buildQueryString(params)}`
@@ -409,6 +492,16 @@ export const adminService = {
         return remove<boolean>(`/Supermarkets/${supermarketId}`)
     },
 
+    getAvailableSupermarkets() {
+        return get<AdminSupermarketItem[]>("/Supermarkets/available")
+    },
+
+    searchSupermarkets(query: string) {
+        return get<AdminSupermarketItem[]>(
+            `/Supermarkets/search${buildQueryString({ query })}`
+        )
+    },
+
     /* ========================= Delivery Groups ========================= */
 
     getDeliveryGroups(params?: {
@@ -427,6 +520,38 @@ export const adminService = {
         )
     },
 
+    getAvailableDeliveryGroups(params?: {
+        deliveryDate?: string
+        pageNumber?: number
+        pageSize?: number
+        status?: string
+    }) {
+        return get<PaginationResult<DeliveryGroupListItem>>(
+            `/delivery/groups/available${buildQueryString({
+                DeliveryDate: params?.deliveryDate,
+                PageNumber: params?.pageNumber,
+                PageSize: params?.pageSize,
+                status: params?.status,
+            })}`
+        )
+    },
+
+    getMyDeliveryGroups(params?: {
+        deliveryDate?: string
+        pageNumber?: number
+        pageSize?: number
+        status?: string
+    }) {
+        return get<PaginationResult<DeliveryGroupListItem>>(
+            `/delivery/groups/my${buildQueryString({
+                DeliveryDate: params?.deliveryDate,
+                PageNumber: params?.pageNumber,
+                PageSize: params?.pageSize,
+                status: params?.status,
+            })}`
+        )
+    },
+
     getDeliveryGroupById(groupId: string) {
         return get<DeliveryGroupDetail>(`/delivery/groups/${groupId}`)
     },
@@ -434,6 +559,20 @@ export const adminService = {
     assignDeliveryGroup(groupId: string, payload: AssignDeliveryPayload) {
         return post<DeliveryGroupDetail, AssignDeliveryPayload>(
             `/delivery/groups/${groupId}/assign`,
+            payload
+        )
+    },
+
+    updateDeliveryGroupAssignment(groupId: string, payload: UpdateDeliveryAssignmentPayload) {
+        return put<DeliveryGroupDetail, UpdateDeliveryAssignmentPayload>(
+            `/delivery/groups/${groupId}/assignment`,
+            payload
+        )
+    },
+
+    acceptDeliveryGroup(groupId: string, payload?: DeliveryActionPayload) {
+        return post<DeliveryGroupDetail, DeliveryActionPayload>(
+            `/delivery/groups/${groupId}/accept`,
             payload
         )
     },
@@ -499,7 +638,7 @@ export const adminService = {
     },
 
     getDeliveryStats() {
-        return get<DeliveryStats[]>(`/delivery/stats`)
+        return get<DeliveryStats[]>("/delivery/stats")
     },
 
     /* ========================= Packaging ========================= */
@@ -515,6 +654,20 @@ export const adminService = {
 
     getPackagingOrderDetail(orderId: string) {
         return get<PackagingOrderDetail>(`/Packaging/orders/${orderId}`)
+    },
+
+    collectPackagingOrder(orderId: string, payload?: PackagingActionPayload) {
+        return post<PackagingOrderDetail, PackagingActionPayload>(
+            `/Packaging/orders/${orderId}/collect`,
+            payload
+        )
+    },
+
+    packagePackagingOrder(orderId: string, payload?: PackagingActionPayload) {
+        return post<PackagingOrderDetail, PackagingActionPayload>(
+            `/Packaging/orders/${orderId}/package`,
+            payload
+        )
     },
 
     markPackagingReady(orderId: string, payload?: PackagingActionPayload) {

@@ -319,6 +319,8 @@ export type DeliveryGroupListItem = {
     timeSlotDisplay: string
     deliveryType: string
     deliveryArea: string
+    centerLatitude: number
+    centerLongitude: number
     status: string
     totalOrders: number
     completedOrders: number
@@ -345,6 +347,8 @@ export type DeliveryGroupOrder = {
     customerPhone: string
     collectionPointName: string
     addressLine: string
+    latitude: number
+    longitude: number
     deliveryNote: string
     timeSlotDisplay: string
     totalItems: number
@@ -356,10 +360,12 @@ export type DeliveryGroupDetail = {
     groupCode: string
     deliveryStaffId?: string
     deliveryStaffName?: string
-    deliveryTimeSlotId?: string
+    timeSlotId?: string
     timeSlotDisplay: string
     deliveryType: string
     deliveryArea: string
+    centerLatitude: number
+    centerLongitude: number
     status: string
     totalOrders: number
     completedOrders: number
@@ -372,6 +378,11 @@ export type DeliveryGroupDetail = {
 }
 
 export type AssignDeliveryPayload = {
+    deliveryStaffId: string
+    reason?: string
+}
+
+export type UpdateDeliveryAssignmentPayload = {
     deliveryStaffId: string
     reason?: string
 }
@@ -400,6 +411,8 @@ export type DeliveryOrderDetail = {
     customerPhone: string
     collectionPointName: string
     addressLine: string
+    latitude: number
+    longitude: number
     deliveryNote: string
     timeSlotDisplay: string
     totalItems: number
