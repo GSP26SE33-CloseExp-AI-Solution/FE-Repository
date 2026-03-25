@@ -41,11 +41,15 @@ const AdminHeader = () => {
     return (
         <header className="fixed top-0 left-0 w-full h-20 backdrop-blur-xl bg-white/70 border-b border-white/40 z-50 shadow-sm">
             <div className="w-full h-full px-8 flex items-center">
-                <div className="flex items-center gap-3 w-[260px]">
-                    <img src={Logo} alt="CloseExp AI" className="w-10 h-10" />
-                    <div className="leading-tight">
-                        <p className="font-bold text-gray-800">CloseExp AI</p>
-                        <p className="text-xs text-gray-500">
+                <div className="flex items-center gap-0 w-[280px]">
+                    <img
+                        src={Logo}
+                        alt="CloseExp AI"
+                        className="w-20 h-20 object-contain shrink-0 translate-y-1"
+                    />
+                    <div className="-ml-2 leading-tight">
+                        <p className="text-base font-bold text-gray-800">CloseExp AI</p>
+                        <p className="text-sm text-gray-500">
                             Trung tâm quản trị hệ thống
                         </p>
                     </div>
