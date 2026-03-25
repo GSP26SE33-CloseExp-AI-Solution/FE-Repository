@@ -37,7 +37,6 @@ const adminMenuItems: MenuItem[] = [
     { label: "Tài khoản", path: "/admin/users", icon: Users },
     { label: "Phê duyệt", path: "/admin/approvals", icon: BadgeCheck },
     { label: "Nhân sự nội bộ", path: "/admin/internal-staff", icon: Briefcase },
-    { label: "Phân quyền", path: "/admin/roles", icon: ShieldCheck },
 
     { label: "Hồ sơ", path: "/admin/profile", icon: UserCircle },
     { label: "Cấu hình hệ thống", path: "/admin/settings", icon: Settings },

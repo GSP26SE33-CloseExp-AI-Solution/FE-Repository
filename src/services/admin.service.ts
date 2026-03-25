@@ -364,7 +364,7 @@ export const adminService = {
             keyword: params?.keyword,
         })
 
-        const staffRoleIds = [1, 2, 3, 4, 5]
+        const staffRoleIds = [1, 2, 3, 5]
 
         const items = users.items
             .filter((item) => staffRoleIds.includes(item.roleId))

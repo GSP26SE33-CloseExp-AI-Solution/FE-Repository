@@ -3,7 +3,6 @@ export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/admin/users": ["Admin", "Tài khoản"],
     "/admin/approvals": ["Admin", "Phê duyệt"],
     "/admin/internal-staff": ["Admin", "Nhân sự nội bộ"],
-    "/admin/roles": ["Admin", "Phân quyền"],
     "/admin/transactions": ["Admin", "Giao dịch"],
     "/admin/delivery": ["Admin", "Điều phối giao hàng"],
     "/admin/operations": ["Admin", "Đóng gói & giao hàng"],
