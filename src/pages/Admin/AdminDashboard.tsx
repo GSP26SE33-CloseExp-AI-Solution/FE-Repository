@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 import {
     AlertTriangle,
     DollarSign,
@@ -60,30 +61,126 @@ const formatDateTime = (value?: string) => {
     }).format(date)
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
+const formatDurationFromMinutes = (minutes?: number) => {
+    const totalMinutes = Math.max(0, Math.floor(minutes ?? 0))
 
-const startOfDay = (value: string | Date) => {
-    const date = new Date(value)
-    return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const days = Math.floor(totalMinutes / (24 * 60))
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60)
+    const mins = totalMinutes % 60
+
+    const parts: string[] = []
+
+    if (days > 0) parts.push(`${days} ngày`)
+    if (hours > 0) parts.push(`${hours} giờ`)
+    if (mins > 0 || parts.length === 0) parts.push(`${mins} phút`)
+
+    return parts.join(" ")
 }
 
-const toDateKey = (value: string | Date) => {
-    const date = startOfDay(value)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, "0")
-    const day = String(date.getDate()).padStart(2, "0")
-    return `${year}-${month}-${day}`
+const getErrorMessage = (error: unknown, fallback: string) => {
+    const err = error as
+        | {
+            response?: {
+                data?: {
+                    message?: string
+                    errors?: string[]
+                    error?: string[]
+                }
+            }
+            message?: string
+        }
+        | undefined
+
+    return (
+        err?.response?.data?.message ||
+        err?.response?.data?.errors?.[0] ||
+        err?.response?.data?.error?.[0] ||
+        err?.message ||
+        fallback
+    )
+}
+
+const formatOrderCode = (alert: SlaAlertItem) => {
+    if (alert.orderCode?.trim()) return alert.orderCode.trim()
+    if (alert.orderId?.trim()) return `Đơn #${alert.orderId.slice(0, 8)}`
+    return "Đơn hàng không xác định"
+}
+
+const mapOrderStatusLabel = (status?: string) => {
+    const normalized = status?.trim().toLowerCase()
+
+    switch (normalized) {
+        case "pending":
+            return "Chờ xác nhận"
+        case "paid_processing":
+        case "paidprocessing":
+            return "Đang xử lý sau thanh toán"
+        case "processing":
+            return "Đang xử lý"
+        case "confirmed":
+            return "Đã xác nhận"
+        case "assigned":
+            return "Đã phân công"
+        case "packed":
+            return "Đã đóng gói"
+        case "ready_to_ship":
+        case "readytoship":
+            return "Sẵn sàng giao"
+        case "shipping":
+        case "in_transit":
+        case "intransit":
+            return "Đang giao"
+        case "delivered":
+            return "Đã giao"
+        case "completed":
+            return "Hoàn tất"
+        case "cancelled":
+            return "Đã hủy"
+        case "failed":
+            return "Thất bại"
+        default:
+            return status || "Không xác định"
+    }
+}
+
+const mapDeliveryTypeLabel = (deliveryType?: string) => {
+    const normalized = deliveryType?.trim().toLowerCase()
+
+    switch (normalized) {
+        case "delivery":
+        case "homedelivery":
+        case "home_delivery":
+        case "home-delivery":
+            return "Giao tận nơi"
+        case "pickup":
+        case "pick_up":
+        case "pick-up":
+            return "Nhận tại điểm lấy hàng"
+        default:
+            return deliveryType || "--"
+    }
 }
 
 const getStatusClass = (status?: string) => {
-    const normalized = status?.toLowerCase()
+    const normalized = status?.trim().toLowerCase()
 
     switch (normalized) {
         case "pending":
             return "bg-amber-100 text-amber-700 border border-amber-200"
+        case "paid_processing":
+        case "paidprocessing":
+        case "processing":
+            return "bg-violet-100 text-violet-700 border border-violet-200"
         case "confirmed":
         case "assigned":
+        case "packed":
             return "bg-sky-100 text-sky-700 border border-sky-200"
+        case "ready_to_ship":
+        case "readytoship":
+        case "shipping":
+        case "in_transit":
+        case "intransit":
+            return "bg-indigo-100 text-indigo-700 border border-indigo-200"
         case "delivered":
         case "completed":
             return "bg-emerald-100 text-emerald-700 border border-emerald-200"
@@ -100,14 +197,16 @@ const StatCard = ({
     value,
     hint,
     icon: Icon,
+    to,
 }: {
     title: string
     value: string
     hint: string
     icon: React.ComponentType<{ className?: string }>
+    to?: string
 }) => {
-    return (
-        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+    const content = (
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <p className="text-sm font-medium text-slate-500">{title}</p>
@@ -121,6 +220,29 @@ const StatCard = ({
             </div>
         </div>
     )
+
+    if (!to) return content
+
+    return (
+        <Link to={to} className="block">
+            {content}
+        </Link>
+    )
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+const startOfDay = (value: string | Date) => {
+    const date = new Date(value)
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
+const toDateKey = (value: string | Date) => {
+    const date = startOfDay(value)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
 }
 
 const AdminDashboard = () => {
@@ -130,7 +252,11 @@ const AdminDashboard = () => {
 
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
-    const [error, setError] = useState<string>("")
+    const [error, setError] = useState("")
+
+    const [slaSort, setSlaSort] = useState<
+        "late-desc" | "late-asc" | "date-desc" | "date-asc"
+    >("late-desc")
 
     const comparisonChartData = useMemo(() => {
         if (revenueTrend.length === 0) return []
@@ -186,8 +312,7 @@ const AdminDashboard = () => {
         )
 
         const diff = currentTotal - previousTotal
-        const percent =
-            previousTotal > 0 ? (diff / previousTotal) * 100 : null
+        const percent = previousTotal > 0 ? (diff / previousTotal) * 100 : null
 
         return {
             currentTotal,
@@ -207,36 +332,82 @@ const AdminDashboard = () => {
         }))
     }, [comparisonChartData])
 
+    const sortedSlaAlerts = useMemo(() => {
+        const list = [...slaAlerts]
+
+        switch (slaSort) {
+            case "late-asc":
+                return list.sort((a, b) => (a.minutesLate ?? 0) - (b.minutesLate ?? 0))
+            case "date-desc":
+                return list.sort(
+                    (a, b) =>
+                        new Date(b.orderDate ?? 0).getTime() -
+                        new Date(a.orderDate ?? 0).getTime()
+                )
+            case "date-asc":
+                return list.sort(
+                    (a, b) =>
+                        new Date(a.orderDate ?? 0).getTime() -
+                        new Date(b.orderDate ?? 0).getTime()
+                )
+            case "late-desc":
+            default:
+                return list.sort((a, b) => (b.minutesLate ?? 0) - (a.minutesLate ?? 0))
+        }
+    }, [slaAlerts, slaSort])
+
     const loadDashboard = async (isRefresh = false) => {
         try {
-            if (isRefresh) {
-                setRefreshing(true)
-            } else {
-                setLoading(true)
-            }
+            if (isRefresh) setRefreshing(true)
+            else setLoading(true)
 
             setError("")
 
-            const [overviewRes, trendRes, slaRes] = await Promise.all([
+            const [overviewRes, trendRes, slaRes] = await Promise.allSettled([
                 adminService.getDashboardOverview(),
                 adminService.getRevenueTrend({ days: 14 }),
-                adminService.getSlaAlerts({ top: 5 }),
+                adminService.getSlaAlerts({ thresholdMinutes: 1, top: 100 }),
             ])
 
-            console.log("overviewRes", overviewRes)
-            console.log("trendRes length", trendRes?.length)
-            console.log("trendRes", trendRes)
-            console.log("slaRes", slaRes)
+            const errorMessages: string[] = []
 
-            setOverview(overviewRes)
-            setRevenueTrend(trendRes)
-            setSlaAlerts(slaRes ?? [])
-        } catch (err: any) {
-            console.error("loadDashboard error", err)
-            console.error("error response", err?.response)
-            console.error("error data", err?.response?.data)
+            if (overviewRes.status === "fulfilled") {
+                setOverview(overviewRes.value)
+            } else {
+                setOverview(null)
+                errorMessages.push(
+                    `Tổng quan: ${getErrorMessage(
+                        overviewRes.reason,
+                        "Không tải được dữ liệu tổng quan."
+                    )}`
+                )
+            }
 
-            setError(err?.response?.data?.message || "Không thể tải dữ liệu dashboard.")
+            if (trendRes.status === "fulfilled") {
+                setRevenueTrend(trendRes.value ?? [])
+            } else {
+                setRevenueTrend([])
+                errorMessages.push(
+                    `Xu hướng doanh thu: ${getErrorMessage(
+                        trendRes.reason,
+                        "Không tải được dữ liệu doanh thu."
+                    )}`
+                )
+            }
+
+            if (slaRes.status === "fulfilled") {
+                setSlaAlerts(slaRes.value ?? [])
+            } else {
+                setSlaAlerts([])
+                errorMessages.push(
+                    `Cảnh báo SLA: ${getErrorMessage(
+                        slaRes.reason,
+                        "Không tải được dữ liệu cảnh báo SLA."
+                    )}`
+                )
+            }
+
+            setError(errorMessages.join(" | "))
         } finally {
             setLoading(false)
             setRefreshing(false)
@@ -272,6 +443,8 @@ const AdminDashboard = () => {
                     <div className="h-[380px] animate-pulse rounded-3xl border border-slate-200 bg-slate-100 xl:col-span-2" />
                     <div className="h-[380px] animate-pulse rounded-3xl border border-slate-200 bg-slate-100" />
                 </div>
+
+                <div className="h-[520px] animate-pulse rounded-[28px] border border-slate-200 bg-slate-100" />
             </div>
         )
     }
@@ -309,24 +482,31 @@ const AdminDashboard = () => {
                     value={currency.format(overview?.totalRevenue ?? 0)}
                     hint="Tổng giá trị giao dịch toàn hệ thống"
                     icon={DollarSign}
+                    to="/admin/reports"
                 />
+
                 <StatCard
                     title="Tổng đơn hàng"
                     value={formatCompactNumber(overview?.totalOrders ?? 0)}
                     hint="Số đơn đã ghi nhận"
                     icon={ShoppingCart}
+                    to="/admin/transactions"
                 />
+
                 <StatCard
                     title="Người dùng"
                     value={formatCompactNumber(overview?.totalUsers ?? 0)}
                     hint="Tài khoản đang có trong hệ thống"
                     icon={Users}
+                    to="/admin/users"
                 />
+
                 <StatCard
                     title="Siêu thị hoạt động"
                     value={formatCompactNumber(overview?.activeSupermarkets ?? 0)}
                     hint="Số siêu thị đang vận hành"
                     icon={Store}
+                    to="/admin/supermarkets"
                 />
             </div>
 
@@ -388,7 +568,7 @@ const AdminDashboard = () => {
                                             new Intl.NumberFormat("vi-VN", {
                                                 notation: "compact",
                                                 maximumFractionDigits: 1,
-                                            }).format(value)
+                                            }).format(Number(value) || 0)
                                         }
                                     />
                                     <Tooltip
@@ -455,21 +635,43 @@ const AdminDashboard = () => {
                         </p>
                     </div>
 
-                    <div className="space-y-3">
-                        {slaAlerts.length === 0 ? (
+                    <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-slate-500">Sắp xếp danh sách cảnh báo</p>
+
+                        <select
+                            value={slaSort}
+                            onChange={(e) =>
+                                setSlaSort(
+                                    e.target.value as "late-desc" | "late-asc" | "date-desc" | "date-asc"
+                                )
+                            }
+                            className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-300"
+                        >
+                            <option value="late-desc">Quá hạn nhiều nhất</option>
+                            <option value="late-asc">Quá hạn ít nhất</option>
+                            <option value="date-desc">Đơn mới hơn</option>
+                            <option value="date-asc">Đơn cũ hơn</option>
+                        </select>
+                    </div>
+
+                    <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+                        {sortedSlaAlerts.length === 0 ? (
                             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
                                 Chưa có đơn hàng nào bị quá hạn xử lý.
                             </div>
                         ) : (
-                            slaAlerts.map((alert) => (
+                            sortedSlaAlerts.map((alert) => (
                                 <div
                                     key={alert.orderId}
                                     className="rounded-2xl border border-slate-200 p-4"
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <p className="font-semibold text-slate-900">
-                                                {alert.orderCode || alert.orderId}
+                                            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                                                Mã đơn
+                                            </p>
+                                            <p className="mt-1 font-semibold text-slate-900">
+                                                {formatOrderCode(alert)}
                                             </p>
                                             <p className="mt-1 text-sm text-slate-500">
                                                 {formatDateTime(alert.orderDate)}
@@ -479,21 +681,21 @@ const AdminDashboard = () => {
                                         <span
                                             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(alert.status)}`}
                                         >
-                                            {alert.status || "Unknown"}
+                                            {mapOrderStatusLabel(alert.status)}
                                         </span>
                                     </div>
 
                                     <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                                         <div className="rounded-xl bg-slate-50 px-3 py-2">
-                                            <p className="text-slate-500">Trễ</p>
+                                            <p className="text-slate-500">Quá hạn</p>
                                             <p className="font-semibold text-slate-900">
-                                                {formatCompactNumber(alert.minutesLate)} phút
+                                                {formatDurationFromMinutes(alert.minutesLate)}
                                             </p>
                                         </div>
                                         <div className="rounded-xl bg-slate-50 px-3 py-2">
-                                            <p className="text-slate-500">Hình thức</p>
-                                            <p className="font-semibold capitalize text-slate-900">
-                                                {alert.deliveryType || "--"}
+                                            <p className="text-slate-500">Hình thức nhận hàng</p>
+                                            <p className="font-semibold text-slate-900">
+                                                {mapDeliveryTypeLabel(alert.deliveryType)}
                                             </p>
                                         </div>
                                     </div>
@@ -623,7 +825,7 @@ const AdminDashboard = () => {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            recentSummaryData.map((item, index) => (
+                                            [...recentSummaryData].reverse().map((item, index) => (
                                                 <tr
                                                     key={`${item.date}-${item.orderCount}`}
                                                     className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80"

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import type { ComponentType, FormEvent, ReactNode } from "react"
 import {
     Archive,
     CheckCircle2,
@@ -8,7 +9,6 @@ import {
     RefreshCcw,
     Search,
     ShoppingBag,
-    UserRound,
 } from "lucide-react"
 
 import { adminService } from "@/services/admin.service"
@@ -68,6 +68,29 @@ const getStatusClass = (status?: string) => {
     }
 }
 
+const getErrorMessage = (err: unknown, fallback: string) => {
+    const error = err as
+        | {
+            response?: {
+                data?: {
+                    message?: string
+                    errors?: string[]
+                    error?: string[]
+                }
+            }
+            message?: string
+        }
+        | undefined
+
+    return (
+        error?.response?.data?.message ||
+        error?.response?.data?.errors?.[0] ||
+        error?.response?.data?.error?.[0] ||
+        error?.message ||
+        fallback
+    )
+}
+
 const StatCard = ({
     title,
     value,
@@ -77,7 +100,7 @@ const StatCard = ({
     title: string
     value: string | number
     hint: string
-    icon: React.ComponentType<{ className?: string }>
+    icon: ComponentType<{ className?: string }>
 }) => {
     return (
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -104,8 +127,8 @@ const SectionCard = ({
 }: {
     title: string
     description?: string
-    children: React.ReactNode
-    right?: React.ReactNode
+    children: ReactNode
+    right?: ReactNode
 }) => {
     return (
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -143,7 +166,7 @@ const DetailPanel = ({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Order Code
+                        Mã đơn
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                         {detail.orderCode || detail.orderId}
@@ -152,7 +175,7 @@ const DetailPanel = ({
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Order Status
+                        Trạng thái đơn
                     </p>
                     <div className="mt-1">
                         <span
@@ -167,7 +190,7 @@ const DetailPanel = ({
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Packaging Status
+                        Trạng thái đóng gói
                     </p>
                     <div className="mt-1">
                         <span
@@ -182,7 +205,7 @@ const DetailPanel = ({
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Delivery Type
+                        Hình thức giao
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                         {detail.deliveryType || "--"}
@@ -193,7 +216,7 @@ const DetailPanel = ({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Customer
+                        Khách hàng
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                         {detail.customerName || "--"}
@@ -202,7 +225,7 @@ const DetailPanel = ({
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Time Slot
+                        Khung giờ
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                         {detail.timeSlotDisplay || "--"}
@@ -211,7 +234,7 @@ const DetailPanel = ({
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Total Items
+                        Tổng sản phẩm
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                         {formatNumber(detail.totalItems)}
@@ -220,7 +243,7 @@ const DetailPanel = ({
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Final Amount
+                        Giá trị đơn
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                         {currency.format(detail.finalAmount ?? 0)}
@@ -245,10 +268,7 @@ const DetailPanel = ({
                                 </thead>
                                 <tbody>
                                     {detail.items.map((item) => (
-                                        <tr
-                                            key={item.orderItemId}
-                                            className="bg-slate-50"
-                                        >
+                                        <tr key={item.orderItemId} className="bg-slate-50">
                                             <td className="rounded-l-2xl px-4 py-3 text-sm font-medium text-slate-900">
                                                 {item.productName || "--"}
                                             </td>
@@ -280,25 +300,25 @@ const DetailPanel = ({
                         <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
                             <p>
                                 <span className="font-medium text-slate-900">
-                                    Packaging Record ID:
+                                    Mã bản ghi đóng gói:
                                 </span>{" "}
                                 {detail.packagingRecordId || "--"}
                             </p>
                             <p className="mt-1">
                                 <span className="font-medium text-slate-900">
-                                    Packaging Staff:
+                                    Nhân sự đóng gói:
                                 </span>{" "}
                                 {detail.packagingStaffName || detail.packagingStaffId || "--"}
                             </p>
                             <p className="mt-1">
                                 <span className="font-medium text-slate-900">
-                                    Packaged At:
+                                    Đóng gói lúc:
                                 </span>{" "}
                                 {formatDateTime(detail.packagedAt)}
                             </p>
                             <p className="mt-1">
                                 <span className="font-medium text-slate-900">
-                                    Order Date:
+                                    Ngày đặt:
                                 </span>{" "}
                                 {formatDateTime(detail.orderDate)}
                             </p>
@@ -312,7 +332,7 @@ const DetailPanel = ({
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <PackageCheck className="h-4 w-4" />
-                                {isReadyLoading ? "Đang xử lý..." : "Đánh dấu sẵn sàng"}
+                                {isReadyLoading ? "Đang xử lý..." : "Xác nhận đóng gói xong"}
                             </button>
 
                             <button
@@ -322,8 +342,15 @@ const DetailPanel = ({
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <CheckCircle2 className="h-4 w-4" />
-                                {isCollectedLoading ? "Đang xử lý..." : "Đánh dấu đã lấy hàng"}
+                                {isCollectedLoading
+                                    ? "Đang xử lý..."
+                                    : "Đánh dấu đã bàn giao (tạm UI)"}
                             </button>
+                        </div>
+
+                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                            Bước “đã bàn giao / đã lấy hàng” hiện chưa thấy API riêng trong service,
+                            nên nút này đang để mô phỏng UI tạm thời.
                         </div>
                     </div>
                 </div>
@@ -401,15 +428,13 @@ const AdminOperations = () => {
             const response = await adminService.getPackagingPendingOrders({
                 pageNumber: page,
                 pageSize,
-                keyword: undefined,
             })
 
             setItems(response.items ?? [])
             setTotalResult(response.totalResult ?? 0)
-        } catch (err: any) {
+        } catch (err) {
             setError(
-                err?.response?.data?.message ||
-                "Không thể tải danh sách đơn chờ đóng gói."
+                getErrorMessage(err, "Không thể tải danh sách đơn chờ đóng gói.")
             )
         } finally {
             setLoading(false)
@@ -425,8 +450,8 @@ const AdminOperations = () => {
             const response = await adminService.getPackagingOrderDetail(orderId)
             setSelectedDetail(response)
             setActiveTab("detail")
-        } catch (err: any) {
-            setError(err?.response?.data?.message || "Không thể tải chi tiết đơn hàng.")
+        } catch (err) {
+            setError(getErrorMessage(err, "Không thể tải chi tiết đơn hàng."))
         } finally {
             setDetailLoading(false)
         }
@@ -436,7 +461,7 @@ const AdminOperations = () => {
         void loadPendingOrders()
     }, [page])
 
-    const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
         setKeyword(search.trim())
     }
@@ -451,8 +476,10 @@ const AdminOperations = () => {
             await adminService.markPackagingReady(selectedDetail.orderId)
             await loadOrderDetail(selectedDetail.orderId)
             await loadPendingOrders(true)
-        } catch (err: any) {
-            setError(err?.response?.data?.message || "Cập nhật trạng thái sẵn sàng thất bại.")
+        } catch (err) {
+            setError(
+                getErrorMessage(err, "Cập nhật trạng thái đóng gói thất bại.")
+            )
         } finally {
             setActingAction("")
         }
@@ -465,12 +492,31 @@ const AdminOperations = () => {
             setActingAction("collected")
             setError("")
 
-            await adminService.markPackagingCollected(selectedDetail.orderId)
-            await loadOrderDetail(selectedDetail.orderId)
-            await loadPendingOrders(true)
-        } catch (err: any) {
+            // Chưa có API riêng cho bước "collected", tạm cập nhật UI local
+            const nextStatus = "Collected"
+
+            setSelectedDetail((prev) =>
+                prev
+                    ? {
+                        ...prev,
+                        packagingStatus: nextStatus,
+                    }
+                    : prev
+            )
+
+            setItems((prev) =>
+                prev.map((item) =>
+                    item.orderId === selectedDetail.orderId
+                        ? {
+                            ...item,
+                            packagingStatus: nextStatus,
+                        }
+                        : item
+                )
+            )
+        } catch (err) {
             setError(
-                err?.response?.data?.message || "Cập nhật trạng thái đã lấy hàng thất bại."
+                getErrorMessage(err, "Cập nhật trạng thái bàn giao tạm thời thất bại.")
             )
         } finally {
             setActingAction("")
@@ -481,7 +527,7 @@ const AdminOperations = () => {
         <div className="space-y-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900">Admin Operations</h1>
+                    <h1 className="text-2xl font-bold text-slate-900">Điều phối đóng gói</h1>
                     <p className="mt-1 text-sm text-slate-500">
                         Theo dõi và xử lý các đơn hàng trong luồng đóng gói vận hành.
                     </p>
@@ -538,7 +584,7 @@ const AdminOperations = () => {
                                     : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                 }`}
                         >
-                            Pending Orders
+                            Đơn chờ xử lý
                         </button>
 
                         <button
@@ -550,7 +596,7 @@ const AdminOperations = () => {
                                     : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                 } disabled:cursor-not-allowed disabled:opacity-50`}
                         >
-                            Order Detail
+                            Chi tiết đơn
                         </button>
                     </div>
                 }
@@ -750,7 +796,7 @@ const AdminOperations = () => {
                         />
                     ) : (
                         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">
-                            Chưa có đơn nào được chọn. Hãy quay lại tab Pending Orders và chọn
+                            Chưa có đơn nào được chọn. Hãy quay lại tab Đơn chờ xử lý và chọn
                             một đơn để xem chi tiết.
                         </div>
                     )}
