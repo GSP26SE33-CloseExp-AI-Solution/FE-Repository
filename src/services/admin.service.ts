@@ -44,6 +44,7 @@ import type {
     UpdateUserPayload,
     UpsertCollectionPointPayload,
     UpsertPromotionPayload,
+    UpdatePromotionStatusPayload,
     UpsertTimeSlotPayload,
     UpsertUnitPayload,
     UserImageItem,
@@ -224,7 +225,7 @@ export const adminService = {
     },
 
     updatePromotionStatus(promotionId: string, status: string) {
-        return patch<PromotionItem, { status: string }>(
+        return patch<PromotionItem, UpdatePromotionStatusPayload>(
             `/admin/catalog/promotions/${promotionId}/status`,
             { status }
         )
@@ -520,18 +521,10 @@ export const adminService = {
         )
     },
 
-    getAvailableDeliveryGroups(params?: {
-        deliveryDate?: string
-        pageNumber?: number
-        pageSize?: number
-        status?: string
-    }) {
-        return get<PaginationResult<DeliveryGroupListItem>>(
+    getAvailableDeliveryGroups(params?: { deliveryDate?: string }) {
+        return get<DeliveryGroupListItem[]>(
             `/delivery/groups/available${buildQueryString({
-                DeliveryDate: params?.deliveryDate,
-                PageNumber: params?.pageNumber,
-                PageSize: params?.pageSize,
-                status: params?.status,
+                deliveryDate: params?.deliveryDate,
             })}`
         )
     },
@@ -685,18 +678,5 @@ export const adminService = {
         const hh = String(value.hours ?? 0).padStart(2, "0")
         const mm = String(value.minutes ?? 0).padStart(2, "0")
         return `${hh}:${mm}`
-    },
-
-    toTimeSlotPayload(startHHmm: string, endHHmm: string): UpsertTimeSlotPayload {
-        const toTicks = (value: string) => {
-            const [hour, minute] = value.split(":").map(Number)
-            const totalSeconds = hour * 3600 + minute * 60
-            return totalSeconds * 10_000_000
-        }
-
-        return {
-            startTime: { ticks: toTicks(startHHmm) },
-            endTime: { ticks: toTicks(endHHmm) },
-        }
     },
 }

@@ -74,28 +74,30 @@ export type SlaAlertItem = {
 
 export type AdminTimeSlot = {
     timeSlotId: string
-    startTime: TimeSpanDto
-    endTime: TimeSpanDto
+    startTime: string
+    endTime: string
+    orders?: string[]
 }
 
 export type UpsertTimeSlotPayload = {
-    startTime: {
-        ticks: number
-    }
-    endTime: {
-        ticks: number
-    }
+    startTime: string
+    endTime: string
 }
 
 export type CollectionPoint = {
     collectionId: string
     name: string
     addressLine: string
+    latitude: number
+    longitude: number
+    orders?: string[]
 }
 
 export type UpsertCollectionPointPayload = {
     name: string
     addressLine: string
+    latitude: number
+    longitude: number
 }
 
 export type SystemParameter = {
@@ -127,20 +129,33 @@ export type UpsertUnitPayload = {
 
 export type PromotionItem = {
     promotionId: string
+    code: string
     categoryId: string
     name: string
     discountType: string
     discountValue: number
+    minOrderAmount: number
+    maxDiscountAmount: number
+    maxUsage: number
+    usedCount: number
+    perUserLimit: number
     startDate: string
     endDate: string
     status: string
+    orders?: string[]
+    promotionUsages?: string[]
 }
 
 export type UpsertPromotionPayload = {
+    code: string
     categoryId: string
     name: string
     discountType: string
     discountValue: number
+    minOrderAmount: number
+    maxDiscountAmount: number
+    maxUsage: number
+    perUserLimit: number
     startDate: string
     endDate: string
     status: string
@@ -586,3 +601,37 @@ export type ReportBreakdownItem = {
     value: number
     percentage?: number
 }
+
+/* ========================= ENUM STATE ========================= */
+
+export const USER_STATUS = {
+    UNVERIFIED: 0,
+    PENDING_APPROVAL: 1,
+    ACTIVE: 2,
+    REJECTED: 3,
+    LOCKED: 4,
+    BANNED: 5,
+    DELETED: 6,
+    HIDDEN: 7,
+} as const
+
+export const PACKAGING_STATUS = {
+    PENDING: 0,
+    PACKAGING: 1,
+    COMPLETED: 2,
+    FAILED: 3,
+} as const
+
+export const SUPERMARKET_STATUS = {
+    PENDING_APPROVAL: 0,
+    ACTIVE: 1,
+    SUSPENDED: 2,
+    CLOSED: 3,
+} as const
+
+export const PROMOTION_STATUS = {
+    DRAFT: "Draft",
+    ACTIVE: "Active",
+    EXPIRED: "Expired",
+    DISABLED: "Disabled",
+} as const

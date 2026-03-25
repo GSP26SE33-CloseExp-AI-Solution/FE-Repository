@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react"
 import type { ComponentType, FormEvent, ReactNode } from "react"
 import {
     Archive,
-    CheckCircle2,
     ChevronRight,
     ClipboardList,
     PackageCheck,
@@ -43,7 +42,7 @@ const formatDateTime = (value?: string) => {
 }
 
 const getStatusClass = (status?: string) => {
-    const normalized = status?.toLowerCase()
+    const normalized = status?.trim().toLowerCase()
 
     switch (normalized) {
         case "pending":
@@ -54,14 +53,10 @@ const getStatusClass = (status?: string) => {
         case "packing":
         case "packaging":
             return "border border-sky-200 bg-sky-100 text-sky-700"
-        case "ready":
-        case "packed":
-            return "border border-emerald-200 bg-emerald-100 text-emerald-700"
-        case "collected":
         case "completed":
-            return "border border-violet-200 bg-violet-100 text-violet-700"
-        case "cancelled":
+            return "border border-emerald-200 bg-emerald-100 text-emerald-700"
         case "failed":
+        case "cancelled":
             return "border border-rose-200 bg-rose-100 text-rose-700"
         default:
             return "border border-slate-200 bg-slate-100 text-slate-700"
@@ -151,15 +146,15 @@ const DetailPanel = ({
     detail,
     actingAction,
     onReady,
-    onCollected,
 }: {
     detail: PackagingOrderDetail
     actingAction: string
     onReady: () => Promise<void>
-    onCollected: () => Promise<void>
 }) => {
     const isReadyLoading = actingAction === "ready"
-    const isCollectedLoading = actingAction === "collected"
+    const packagingStatus = detail.packagingStatus?.trim().toLowerCase()
+    const isCompleted = packagingStatus === "completed"
+    const isFailed = packagingStatus === "failed"
 
     return (
         <div className="space-y-5">
@@ -328,29 +323,12 @@ const DetailPanel = ({
                             <button
                                 type="button"
                                 onClick={() => void onReady()}
-                                disabled={isReadyLoading}
+                                disabled={isReadyLoading || isCompleted || isFailed}
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <PackageCheck className="h-4 w-4" />
-                                {isReadyLoading ? "Đang xử lý..." : "Xác nhận đóng gói xong"}
+                                {isReadyLoading ? "Đang xử lý..." : "Xác nhận hoàn tất đóng gói"}
                             </button>
-
-                            <button
-                                type="button"
-                                onClick={() => void onCollected()}
-                                disabled={isCollectedLoading}
-                                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                                <CheckCircle2 className="h-4 w-4" />
-                                {isCollectedLoading
-                                    ? "Đang xử lý..."
-                                    : "Đánh dấu đã bàn giao (tạm UI)"}
-                            </button>
-                        </div>
-
-                        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                            Bước “đã bàn giao / đã lấy hàng” hiện chưa thấy API riêng trong service,
-                            nên nút này đang để mô phỏng UI tạm thời.
                         </div>
                     </div>
                 </div>
@@ -408,10 +386,10 @@ const AdminOperations = () => {
         return filteredItems.reduce((sum, item) => sum + (item.finalAmount ?? 0), 0)
     }, [filteredItems])
 
-    const readyLikeCount = useMemo(() => {
+    const completedCount = useMemo(() => {
         return filteredItems.filter((item) => {
-            const normalized = item.packagingStatus?.toLowerCase()
-            return normalized === "ready" || normalized === "packed"
+            const normalized = item.packagingStatus?.trim().toLowerCase()
+            return normalized === "completed"
         }).length
     }, [filteredItems])
 
@@ -485,44 +463,6 @@ const AdminOperations = () => {
         }
     }
 
-    const handleCollected = async () => {
-        if (!selectedDetail) return
-
-        try {
-            setActingAction("collected")
-            setError("")
-
-            // Chưa có API riêng cho bước "collected", tạm cập nhật UI local
-            const nextStatus = "Collected"
-
-            setSelectedDetail((prev) =>
-                prev
-                    ? {
-                        ...prev,
-                        packagingStatus: nextStatus,
-                    }
-                    : prev
-            )
-
-            setItems((prev) =>
-                prev.map((item) =>
-                    item.orderId === selectedDetail.orderId
-                        ? {
-                            ...item,
-                            packagingStatus: nextStatus,
-                        }
-                        : item
-                )
-            )
-        } catch (err) {
-            setError(
-                getErrorMessage(err, "Cập nhật trạng thái bàn giao tạm thời thất bại.")
-            )
-        } finally {
-            setActingAction("")
-        }
-    }
-
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -548,7 +488,7 @@ const AdminOperations = () => {
                 <StatCard
                     title="Đơn hiển thị"
                     value={filteredItems.length}
-                    hint="Số đơn chờ đóng gói đang hiển thị"
+                    hint="Số đơn đang hiển thị trong danh sách"
                     icon={ClipboardList}
                 />
                 <StatCard
@@ -564,24 +504,24 @@ const AdminOperations = () => {
                     icon={Archive}
                 />
                 <StatCard
-                    title="Đã sẵn sàng"
-                    value={readyLikeCount}
-                    hint="Số đơn có packaging status ready/packed"
+                    title="Đã hoàn tất"
+                    value={completedCount}
+                    hint="Số đơn đã hoàn tất đóng gói"
                     icon={PackageCheck}
                 />
             </div>
 
             <SectionCard
                 title="Bộ lọc và điều hướng"
-                description="Tìm nhanh đơn hàng cần xử lý hoặc chuyển sang phần chi tiết."
+                description="Chọn một đơn để xem chi tiết và cập nhật trạng thái đóng gói."
                 right={
                     <div className="flex flex-wrap gap-2">
                         <button
                             type="button"
                             onClick={() => setActiveTab("pending")}
                             className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${activeTab === "pending"
-                                    ? "bg-slate-900 text-white"
-                                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                ? "bg-slate-900 text-white"
+                                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                 }`}
                         >
                             Đơn chờ xử lý
@@ -592,8 +532,8 @@ const AdminOperations = () => {
                             onClick={() => setActiveTab("detail")}
                             disabled={!selectedDetail}
                             className={`rounded-2xl px-4 py-2 text-sm font-semibold transition ${activeTab === "detail"
-                                    ? "bg-slate-900 text-white"
-                                    : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                ? "bg-slate-900 text-white"
+                                : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                                 } disabled:cursor-not-allowed disabled:opacity-50`}
                         >
                             Chi tiết đơn
@@ -792,7 +732,6 @@ const AdminOperations = () => {
                             detail={selectedDetail}
                             actingAction={actingAction}
                             onReady={handleReady}
-                            onCollected={handleCollected}
                         />
                     ) : (
                         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-16 text-center text-sm text-slate-500">

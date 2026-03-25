@@ -39,29 +39,82 @@ const tabs: Array<{
         { key: "promotions", label: "Khuyến mãi", icon: Gift },
     ]
 
-const ticksFromHHMM = (value: string) => {
-    const [hour, minute] = value.split(":").map(Number)
-    const totalSeconds = hour * 3600 + minute * 60
-    return totalSeconds * 10_000_000
+const hhmmToTimeSpanString = (value: string) => {
+    if (!value) return "00:00:00"
+    return `${value}:00`
 }
 
-const hhmmFromTimeSpan = (ticks?: number) => {
-    if (!ticks && ticks !== 0) return "00:00"
-    const totalSeconds = Math.floor(ticks / 10_000_000)
-    const hour = Math.floor(totalSeconds / 3600)
-    const minute = Math.floor((totalSeconds % 3600) / 60)
-    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
+const hhmmFromTimeValue = (value?: string) => {
+    if (!value) return "00:00"
+    return value.slice(0, 5)
 }
 
 const formatDateTime = (value?: string) => {
     if (!value) return "--"
+
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return "--"
+
     return new Intl.DateTimeFormat("vi-VN", {
         hour: "2-digit",
         minute: "2-digit",
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-    }).format(new Date(value))
+    }).format(date)
+}
+
+const formatNumber = (value?: number) => {
+    return new Intl.NumberFormat("vi-VN").format(value ?? 0)
+}
+
+const formatMoney = (value?: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+        maximumFractionDigits: 0,
+    }).format(value ?? 0)
+}
+
+const getPromotionStatusLabel = (status?: string) => {
+    switch ((status ?? "").toLowerCase()) {
+        case "draft":
+            return "Bản nháp"
+        case "active":
+            return "Đang áp dụng"
+        case "expired":
+            return "Đã hết hạn"
+        case "disabled":
+            return "Đã tắt"
+        default:
+            return status || "--"
+    }
+}
+
+const getPromotionStatusClass = (status?: string) => {
+    switch ((status ?? "").toLowerCase()) {
+        case "draft":
+            return "bg-slate-100 text-slate-700"
+        case "active":
+            return "bg-emerald-100 text-emerald-700"
+        case "expired":
+            return "bg-amber-100 text-amber-700"
+        case "disabled":
+            return "bg-rose-100 text-rose-700"
+        default:
+            return "bg-slate-100 text-slate-700"
+    }
+}
+
+const getDiscountTypeLabel = (discountType?: string) => {
+    switch ((discountType ?? "").toLowerCase()) {
+        case "percentage":
+            return "Giảm theo phần trăm"
+        case "fixedamount":
+            return "Giảm số tiền cố định"
+        default:
+            return discountType || "--"
+    }
 }
 
 const AdminSettings = () => {
@@ -79,6 +132,8 @@ const AdminSettings = () => {
 
     const [newCollectionName, setNewCollectionName] = useState("")
     const [newCollectionAddress, setNewCollectionAddress] = useState("")
+    const [newCollectionLat, setNewCollectionLat] = useState("")
+    const [newCollectionLng, setNewCollectionLng] = useState("")
 
     const [newUnit, setNewUnit] = useState<UpsertUnitPayload>({
         name: "",
@@ -87,13 +142,18 @@ const AdminSettings = () => {
     })
 
     const [newPromotion, setNewPromotion] = useState<UpsertPromotionPayload>({
+        code: "",
         categoryId: "",
         name: "",
         discountType: "Percentage",
         discountValue: 0,
+        minOrderAmount: 0,
+        maxDiscountAmount: 0,
+        maxUsage: 0,
+        perUserLimit: 0,
         startDate: "",
         endDate: "",
-        status: "Active",
+        status: "Draft",
     })
 
     const activeTabLabel = useMemo(
@@ -104,40 +164,90 @@ const AdminSettings = () => {
     const fetchAll = async () => {
         try {
             setLoading(true)
-            const [slotRes, cpRes, paramRes, unitRes, promoRes] = await Promise.all([
+
+            const [slotRes, cpRes, unitRes] = await Promise.all([
                 adminService.getTimeSlots(),
                 adminService.getCollectionPoints(),
-                adminService.getSystemParameters(),
                 adminService.getUnits(),
-                adminService.getPromotions(),
             ])
 
             setTimeSlots(slotRes ?? [])
             setCollectionPoints(cpRes ?? [])
-            setParameters(paramRes ?? [])
             setUnits(unitRes ?? [])
-            setPromotions(promoRes ?? [])
+
+            setParameters([])
+            setPromotions([])
         } catch (error: any) {
-            showError(error?.response?.data?.message || "Không tải được cấu hình admin")
+            showError(error?.response?.data?.message || "Không tải được cấu hình hệ thống")
         } finally {
             setLoading(false)
         }
     }
 
     useEffect(() => {
-        fetchAll()
+        const loadTabData = async () => {
+            try {
+                setLoading(true)
+
+                if (tab === "parameters") {
+                    const res = await adminService.getSystemParameters()
+                    setParameters(res ?? [])
+                }
+
+                if (tab === "promotions") {
+                    const res = await adminService.getPromotions()
+                    setPromotions(res ?? [])
+                }
+            } catch (error: any) {
+                showError(
+                    error?.response?.data?.message ||
+                    `Không tải được dữ liệu mục ${activeTabLabel.toLowerCase()}`
+                )
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        if (tab === "parameters" || tab === "promotions") {
+            void loadTabData()
+        }
+    }, [tab, activeTabLabel])
+
+    useEffect(() => {
+        void fetchAll()
     }, [])
 
     const handleCreateTimeSlot = async () => {
+        const toMinutes = (value: string) => {
+            const [hour, minute] = value.split(":").map(Number)
+            return hour * 60 + minute
+        }
+
+        if (toMinutes(newSlotEnd) <= toMinutes(newSlotStart)) {
+            showError("Giờ kết thúc phải lớn hơn giờ bắt đầu")
+            return
+        }
+
+        const payload = {
+            startTime: `0.${newSlotStart}:00`,
+            endTime: `0.${newSlotEnd}:00`,
+        }
+
         try {
-            await adminService.createTimeSlot({
-                startTime: { ticks: ticksFromHHMM(newSlotStart) },
-                endTime: { ticks: ticksFromHHMM(newSlotEnd) },
-            })
+            console.log("createTimeSlot payload:", payload)
+
+            await adminService.createTimeSlot(payload)
+
             showSuccess("Đã tạo khung giờ")
-            fetchAll()
+            void fetchAll()
         } catch (error: any) {
-            showError(error?.response?.data?.message || "Tạo khung giờ thất bại")
+            console.error("createTimeSlot lỗi:", error?.response?.data || error)
+
+            showError(
+                error?.response?.data?.message ||
+                error?.response?.data?.errors?.[0] ||
+                "Tạo khung giờ thất bại"
+            )
         }
     }
 
@@ -145,15 +255,20 @@ const AdminSettings = () => {
         try {
             await adminService.deleteTimeSlot(timeSlotId)
             showSuccess("Đã xóa khung giờ")
-            fetchAll()
+            void fetchAll()
         } catch (error: any) {
             showError(error?.response?.data?.message || "Xóa khung giờ thất bại")
         }
     }
 
     const handleCreateCollectionPoint = async () => {
-        if (!newCollectionName.trim() || !newCollectionAddress.trim()) {
-            showError("Vui lòng nhập đủ tên và địa chỉ điểm tập kết")
+        if (
+            !newCollectionName.trim() ||
+            !newCollectionAddress.trim() ||
+            newCollectionLat.trim() === "" ||
+            newCollectionLng.trim() === ""
+        ) {
+            showError("Vui lòng nhập đủ tên, địa chỉ, vĩ độ và kinh độ")
             return
         }
 
@@ -161,11 +276,16 @@ const AdminSettings = () => {
             await adminService.createCollectionPoint({
                 name: newCollectionName.trim(),
                 addressLine: newCollectionAddress.trim(),
+                latitude: Number(newCollectionLat),
+                longitude: Number(newCollectionLng),
             })
+
             showSuccess("Đã tạo điểm tập kết")
             setNewCollectionName("")
             setNewCollectionAddress("")
-            fetchAll()
+            setNewCollectionLat("")
+            setNewCollectionLng("")
+            void fetchAll()
         } catch (error: any) {
             showError(error?.response?.data?.message || "Tạo điểm tập kết thất bại")
         }
@@ -175,7 +295,7 @@ const AdminSettings = () => {
         try {
             await adminService.deleteCollectionPoint(collectionId)
             showSuccess("Đã xóa điểm tập kết")
-            fetchAll()
+            void fetchAll()
         } catch (error: any) {
             showError(error?.response?.data?.message || "Xóa điểm tập kết thất bại")
         }
@@ -185,7 +305,7 @@ const AdminSettings = () => {
         try {
             await adminService.updateSystemParameter(configKey, { configValue })
             showSuccess("Đã cập nhật tham số")
-            fetchAll()
+            void fetchAll()
         } catch (error: any) {
             showError(error?.response?.data?.message || "Cập nhật tham số thất bại")
         }
@@ -205,7 +325,7 @@ const AdminSettings = () => {
             })
             showSuccess("Đã tạo đơn vị")
             setNewUnit({ name: "", type: "", symbol: "" })
-            fetchAll()
+            void fetchAll()
         } catch (error: any) {
             showError(error?.response?.data?.message || "Tạo đơn vị thất bại")
         }
@@ -215,7 +335,7 @@ const AdminSettings = () => {
         try {
             await adminService.deleteUnit(unitId)
             showSuccess("Đã xóa đơn vị")
-            fetchAll()
+            void fetchAll()
         } catch (error: any) {
             showError(error?.response?.data?.message || "Xóa đơn vị thất bại")
         }
@@ -223,6 +343,7 @@ const AdminSettings = () => {
 
     const handleCreatePromotion = async () => {
         if (
+            !newPromotion.code.trim() ||
             !newPromotion.categoryId.trim() ||
             !newPromotion.name.trim() ||
             !newPromotion.startDate ||
@@ -235,16 +356,23 @@ const AdminSettings = () => {
         try {
             await adminService.createPromotion(newPromotion)
             showSuccess("Đã tạo khuyến mãi")
+
             setNewPromotion({
+                code: "",
                 categoryId: "",
                 name: "",
                 discountType: "Percentage",
                 discountValue: 0,
+                minOrderAmount: 0,
+                maxDiscountAmount: 0,
+                maxUsage: 0,
+                perUserLimit: 0,
                 startDate: "",
                 endDate: "",
-                status: "Active",
+                status: "Draft",
             })
-            fetchAll()
+
+            void fetchAll()
         } catch (error: any) {
             showError(error?.response?.data?.message || "Tạo khuyến mãi thất bại")
         }
@@ -257,7 +385,7 @@ const AdminSettings = () => {
         try {
             await adminService.updatePromotionStatus(promotionId, status)
             showSuccess("Đã cập nhật trạng thái khuyến mãi")
-            fetchAll()
+            void fetchAll()
         } catch (error: any) {
             showError(
                 error?.response?.data?.message || "Cập nhật trạng thái khuyến mãi thất bại"
@@ -270,7 +398,7 @@ const AdminSettings = () => {
             <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div>
-                        <p className="text-sm font-medium text-slate-500">Admin Settings</p>
+                        <p className="text-sm font-medium text-slate-500">Thiết lập quản trị</p>
                         <h1 className="text-2xl font-bold text-slate-900">
                             Cấu hình hệ thống
                         </h1>
@@ -280,7 +408,7 @@ const AdminSettings = () => {
                     </div>
 
                     <button
-                        onClick={fetchAll}
+                        onClick={() => void fetchAll()}
                         className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-800"
                     >
                         <RefreshCcw size={16} />
@@ -321,7 +449,7 @@ const AdminSettings = () => {
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">Khung giờ</h2>
                                 <p className="text-sm text-slate-500">
-                                    Tạo và quản lý time slot giao/nhận hàng
+                                    Tạo và quản lý khung giờ giao hoặc nhận hàng
                                 </p>
                             </div>
 
@@ -339,7 +467,7 @@ const AdminSettings = () => {
                                     className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
                                 />
                                 <button
-                                    onClick={handleCreateTimeSlot}
+                                    onClick={() => void handleCreateTimeSlot()}
                                     className="rounded-2xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800"
                                 >
                                     Tạo khung giờ
@@ -359,14 +487,14 @@ const AdminSettings = () => {
                                         {timeSlots.map((item) => (
                                             <tr key={item.timeSlotId} className="border-t border-slate-200">
                                                 <td className="px-4 py-3">
-                                                    {hhmmFromTimeSpan(item.startTime?.ticks)}
+                                                    {hhmmFromTimeValue(item.startTime)}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    {hhmmFromTimeSpan(item.endTime?.ticks)}
+                                                    {hhmmFromTimeValue(item.endTime)}
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
                                                     <button
-                                                        onClick={() => handleDeleteTimeSlot(item.timeSlotId)}
+                                                        onClick={() => void handleDeleteTimeSlot(item.timeSlotId)}
                                                         className="rounded-xl border border-red-200 px-3 py-1.5 font-medium text-red-600 hover:bg-red-50"
                                                     >
                                                         Xóa
@@ -392,25 +520,45 @@ const AdminSettings = () => {
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">Điểm tập kết</h2>
                                 <p className="text-sm text-slate-500">
-                                    Quản lý các địa điểm nhận hàng/pickup
+                                    Quản lý các địa điểm nhận hàng và lấy hàng
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                                 <input
                                     value={newCollectionName}
                                     onChange={(e) => setNewCollectionName(e.target.value)}
                                     placeholder="Tên điểm tập kết"
                                     className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
                                 />
+
                                 <input
                                     value={newCollectionAddress}
                                     onChange={(e) => setNewCollectionAddress(e.target.value)}
                                     placeholder="Địa chỉ"
                                     className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
                                 />
+
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={newCollectionLat}
+                                    onChange={(e) => setNewCollectionLat(e.target.value)}
+                                    placeholder="Vĩ độ"
+                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
+                                />
+
+                                <input
+                                    type="number"
+                                    step="any"
+                                    value={newCollectionLng}
+                                    onChange={(e) => setNewCollectionLng(e.target.value)}
+                                    placeholder="Kinh độ"
+                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
+                                />
+
                                 <button
-                                    onClick={handleCreateCollectionPoint}
+                                    onClick={() => void handleCreateCollectionPoint()}
                                     className="rounded-2xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800"
                                 >
                                     Tạo điểm tập kết
@@ -426,10 +574,13 @@ const AdminSettings = () => {
                                         <div>
                                             <p className="font-semibold text-slate-900">{item.name}</p>
                                             <p className="text-sm text-slate-500">{item.addressLine}</p>
+                                            <p className="mt-1 text-xs text-slate-400">
+                                                Vĩ độ: {item.latitude} · Kinh độ: {item.longitude}
+                                            </p>
                                         </div>
 
                                         <button
-                                            onClick={() => handleDeleteCollectionPoint(item.collectionId)}
+                                            onClick={() => void handleDeleteCollectionPoint(item.collectionId)}
                                             className="rounded-xl border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
                                         >
                                             Xóa
@@ -449,7 +600,7 @@ const AdminSettings = () => {
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">Tham số hệ thống</h2>
                                 <p className="text-sm text-slate-500">
-                                    Chỉnh sửa config theo key/value
+                                    Chỉnh sửa giá trị cấu hình theo từng mã tham số
                                 </p>
                             </div>
 
@@ -476,7 +627,7 @@ const AdminSettings = () => {
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">Đơn vị tính</h2>
                                 <p className="text-sm text-slate-500">
-                                    Quản lý name / type / symbol
+                                    Quản lý tên đơn vị, nhóm đơn vị và ký hiệu hiển thị
                                 </p>
                             </div>
 
@@ -494,7 +645,7 @@ const AdminSettings = () => {
                                     onChange={(e) =>
                                         setNewUnit((prev) => ({ ...prev, type: e.target.value }))
                                     }
-                                    placeholder="Loại"
+                                    placeholder="Nhóm đơn vị"
                                     className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
                                 />
                                 <input
@@ -506,7 +657,7 @@ const AdminSettings = () => {
                                     className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
                                 />
                                 <button
-                                    onClick={handleCreateUnit}
+                                    onClick={() => void handleCreateUnit()}
                                     className="rounded-2xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800"
                                 >
                                     Tạo đơn vị
@@ -518,7 +669,7 @@ const AdminSettings = () => {
                                     <thead className="bg-slate-50 text-slate-600">
                                         <tr>
                                             <th className="px-4 py-3 text-left">Tên</th>
-                                            <th className="px-4 py-3 text-left">Loại</th>
+                                            <th className="px-4 py-3 text-left">Nhóm</th>
                                             <th className="px-4 py-3 text-left">Ký hiệu</th>
                                             <th className="px-4 py-3 text-left">Cập nhật</th>
                                             <th className="px-4 py-3 text-right">Thao tác</th>
@@ -533,7 +684,7 @@ const AdminSettings = () => {
                                                 <td className="px-4 py-3">{formatDateTime(item.updatedAt)}</td>
                                                 <td className="px-4 py-3 text-right">
                                                     <button
-                                                        onClick={() => handleDeleteUnit(item.unitId)}
+                                                        onClick={() => void handleDeleteUnit(item.unitId)}
                                                         className="rounded-xl border border-red-200 px-3 py-1.5 font-medium text-red-600 hover:bg-red-50"
                                                     >
                                                         Xóa
@@ -559,140 +710,290 @@ const AdminSettings = () => {
                             <div>
                                 <h2 className="text-lg font-bold text-slate-900">Khuyến mãi</h2>
                                 <p className="text-sm text-slate-500">
-                                    Quản lý promotion theo danh mục
+                                    Tạo và quản lý các chương trình ưu đãi
                                 </p>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <input
-                                    value={newPromotion.categoryId}
-                                    onChange={(e) =>
-                                        setNewPromotion((prev) => ({
-                                            ...prev,
-                                            categoryId: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="CategoryId"
-                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
-                                />
-                                <input
-                                    value={newPromotion.name}
-                                    onChange={(e) =>
-                                        setNewPromotion((prev) => ({
-                                            ...prev,
-                                            name: e.target.value,
-                                        }))
-                                    }
-                                    placeholder="Tên khuyến mãi"
-                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
-                                />
-                                <select
-                                    value={newPromotion.discountType}
-                                    onChange={(e) =>
-                                        setNewPromotion((prev) => ({
-                                            ...prev,
-                                            discountType: e.target.value,
-                                        }))
-                                    }
-                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
-                                >
-                                    <option value="Percentage">Percentage</option>
-                                    <option value="FixedAmount">FixedAmount</option>
-                                </select>
-                                <input
-                                    type="number"
-                                    value={newPromotion.discountValue}
-                                    onChange={(e) =>
-                                        setNewPromotion((prev) => ({
-                                            ...prev,
-                                            discountValue: Number(e.target.value),
-                                        }))
-                                    }
-                                    placeholder="Giá trị giảm"
-                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
-                                />
-                                <input
-                                    type="datetime-local"
-                                    value={newPromotion.startDate}
-                                    onChange={(e) =>
-                                        setNewPromotion((prev) => ({
-                                            ...prev,
-                                            startDate: e.target.value,
-                                        }))
-                                    }
-                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
-                                />
-                                <input
-                                    type="datetime-local"
-                                    value={newPromotion.endDate}
-                                    onChange={(e) =>
-                                        setNewPromotion((prev) => ({
-                                            ...prev,
-                                            endDate: e.target.value,
-                                        }))
-                                    }
-                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
-                                />
-                                <select
-                                    value={newPromotion.status}
-                                    onChange={(e) =>
-                                        setNewPromotion((prev) => ({
-                                            ...prev,
-                                            status: e.target.value,
-                                        }))
-                                    }
-                                    className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
-                                >
-                                    <option value="Active">Active</option>
-                                    <option value="Inactive">Inactive</option>
-                                    <option value="Scheduled">Scheduled</option>
-                                    <option value="Expired">Expired</option>
-                                </select>
+                            <div className="rounded-3xl border border-slate-200 bg-slate-50/60 p-4 md:p-5">
+                                <div className="mb-4">
+                                    <h3 className="text-base font-semibold text-slate-900">
+                                        Tạo chương trình khuyến mãi mới
+                                    </h3>
+                                    <p className="text-sm text-slate-500">
+                                        Nhập đầy đủ thông tin để khởi tạo chương trình
+                                    </p>
+                                </div>
 
-                                <button
-                                    onClick={handleCreatePromotion}
-                                    className="rounded-2xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800"
-                                >
-                                    Tạo khuyến mãi
-                                </button>
+                                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                                    <input
+                                        value={newPromotion.code}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                code: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="Mã khuyến mãi"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        value={newPromotion.categoryId}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                categoryId: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="Mã danh mục"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        value={newPromotion.name}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                name: e.target.value,
+                                            }))
+                                        }
+                                        placeholder="Tên chương trình"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <select
+                                        value={newPromotion.discountType}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                discountType: e.target.value,
+                                            }))
+                                        }
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    >
+                                        <option value="Percentage">Giảm theo phần trăm</option>
+                                        <option value="FixedAmount">Giảm số tiền cố định</option>
+                                    </select>
+
+                                    <input
+                                        type="number"
+                                        value={newPromotion.discountValue}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                discountValue: Number(e.target.value),
+                                            }))
+                                        }
+                                        placeholder="Giá trị giảm"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        type="number"
+                                        value={newPromotion.minOrderAmount}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                minOrderAmount: Number(e.target.value),
+                                            }))
+                                        }
+                                        placeholder="Giá trị đơn tối thiểu"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        type="number"
+                                        value={newPromotion.maxDiscountAmount}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                maxDiscountAmount: Number(e.target.value),
+                                            }))
+                                        }
+                                        placeholder="Mức giảm tối đa"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        type="number"
+                                        value={newPromotion.maxUsage}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                maxUsage: Number(e.target.value),
+                                            }))
+                                        }
+                                        placeholder="Tổng số lượt sử dụng"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        type="number"
+                                        value={newPromotion.perUserLimit}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                perUserLimit: Number(e.target.value),
+                                            }))
+                                        }
+                                        placeholder="Số lần dùng tối đa mỗi người"
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        type="datetime-local"
+                                        value={newPromotion.startDate}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                startDate: e.target.value,
+                                            }))
+                                        }
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <input
+                                        type="datetime-local"
+                                        value={newPromotion.endDate}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                endDate: e.target.value,
+                                            }))
+                                        }
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    />
+
+                                    <select
+                                        value={newPromotion.status}
+                                        onChange={(e) =>
+                                            setNewPromotion((prev) => ({
+                                                ...prev,
+                                                status: e.target.value,
+                                            }))
+                                        }
+                                        className="rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                                    >
+                                        <option value="Draft">Bản nháp</option>
+                                        <option value="Active">Đang áp dụng</option>
+                                        <option value="Expired">Đã hết hạn</option>
+                                        <option value="Disabled">Đã tắt</option>
+                                    </select>
+                                </div>
+
+                                <div className="mt-4 flex justify-end">
+                                    <button
+                                        onClick={() => void handleCreatePromotion()}
+                                        className="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                                    >
+                                        Tạo khuyến mãi
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="space-y-3">
                                 {promotions.map((item) => (
                                     <div
                                         key={item.promotionId}
-                                        className="rounded-2xl border border-slate-200 p-4"
+                                        className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm"
                                     >
-                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                                            <div>
-                                                <p className="font-semibold text-slate-900">{item.name}</p>
-                                                <p className="mt-1 text-sm text-slate-500">
-                                                    Category: {item.categoryId}
-                                                </p>
-                                                <p className="mt-1 text-sm text-slate-500">
-                                                    {item.discountType} · {item.discountValue}
-                                                </p>
-                                                <p className="mt-1 text-sm text-slate-500">
-                                                    {formatDateTime(item.startDate)} →{" "}
-                                                    {formatDateTime(item.endDate)}
-                                                </p>
+                                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <p className="text-base font-semibold text-slate-900">
+                                                        {item.name}
+                                                    </p>
+                                                    <span
+                                                        className={`rounded-full px-3 py-1 text-xs font-medium ${getPromotionStatusClass(
+                                                            item.status
+                                                        )}`}
+                                                    >
+                                                        {getPromotionStatusLabel(item.status)}
+                                                    </span>
+                                                </div>
+
+                                                <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-500 md:grid-cols-2">
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Mã khuyến mãi:
+                                                        </span>{" "}
+                                                        {item.code}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Mã danh mục:
+                                                        </span>{" "}
+                                                        {item.categoryId}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Hình thức giảm:
+                                                        </span>{" "}
+                                                        {getDiscountTypeLabel(item.discountType)}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Giá trị giảm:
+                                                        </span>{" "}
+                                                        {item.discountType === "FixedAmount"
+                                                            ? formatMoney(item.discountValue)
+                                                            : `${formatNumber(item.discountValue)}%`}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Giá trị đơn tối thiểu:
+                                                        </span>{" "}
+                                                        {formatMoney(item.minOrderAmount)}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Mức giảm tối đa:
+                                                        </span>{" "}
+                                                        {formatMoney(item.maxDiscountAmount)}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Tổng số lượt sử dụng:
+                                                        </span>{" "}
+                                                        {formatNumber(item.maxUsage)}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Đã sử dụng:
+                                                        </span>{" "}
+                                                        {formatNumber(item.usedCount)}
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Mỗi người được dùng:
+                                                        </span>{" "}
+                                                        {formatNumber(item.perUserLimit)} lần
+                                                    </p>
+                                                    <p>
+                                                        <span className="font-medium text-slate-700">
+                                                            Thời gian áp dụng:
+                                                        </span>{" "}
+                                                        {formatDateTime(item.startDate)} →{" "}
+                                                        {formatDateTime(item.endDate)}
+                                                    </p>
+                                                </div>
                                             </div>
 
                                             <div className="flex items-center gap-2">
                                                 <select
                                                     value={item.status}
                                                     onChange={(e) =>
-                                                        handleUpdatePromotionStatus(
+                                                        void handleUpdatePromotionStatus(
                                                             item.promotionId,
                                                             e.target.value
                                                         )
                                                     }
                                                     className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
                                                 >
-                                                    <option value="Active">Active</option>
-                                                    <option value="Inactive">Inactive</option>
-                                                    <option value="Scheduled">Scheduled</option>
-                                                    <option value="Expired">Expired</option>
+                                                    <option value="Draft">Bản nháp</option>
+                                                    <option value="Active">Đang áp dụng</option>
+                                                    <option value="Expired">Đã hết hạn</option>
+                                                    <option value="Disabled">Đã tắt</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -747,7 +1048,7 @@ const ParameterRow = ({
                         className="flex-1 rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:border-slate-900"
                     />
                     <button
-                        onClick={() => onSave(configKey, value)}
+                        onClick={() => void onSave(configKey, value)}
                         className="rounded-2xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-800"
                     >
                         Lưu
