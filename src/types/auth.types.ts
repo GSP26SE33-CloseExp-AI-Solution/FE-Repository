@@ -14,6 +14,8 @@ export interface AuthData {
     refreshToken: string
     expiresAt: string
     user: User
+    /** Backend: nhiều persona nhân viên — cần gọi select-staff-context */
+    requiresStaffContext?: boolean
 }
 
 // ================= USER =================
@@ -29,6 +31,7 @@ export interface User {
     createdAt: string
     updatedAt: string
     marketStaffInfo?: MarketStaffInfo
+    marketStaffMemberships?: MarketStaffInfo[]
 }
 
 // ================= SUPPLIER STAFF =================
@@ -37,6 +40,8 @@ export interface MarketStaffInfo {
     marketStaffId: string
     position: string
     joinedAt: string
+    isManager?: boolean
+    employeeCodeHint?: string | null
     supermarket: Supermarket
 }
 
@@ -52,36 +57,13 @@ export interface Supermarket {
 
 // ================= REGISTER TYPES =================
 
-export type RegistrationType = "Vendor" | "SupplierStaff"
-
-export interface NewSupermarketPayload {
-    name: string
-    address: string
-    latitude: number
-    longitude: number
-    contactPhone: string
-    contactEmail: string
-}
-
-export interface VendorRegisterPayload {
+export interface RegisterPayload {
     fullName: string
     email: string
     phone: string
     password: string
     registrationType: "Vendor"
 }
-
-export interface SupplierStaffRegisterPayload {
-    fullName: string
-    email: string
-    phone: string
-    password: string
-    registrationType: "SupplierStaff"
-    newSupermarket: NewSupermarketPayload
-    position: string
-}
-
-export type RegisterPayload = VendorRegisterPayload | SupplierStaffRegisterPayload
 
 // ================= REGISTER / OTP =================
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useNavigate, Navigate } from "react-router-dom"
+import { useNavigate, Navigate, Link } from "react-router-dom"
 import {
     Eye,
     EyeOff,
@@ -8,9 +8,6 @@ import {
     Phone,
     Lock,
     Loader2,
-    Briefcase,
-    Building2,
-    MapPin,
     ShieldCheck,
     Store,
 } from "lucide-react"
@@ -18,7 +15,7 @@ import {
 import { useAuth } from "@/hooks/useAuth"
 import { showSuccess, showError } from "@/utils/toast"
 import { isAuthenticated } from "@/utils/authStorage"
-import { RegistrationType, RegisterPayload } from "@/types/auth.types"
+import { RegisterPayload } from "@/types/auth.types"
 import Logo from "@/assets/logo.png"
 
 type RegisterStep = "form" | "otp" | "done"
@@ -59,7 +56,6 @@ const Register = () => {
     const { register, verifyOtp, resendOtp, loading } = useAuth()
 
     const [step, setStep] = useState<RegisterStep>("form")
-    const [selectedRole, setSelectedRole] = useState<RegistrationType>("Vendor")
 
     const [fullName, setFullName] = useState("")
     const [email, setEmail] = useState("")
@@ -71,16 +67,6 @@ const Register = () => {
     const [otpCountdown, setOtpCountdown] = useState(OTP_RESEND_SECONDS)
     const otpRefs = useRef<Array<HTMLInputElement | null>>([])
 
-    // SupplierStaff only
-    const [position, setPosition] = useState("")
-    const [marketName, setMarketName] = useState("")
-    const [marketAddress, setMarketAddress] = useState("")
-    const [latitude, setLatitude] = useState("")
-    const [longitude, setLongitude] = useState("")
-    const [contactPhone, setContactPhone] = useState("")
-    const [contactEmail, setContactEmail] = useState("")
-
-    const isSupplier = selectedRole === "SupplierStaff"
     const otp = otpDigits.join("")
 
     useEffect(() => {
@@ -124,49 +110,8 @@ const Register = () => {
                         ? "Số điện thoại Việt Nam không hợp lệ"
                         : "",
             password: password ? passwordError : "",
-            position: isSupplier && !position.trim() ? "Vui lòng nhập chức vụ" : "",
-            marketName: isSupplier && !marketName.trim() ? "Vui lòng nhập tên siêu thị" : "",
-            marketAddress: isSupplier && !marketAddress.trim() ? "Vui lòng nhập địa chỉ siêu thị" : "",
-            latitude:
-                isSupplier && !latitude.trim()
-                    ? "Vui lòng nhập vĩ độ"
-                    : isSupplier && Number.isNaN(Number(latitude))
-                        ? "Vĩ độ phải là số hợp lệ"
-                        : "",
-            longitude:
-                isSupplier && !longitude.trim()
-                    ? "Vui lòng nhập kinh độ"
-                    : isSupplier && Number.isNaN(Number(longitude))
-                        ? "Kinh độ phải là số hợp lệ"
-                        : "",
-            contactPhone:
-                isSupplier && !contactPhone.trim()
-                    ? "Vui lòng nhập số điện thoại liên hệ"
-                    : isSupplier && !validateVietnamPhone(contactPhone.trim())
-                        ? "Số điện thoại liên hệ không hợp lệ"
-                        : "",
-            contactEmail:
-                isSupplier && !contactEmail.trim()
-                    ? "Vui lòng nhập email liên hệ"
-                    : isSupplier && !validateEmail(contactEmail.trim())
-                        ? "Email liên hệ không đúng định dạng"
-                        : "",
         }
-    }, [
-        fullName,
-        email,
-        phone,
-        password,
-        passwordError,
-        isSupplier,
-        position,
-        marketName,
-        marketAddress,
-        latitude,
-        longitude,
-        contactPhone,
-        contactEmail,
-    ])
+    }, [fullName, email, phone, password, passwordError])
 
     const canSubmit = useMemo(() => {
         const basicOk =
@@ -178,76 +123,20 @@ const Register = () => {
             validateVietnamPhone(phone.trim()) &&
             validateStrongPassword(password)
 
-        if (!basicOk) return false
-        if (!isSupplier) return true
-
-        return Boolean(
-            position.trim() &&
-            marketName.trim() &&
-            marketAddress.trim() &&
-            latitude.trim() &&
-            longitude.trim() &&
-            contactPhone.trim() &&
-            contactEmail.trim() &&
-            !Number.isNaN(Number(latitude)) &&
-            !Number.isNaN(Number(longitude)) &&
-            validateVietnamPhone(contactPhone.trim()) &&
-            validateEmail(contactEmail.trim())
-        )
-    }, [
-        fullName,
-        email,
-        phone,
-        password,
-        isSupplier,
-        position,
-        marketName,
-        marketAddress,
-        latitude,
-        longitude,
-        contactPhone,
-        contactEmail,
-    ])
+        return basicOk
+    }, [fullName, email, phone, password])
 
     if (isAuthenticated()) {
         return <Navigate to="/" replace />
     }
 
-    const buildPayload = (): RegisterPayload => {
-        if (!isSupplier) {
-            return {
-                fullName: fullName.trim(),
-                email: email.trim(),
-                phone: phone.trim(),
-                password,
-                registrationType: "Vendor",
-            }
-        }
-
-        const lat = Number(latitude)
-        const lng = Number(longitude)
-
-        if (Number.isNaN(lat) || Number.isNaN(lng)) {
-            throw new Error("Vĩ độ và kinh độ phải là số hợp lệ")
-        }
-
-        return {
-            fullName: fullName.trim(),
-            email: email.trim(),
-            phone: phone.trim(),
-            password,
-            registrationType: "SupplierStaff",
-            position: position.trim(),
-            newSupermarket: {
-                name: marketName.trim(),
-                address: marketAddress.trim(),
-                latitude: lat,
-                longitude: lng,
-                contactPhone: contactPhone.trim(),
-                contactEmail: contactEmail.trim(),
-            },
-        }
-    }
+    const buildPayload = (): RegisterPayload => ({
+        fullName: fullName.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        password,
+        registrationType: "Vendor",
+    })
 
     const resetOtpInputs = () => {
         setOtpDigits(Array(OTP_LENGTH).fill(""))
@@ -296,11 +185,7 @@ const Register = () => {
                 otpCode: otp,
             })
 
-            showSuccess(
-                isSupplier
-                    ? "Xác minh OTP thành công. Tài khoản của bạn đã được gửi đăng ký và đang chờ quản trị viên phê duyệt."
-                    : "Xác minh tài khoản thành công."
-            )
+            showSuccess("Xác minh tài khoản thành công.")
 
             setStep("done")
         } catch (err: any) {
@@ -406,32 +291,30 @@ const Register = () => {
                         {step === "done" && "Đăng ký thành công"}
                     </h1>
                     <p className="text-sm text-gray-500">
-                        {step === "form" && "Chọn loại tài khoản và điền thông tin đăng ký"}
+                        {step === "form" && "Đăng ký Vendor — sau khi xác minh bạn có thể nộp hồ sơ mở siêu thị"}
                         {step === "otp" && "Nhập mã OTP đã được gửi về email của bạn"}
                         {step === "done" &&
-                            (isSupplier
-                                ? "Tài khoản của bạn đã được gửi đăng ký thành công. Vui lòng chờ quản trị viên phê duyệt để kích hoạt hoạt động."
-                                : "Tài khoản của bạn đã được xác minh thành công. Bạn có thể đăng nhập để tiếp tục.")}
+                            "Tài khoản của bạn đã được xác minh thành công. Bạn có thể đăng nhập để tiếp tục."}
                     </p>
                 </div>
 
                 {step === "form" && (
                     <form onSubmit={onSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <RoleCard
-                                active={selectedRole === "Vendor"}
-                                title="Khách hàng"
-                                subtitle="Vendor"
-                                icon={<Store size={18} />}
-                                onClick={() => setSelectedRole("Vendor")}
-                            />
-                            <RoleCard
-                                active={selectedRole === "SupplierStaff"}
-                                title="Đối tác"
-                                subtitle="SupplierStaff"
-                                icon={<Building2 size={18} />}
-                                onClick={() => setSelectedRole("SupplierStaff")}
-                            />
+                        <div className="flex items-start gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4">
+                            <Store className="text-emerald-700 mt-0.5 shrink-0" size={22} />
+                            <div className="text-sm text-emerald-900">
+                                <p className="font-semibold">Đăng ký Vendor</p>
+                                <p className="mt-1 text-emerald-800/90">
+                                    Sau khi đăng nhập, vào{" "}
+                                    <Link
+                                        to="/vendor/supermarket-application"
+                                        className="font-semibold underline underline-offset-2"
+                                    >
+                                        Hồ sơ mở siêu thị
+                                    </Link>{" "}
+                                    để gửi đơn và theo dõi mã hồ sơ.
+                                </p>
+                            </div>
                         </div>
 
                         <div className="rounded-2xl border border-gray-100 bg-white/70 p-5 space-y-4">
@@ -443,7 +326,7 @@ const Register = () => {
                                     </p>
                                 </div>
                                 <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 border border-emerald-100">
-                                    {selectedRole === "Vendor" ? "Khách hàng" : "Đối tác"}
+                                    Vendor
                                 </span>
                             </div>
 
@@ -481,86 +364,6 @@ const Register = () => {
                                 />
                             </div>
                         </div>
-
-                        {isSupplier && (
-                            <div className="space-y-5 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/90 to-white p-5">
-                                <div className="border-b border-emerald-100 pb-4">
-                                    <h2 className="text-base font-semibold text-emerald-800">
-                                        Thông tin đối tác & siêu thị
-                                    </h2>
-                                    <p className="text-sm text-emerald-700 mt-1">
-                                        Phần này chỉ hiển thị khi bạn chọn loại tài khoản Đối tác
-                                    </p>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input
-                                        icon={<Briefcase size={16} />}
-                                        label="Chức vụ"
-                                        value={position}
-                                        setValue={setPosition}
-                                        error={fieldErrors.position}
-                                    />
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-gray-800">
-                                            Thông tin siêu thị mới
-                                        </h3>
-                                        <p className="text-sm text-gray-500 mt-1">
-                                            Các trường này sẽ được gửi trong <code>newSupermarket</code>
-                                        </p>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input
-                                            icon={<Building2 size={16} />}
-                                            label="Tên siêu thị"
-                                            value={marketName}
-                                            setValue={setMarketName}
-                                            error={fieldErrors.marketName}
-                                        />
-                                        <Input
-                                            icon={<Phone size={16} />}
-                                            label="Số điện thoại liên hệ"
-                                            value={contactPhone}
-                                            setValue={setContactPhone}
-                                            error={fieldErrors.contactPhone}
-                                        />
-                                        <Input
-                                            icon={<Mail size={16} />}
-                                            label="Email liên hệ"
-                                            type="email"
-                                            value={contactEmail}
-                                            setValue={setContactEmail}
-                                            error={fieldErrors.contactEmail}
-                                        />
-                                        <Input
-                                            icon={<MapPin size={16} />}
-                                            label="Địa chỉ"
-                                            value={marketAddress}
-                                            setValue={setMarketAddress}
-                                            error={fieldErrors.marketAddress}
-                                        />
-                                        <Input
-                                            label="Latitude"
-                                            type="number"
-                                            value={latitude}
-                                            setValue={setLatitude}
-                                            error={fieldErrors.latitude}
-                                        />
-                                        <Input
-                                            label="Longitude"
-                                            type="number"
-                                            value={longitude}
-                                            setValue={setLongitude}
-                                            error={fieldErrors.longitude}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         <button
                             type="submit"
@@ -683,16 +486,10 @@ const Register = () => {
                                 <ShieldCheck className="text-emerald-600" size={24} />
                             </div>
 
-                            <h2 className="mt-4 text-xl font-bold text-gray-800">
-                                {isSupplier
-                                    ? "Đã gửi đăng ký thành công"
-                                    : "Xác minh tài khoản thành công"}
-                            </h2>
+                            <h2 className="mt-4 text-xl font-bold text-gray-800">Xác minh tài khoản thành công</h2>
 
                             <p className="mt-2 text-sm text-gray-600">
-                                {isSupplier
-                                    ? "Tài khoản của bạn đã được ghi nhận. Vui lòng chờ quản trị viên phê duyệt để bắt đầu sử dụng hệ thống."
-                                    : "Email của bạn đã được xác minh. Bây giờ bạn có thể đăng nhập vào hệ thống."}
+                                Email của bạn đã được xác minh. Bây giờ bạn có thể đăng nhập vào hệ thống.
                             </p>
                         </div>
 
@@ -801,38 +598,6 @@ const PasswordInput = ({
             <p className="mt-1 text-xs text-gray-500">{hint}</p>
         ) : null}
     </div>
-)
-
-type RoleCardProps = {
-    active: boolean
-    title: string
-    subtitle: string
-    icon: React.ReactNode
-    onClick: () => void
-}
-
-const RoleCard = ({ active, title, subtitle, icon, onClick }: RoleCardProps) => (
-    <button
-        type="button"
-        onClick={onClick}
-        className={`text-left rounded-2xl border p-4 transition ${active
-            ? "border-emerald-400 bg-emerald-50 shadow-sm"
-            : "border-gray-200 bg-white hover:border-emerald-200"
-            }`}
-    >
-        <div className="flex items-start gap-3">
-            <div
-                className={`mt-0.5 rounded-xl p-2 ${active ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-600"
-                    }`}
-            >
-                {icon}
-            </div>
-            <div>
-                <p className="font-semibold text-gray-800">{title}</p>
-                <p className="text-sm text-gray-500">{subtitle}</p>
-            </div>
-        </div>
-    </button>
 )
 
 export default Register

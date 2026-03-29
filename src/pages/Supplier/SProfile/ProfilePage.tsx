@@ -52,6 +52,7 @@ export default function ProfilePage() {
 
     const marketStaff = user.marketStaffInfo
     const supermarket = marketStaff?.supermarket
+    const memberships = user.marketStaffMemberships ?? []
 
     return (
         <div className="min-h-screen bg-white py-8 px-4">
@@ -112,20 +113,55 @@ export default function ProfilePage() {
                     />
                 </Section>
 
-                {/* STAFF */}
+                {/* STAFF — context hiện tại (JWT) */}
                 {marketStaff && (
-                    <Section title="Thông tin nhân sự">
+                    <Section title="Thông tin nhân sự (phiên hiện tại)">
                         <Info
                             label="Mã nhân sự"
                             value={marketStaff.marketStaffId}
                         />
                         <Info label="Chức vụ" value={marketStaff.position} />
+                        {marketStaff.isManager !== undefined && (
+                            <Info
+                                label="Quản lý"
+                                value={marketStaff.isManager ? "Có" : "Không"}
+                            />
+                        )}
+                        {marketStaff.employeeCodeHint != null &&
+                            marketStaff.employeeCodeHint !== "" && (
+                                <Info
+                                    label="Gợi ý mã NV (cuối)"
+                                    value={marketStaff.employeeCodeHint}
+                                />
+                            )}
                         <Info
                             label="Ngày vào làm"
                             value={new Date(
                                 marketStaff.joinedAt
                             ).toLocaleString()}
                         />
+                    </Section>
+                )}
+
+                {/* Tất cả persona nhân viên gắn tài khoản (shared login) */}
+                {memberships.length > 1 && (
+                    <Section title="Các mã nhân viên trên tài khoản">
+                        {memberships.map((m) => (
+                            <div
+                                key={m.marketStaffId}
+                                className="col-span-full sm:col-span-2 border rounded-lg p-3 space-y-2"
+                            >
+                                <Info
+                                    label="Mã nhân sự"
+                                    value={m.marketStaffId}
+                                />
+                                <Info label="Chức vụ" value={m.position} />
+                                <Info
+                                    label="Siêu thị"
+                                    value={m.supermarket?.name ?? "-"}
+                                />
+                            </div>
+                        ))}
                     </Section>
                 )}
 

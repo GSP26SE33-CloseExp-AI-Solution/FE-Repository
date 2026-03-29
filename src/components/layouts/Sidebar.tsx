@@ -12,6 +12,7 @@ const Sidebar = () => {
             return <AdminSidebar />
 
         case "SupplierStaff":
+        case "SupermarketStaff":
             return <SupplierSidebar />
 
         case "PackageStaff":

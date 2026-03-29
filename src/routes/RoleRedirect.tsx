@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 
 import { useAuthContext } from "@/contexts/AuthContext"
 import { getRedirectByRoleSafe } from "@/utils/roleRedirect"
+import { authStorage } from "@/utils/authStorage"
 
 const RoleRedirect = () => {
     const { user, initialized } = useAuthContext()
@@ -13,6 +14,12 @@ const RoleRedirect = () => {
 
         if (!user) {
             navigate("/login", { replace: true })
+            return
+        }
+
+        const session = authStorage.get()
+        if (session?.requiresStaffContext && user.roleName === "SupermarketStaff") {
+            navigate("/select-staff-context", { replace: true })
             return
         }
 

@@ -8,12 +8,15 @@ import RoleRedirect from "@/routes/RoleRedirect"
 
 import Login from "@/pages/Auth/Login"
 import Register from "@/pages/Auth/Register/Register"
+import SelectStaffContext from "@/pages/Auth/SelectStaffContext"
 
 import Home from "@/pages/Home/Home"
 
 import CartPage from "@/pages/Vendor/VendorOrders/CartPage"
 import CheckoutPage from "@/pages/Vendor/VendorPayments/CheckoutPage"
 import PaymentReturnPage from "@/pages/Vendor/VendorPayments"
+import VendorSupermarketApplicationPage from "@/pages/Vendor/VendorSupermarketApplicationPage"
+import VendorSupermarketGate from "@/routes/VendorSupermarketGate"
 
 import SDashboard from "@/pages/Supplier/SDashboard"
 import ProductList from "@/pages/Supplier/SProducts/ProductList/ProductsList"
@@ -46,6 +49,8 @@ const AppRouter: React.FC = () => {
 
                 {/* ===== PRIVATE ===== */}
                 <Route element={<PrivateRoute />}>
+                    <Route path="/select-staff-context" element={<SelectStaffContext />} />
+
                     {/* ===== ADMIN ===== */}
                     <Route element={<RoleRoute allow={["Admin"]} />}>
                         <Route element={<MainLayout />}>
@@ -65,7 +70,7 @@ const AppRouter: React.FC = () => {
                     </Route>
 
                     {/* ===== SUPPLIER STAFF ===== */}
-                    <Route element={<RoleRoute allow={["SupplierStaff"]} />}>
+                    <Route element={<RoleRoute allow={["SupplierStaff", "SupermarketStaff"]} />}>
                         <Route element={<MainLayout />}>
                             <Route path="/supplier/dashboard" element={<SDashboard />} />
                             <Route path="/supplier/products" element={<ProductList />} />
@@ -119,11 +124,20 @@ const AppRouter: React.FC = () => {
 
                     {/* ===== VENDOR / CUSTOMER FLOW ===== */}
                     <Route element={<RoleRoute allow={["Vendor"]} />}>
-                        <Route element={<PublicLayout />}>
-                            <Route path="/cart" element={<CartPage />} />
-                            <Route path="/checkout" element={<CheckoutPage />} />
-                            <Route path="/payment-return" element={<PaymentReturnPage />} />
-                            <Route path="/vendor" element={<Home />} />
+                        <Route element={<VendorSupermarketGate />}>
+                            <Route element={<PublicLayout />}>
+                                <Route
+                                    path="/vendor/supermarket-application"
+                                    element={<VendorSupermarketApplicationPage />}
+                                />
+                                <Route path="/cart" element={<CartPage />} />
+                                <Route path="/checkout" element={<CheckoutPage />} />
+                                <Route
+                                    path="/payment-return"
+                                    element={<PaymentReturnPage />}
+                                />
+                                <Route path="/vendor" element={<Home />} />
+                            </Route>
                         </Route>
                     </Route>
                 </Route>

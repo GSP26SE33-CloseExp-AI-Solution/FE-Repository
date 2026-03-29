@@ -1,5 +1,6 @@
 import axios from "axios"
 import axiosClient from "@/utils/axiosClient"
+import { authStorage } from "@/utils/authStorage"
 import {
     AuthData,
     ApiResponse,
@@ -100,6 +101,29 @@ export const refreshTokenApi = async (refreshToken: string): Promise<AuthData> =
         return unwrap(res.data)
     } catch (error) {
         throw new Error(getAxiosErrorMessage(error, "Làm mới phiên đăng nhập thất bại"))
+    }
+}
+
+/** Giữ refresh token cũ — API chỉ trả access token mới sau khi chọn mã nhân viên. */
+export const selectStaffContextApi = async (employeeCode: string): Promise<AuthData> => {
+    const session = authStorage.get()
+    if (!session?.refreshToken) {
+        throw new Error("Chưa có phiên đăng nhập")
+    }
+    try {
+        const res = await axiosClient.post<ApiResponse<AuthData>>(
+            "/Auth/select-staff-context",
+            {
+                employeeCode,
+            }
+        )
+        const data = unwrap(res.data)
+        return {
+            ...data,
+            refreshToken: data.refreshToken || session.refreshToken,
+        }
+    } catch (error) {
+        throw new Error(getAxiosErrorMessage(error, "Chọn mã nhân viên thất bại"))
     }
 }
 
