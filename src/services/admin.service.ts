@@ -23,6 +23,7 @@ import type {
     DeliveryStats,
     FeedbackItem,
     InternalStaffRow,
+    OrderCollectionPoint,
     PackagingActionPayload,
     PackagingOrderDetail,
     PackagingPendingOrderItem,
@@ -36,7 +37,6 @@ import type {
     SlaAlertQuery,
     SystemParameter,
     TimeSpanDto,
-    UnitItem,
     UpdateCurrentUserProfilePayload,
     UpdateDeliveryAssignmentPayload,
     UpdateSupermarketPayload,
@@ -47,6 +47,7 @@ import type {
     UpdatePromotionStatusPayload,
     UpsertTimeSlotPayload,
     UpsertUnitPayload,
+    UnitItem,
     UserImageItem,
 } from "@/types/admin.type"
 
@@ -128,7 +129,9 @@ export const adminService = {
     },
 
     getSlaAlerts(params?: SlaAlertQuery) {
-        return get<SlaAlertItem[]>(`/admin/dashboard/sla-alerts${buildQueryString(params)}`)
+        return get<SlaAlertItem[]>(
+            `/admin/dashboard/sla-alerts${buildQueryString(params)}`
+        )
     },
 
     /* ========================= System Config ========================= */
@@ -244,6 +247,7 @@ export const adminService = {
     },
 
     /* ========================= Users ========================= */
+
     /**
      * Raw API: swagger hiện tại trả AdminUser[]
      */
@@ -278,8 +282,11 @@ export const adminService = {
                     .filter(Boolean)
                     .some((value) => String(value).toLowerCase().includes(keyword))
 
-            const matchesRole = params?.roleId === undefined ? true : item.roleId === params.roleId
-            const matchesStatus = params?.status === undefined ? true : item.status === params.status
+            const matchesRole =
+                params?.roleId === undefined ? true : item.roleId === params.roleId
+
+            const matchesStatus =
+                params?.status === undefined ? true : item.status === params.status
 
             return matchesKeyword && matchesRole && matchesStatus
         })
@@ -296,7 +303,10 @@ export const adminService = {
     },
 
     updateCurrentUserProfile(payload: UpdateCurrentUserProfilePayload) {
-        return put<AdminUser, UpdateCurrentUserProfilePayload>("/Users/current-user", payload)
+        return put<AdminUser, UpdateCurrentUserProfilePayload>(
+            "/Users/current-user",
+            payload
+        )
     },
 
     createUser(payload: CreateUserPayload) {
@@ -399,7 +409,7 @@ export const adminService = {
     },
 
     setCurrentUserPrimaryImage(imageId: string) {
-        return patch<UserImageItem, undefined>(
+        return patch<boolean, undefined>(
             `/Users/current-user/images/${imageId}/set-primary`,
             undefined
         )
@@ -435,7 +445,7 @@ export const adminService = {
     },
 
     getOrderCollectionPoints() {
-        return get<CollectionPoint[]>("/Orders/collection-points")
+        return get<OrderCollectionPoint[]>("/Orders/collection-points")
     },
 
     /* ========================= Feedbacks ========================= */
@@ -537,9 +547,9 @@ export const adminService = {
     }) {
         return get<PaginationResult<DeliveryGroupListItem>>(
             `/delivery/groups/my${buildQueryString({
-                DeliveryDate: params?.deliveryDate,
-                PageNumber: params?.pageNumber,
-                PageSize: params?.pageSize,
+                deliveryDate: params?.deliveryDate,
+                pageNumber: params?.pageNumber,
+                pageSize: params?.pageSize,
                 status: params?.status,
             })}`
         )
@@ -631,7 +641,7 @@ export const adminService = {
     },
 
     getDeliveryStats() {
-        return get<DeliveryStats[]>("/delivery/stats")
+        return get<DeliveryStats>("/delivery/stats")
     },
 
     /* ========================= Packaging ========================= */
@@ -678,5 +688,23 @@ export const adminService = {
         const hh = String(value.hours ?? 0).padStart(2, "0")
         const mm = String(value.minutes ?? 0).padStart(2, "0")
         return `${hh}:${mm}`
+    },
+
+    toTimeSpanTicksPayload(value: string) {
+        const [hoursText, minutesText] = value.split(":")
+        const hours = Number(hoursText || 0)
+        const minutes = Number(minutesText || 0)
+        const totalSeconds = hours * 60 * 60 + minutes * 60
+
+        return {
+            ticks: totalSeconds * 10_000_000,
+        }
+    },
+
+    toTimeSlotPayload(startHHmm: string, endHHmm: string): UpsertTimeSlotPayload {
+        return {
+            startTime: this.toTimeSpanTicksPayload(startHHmm),
+            endTime: this.toTimeSpanTicksPayload(endHHmm),
+        }
     },
 }

@@ -30,6 +30,10 @@ export type TimeSpanDto = {
     totalSeconds: number
 }
 
+export type TimeSpanTicksPayload = {
+    ticks: number
+}
+
 /* ========================= Dashboard ========================= */
 
 export type DashboardOverviewQuery = {
@@ -74,14 +78,14 @@ export type SlaAlertItem = {
 
 export type AdminTimeSlot = {
     timeSlotId: string
-    startTime: string
-    endTime: string
-    orders?: string[]
+    startTime: TimeSpanDto | string
+    endTime: TimeSpanDto | string
+    displayTimeRange?: string
 }
 
 export type UpsertTimeSlotPayload = {
-    startTime: string
-    endTime: string
+    startTime: TimeSpanTicksPayload
+    endTime: TimeSpanTicksPayload
 }
 
 export type CollectionPoint = {
@@ -90,7 +94,6 @@ export type CollectionPoint = {
     addressLine: string
     latitude: number
     longitude: number
-    orders?: string[]
 }
 
 export type UpsertCollectionPointPayload = {
@@ -116,9 +119,9 @@ export type UnitItem = {
     unitId: string
     name: string
     type: string
-    symbol: string
-    createdAt: string
-    updatedAt: string
+    symbol?: string
+    createdAt?: string
+    updatedAt?: string
 }
 
 export type UpsertUnitPayload = {
@@ -142,8 +145,6 @@ export type PromotionItem = {
     startDate: string
     endDate: string
     status: string
-    orders?: string[]
-    promotionUsages?: string[]
 }
 
 export type UpsertPromotionPayload = {
@@ -326,6 +327,12 @@ export type AdminOrder = {
     orderItems?: AdminOrderItem[]
 }
 
+export type OrderCollectionPoint = {
+    pickupPointId: string
+    name: string
+    address: string
+}
+
 /* ========================= Delivery ========================= */
 
 export type DeliveryGroupListItem = {
@@ -457,6 +464,8 @@ export type DeliveryHistoryItem = {
     status: string
     failureReason?: string
     deliveredAt?: string
+    deliveryLatitude?: number
+    deliveryLongitude?: number
 }
 
 export type DeliveryStats = {
