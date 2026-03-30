@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { useLocation, useNavigate, Link } from "react-router-dom"
 import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
+import { GoogleLogin, type CredentialResponse } from "@react-oauth/google"
 
 import { useAuth } from "@/hooks/useAuth"
 import { useAuthContext } from "@/contexts/AuthContext"
@@ -8,7 +9,7 @@ import { showError, showSuccess } from "@/utils/toast"
 import Logo from "@/assets/logo.png"
 
 const Login = () => {
-    const { login, loading } = useAuth()
+    const { login, googleLogin, loading } = useAuth()
     const { user, initialized } = useAuthContext()
     const navigate = useNavigate()
     const location = useLocation()
@@ -41,6 +42,31 @@ const Login = () => {
                 error instanceof Error ? error.message : "Đăng nhập thất bại"
             showError(message)
         }
+    }
+
+    const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
+        if (loading) return
+
+        const idToken = credentialResponse.credential
+
+        if (!idToken) {
+            showError("Không lấy được thông tin đăng nhập từ Google")
+            return
+        }
+
+        try {
+            await googleLogin({ idToken })
+            showSuccess("Đăng nhập Google thành công")
+        } catch (error) {
+            console.error("google login error", error)
+            const message =
+                error instanceof Error ? error.message : "Đăng nhập Google thất bại"
+            showError(message)
+        }
+    }
+
+    const handleGoogleError = () => {
+        showError("Đăng nhập Google thất bại")
     }
 
     return (
@@ -77,7 +103,10 @@ const Login = () => {
                             Email
                         </label>
                         <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <Mail
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                size={16}
+                            />
                             <input
                                 type="email"
                                 value={email}
@@ -97,7 +126,10 @@ const Login = () => {
                             Mật khẩu
                         </label>
                         <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                            <Lock
+                                className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                                size={16}
+                            />
                             <input
                                 type={showPassword ? "text" : "password"}
                                 value={password}
@@ -119,6 +151,16 @@ const Login = () => {
                         </div>
                     </div>
 
+                    <div className="flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => navigate("/forgot-password")}
+                            className="text-sm font-medium text-emerald-600 transition hover:text-emerald-700"
+                        >
+                            Quên mật khẩu?
+                        </button>
+                    </div>
+
                     <button
                         type="submit"
                         disabled={loading}
@@ -136,6 +178,19 @@ const Login = () => {
                             "Đăng nhập"
                         )}
                     </button>
+
+                    <div className="flex justify-center">
+                        <GoogleLogin
+                            onSuccess={handleGoogleSuccess}
+                            onError={handleGoogleError}
+                            useOneTap={false}
+                            theme="outline"
+                            size="large"
+                            text="signin_with"
+                            shape="pill"
+                            width="320"
+                        />
+                    </div>
 
                     <button
                         type="button"

@@ -4,13 +4,15 @@ import {
     registerApi,
     verifyOtpApi,
     resendOtpApi,
+    googleLoginApi,
 } from "@/services/auth.service"
-import {
+import type {
     AuthData,
     RegisterPayload,
     VerifyOtpPayload,
     ResendOtpPayload,
     ApiResponse,
+    GoogleLoginPayload,
 } from "@/types/auth.types"
 import { useAuthContext } from "@/contexts/AuthContext"
 
@@ -22,6 +24,17 @@ export const useAuth = () => {
         try {
             setLoading(true)
             const session = await loginApi({ email, password })
+            loginSuccess(session)
+            return session
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const googleLogin = async (payload: GoogleLoginPayload): Promise<AuthData> => {
+        try {
+            setLoading(true)
+            const session = await googleLoginApi(payload)
             loginSuccess(session)
             return session
         } finally {
@@ -47,7 +60,7 @@ export const useAuth = () => {
         }
     }
 
-    const resendOtp = async (payload: ResendOtpPayload): Promise<ApiResponse<unknown>> => {
+    const resendOtp = async (payload: ResendOtpPayload): Promise<ApiResponse<boolean>> => {
         try {
             setLoading(true)
             return await resendOtpApi(payload)
@@ -63,6 +76,7 @@ export const useAuth = () => {
     return {
         user,
         login,
+        googleLogin,
         register,
         verifyOtp,
         resendOtp,

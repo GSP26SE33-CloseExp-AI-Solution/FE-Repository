@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react"
-import { AuthData, User } from "@/types/auth.types"
+import type { AuthData, User } from "@/types/auth.types"
 import { getAuthSession, clearAuth, saveAuth } from "@/utils/authStorage"
 import { authService } from "@/services/auth.service"
 
@@ -10,6 +10,7 @@ type AuthContextType = {
     initialized: boolean
     loginSuccess: (session: AuthData) => void
     logout: () => Promise<void>
+    logoutAll: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -22,18 +23,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     useEffect(() => {
         const session = getAuthSession()
+
         if (session?.user) {
             setUser(session.user)
-            setRoleName(session.user.roleName)
+            setRoleName(session.user.roleName ?? null)
             setSupermarketName(session.user.marketStaffInfo?.supermarket?.name ?? "")
         }
+
         setInitialized(true)
     }, [])
 
     const loginSuccess = (session: AuthData) => {
         saveAuth(session)
         setUser(session.user)
-        setRoleName(session.user.roleName)
+        setRoleName(session.user.roleName ?? null)
         setSupermarketName(session.user.marketStaffInfo?.supermarket?.name ?? "")
         setInitialized(true)
     }
@@ -55,6 +58,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
     }
 
+    const logoutAll = async () => {
+        try {
+            await authService.logoutAll()
+        } finally {
+            clearAuth()
+            setUser(null)
+            setRoleName(null)
+            setSupermarketName("")
+            setInitialized(true)
+        }
+    }
+
     return (
         <AuthContext.Provider
             value={{
@@ -64,6 +79,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 initialized,
                 loginSuccess,
                 logout,
+                logoutAll,
             }}
         >
             {children}

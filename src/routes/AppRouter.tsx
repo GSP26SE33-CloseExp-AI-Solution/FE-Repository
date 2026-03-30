@@ -7,7 +7,8 @@ import RoleRoute from "@/routes/RoleRoute"
 import RoleRedirect from "@/routes/RoleRedirect"
 
 import Login from "@/pages/Auth/Login"
-import Register from "@/pages/Auth/Register/Register"
+import Register from "@/pages/Auth/Register"
+import ForgotPassword from "@/pages/Auth/ForgotPassword"
 
 import Home from "@/pages/Home/Home"
 
@@ -56,6 +57,7 @@ const AppRouter: React.FC = () => {
 
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/redirect" element={<RoleRedirect />} />
                 <Route path="/forbidden" element={<Forbidden />} />
 

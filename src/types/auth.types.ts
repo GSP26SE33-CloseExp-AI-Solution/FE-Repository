@@ -10,6 +10,7 @@ export interface AuthData {
     refreshToken: string
     expiresAt: string
     user: User
+    requiresStaffContext?: boolean
 }
 
 export interface User {
@@ -29,6 +30,8 @@ export interface MarketStaffInfo {
     marketStaffId: string
     position: string
     joinedAt: string
+    isManager?: boolean
+    employeeCodeHint?: string
     supermarket: Supermarket
 }
 
@@ -40,36 +43,15 @@ export interface Supermarket {
     contactEmail?: string
 }
 
-export type RegistrationType = "Vendor" | "SupermarketStaff"
+export type RegistrationType = "Vendor"
 
-export interface NewSupermarketPayload {
-    name: string
-    address: string
-    latitude: number
-    longitude: number
-    contactPhone: string
-    contactEmail: string
-}
-
-export interface VendorRegisterPayload {
+export interface RegisterPayload {
     fullName: string
     email: string
     phone: string
     password: string
     registrationType: "Vendor"
 }
-
-export interface SupermarketStaffRegisterPayload {
-    fullName: string
-    email: string
-    phone: string
-    password: string
-    registrationType: "SupermarketStaff"
-    newSupermarket: NewSupermarketPayload
-    position: string
-}
-
-export type RegisterPayload = VendorRegisterPayload | SupermarketStaffRegisterPayload
 
 export interface VerifyOtpPayload {
     email: string
@@ -78,4 +60,18 @@ export interface VerifyOtpPayload {
 
 export interface ResendOtpPayload {
     email: string
+}
+
+export interface ForgotPasswordPayload {
+    email: string
+}
+
+export interface ResetPasswordPayload {
+    email: string
+    otpCode: string
+    newPassword: string
+}
+
+export interface GoogleLoginPayload {
+    idToken: string
 }
