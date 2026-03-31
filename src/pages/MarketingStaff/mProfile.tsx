@@ -1,8 +1,8 @@
 import BaseProfilePage from "@/components/profile/BaseProfilePage"
 import { PROFILE_ROLE_CONFIG } from "@/constants/profileRoleConfig"
 
-const AdminProfile = () => {
-    return <BaseProfilePage config={PROFILE_ROLE_CONFIG.admin} />
+const MarketingProfile = () => {
+    return <BaseProfilePage config={PROFILE_ROLE_CONFIG.marketing} />
 }
 
-export default AdminProfile
+export default MarketingProfile

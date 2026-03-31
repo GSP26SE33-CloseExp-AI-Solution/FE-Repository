@@ -209,13 +209,19 @@ export const authService = {
             const res = await axiosClient.post<ApiResponse<boolean>>("/auth/logout", {
                 refreshToken,
             })
+
+            if (!res.data?.success) {
+                const msg = res.data?.errors?.[0] || res.data?.message || "Đăng xuất không thành công"
+                throw new Error(msg)
+            }
+
             return res.data
         } catch (error) {
-            throw new Error(getAxiosErrorMessage(error, "Đăng xuất thất bại"))
+            throw new Error(getAxiosErrorMessage(error, "Đăng xuất không thành công"))
         }
     },
 
     async logoutAll() {
-        return await logoutAllApi()
+        return logoutAllApi()
     },
 }

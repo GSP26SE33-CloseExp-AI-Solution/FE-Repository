@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Bell, LogOut } from "lucide-react"
+import { Bell, LogOut, ShieldCheck } from "lucide-react"
 
 import Logo from "@/assets/logo.png"
 import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs"
@@ -14,6 +14,8 @@ type BaseStaffHeaderProps = {
     centerHint?: string
     extraMeta?: React.ReactNode
     headerActions?: React.ReactNode
+    onLogoutAll?: () => Promise<void> | void
+    loggingOutAll?: boolean
 }
 
 const BaseStaffHeader = ({
@@ -24,6 +26,8 @@ const BaseStaffHeader = ({
     centerHint,
     extraMeta,
     headerActions,
+    onLogoutAll,
+    loggingOutAll = false,
 }: BaseStaffHeaderProps) => {
     const { user, logout } = useAuthContext()
     const navigate = useNavigate()
@@ -56,13 +60,13 @@ const BaseStaffHeader = ({
         : "U"
 
     return (
-        <header className="fixed top-0 left-0 w-full h-20 backdrop-blur-xl bg-white/70 border-b border-white/40 z-50 shadow-sm">
-            <div className="w-full h-full px-8 flex items-center gap-6">
-                <div className="flex items-center gap-0 w-[310px] shrink-0">
+        <header className="fixed top-0 left-0 z-50 h-20 w-full border-b border-white/40 bg-white/70 shadow-sm backdrop-blur-xl">
+            <div className="flex h-full w-full items-center gap-6 px-8">
+                <div className="flex w-[310px] shrink-0 items-center gap-0">
                     <img
                         src={Logo}
                         alt="CloseExp AI"
-                        className="w-20 h-20 object-contain shrink-0 translate-y-1"
+                        className="h-20 w-20 shrink-0 object-contain translate-y-1"
                     />
                     <div className="-ml-2 leading-tight">
                         <p className="text-base font-bold text-gray-800">CloseExp AI</p>
@@ -72,14 +76,14 @@ const BaseStaffHeader = ({
                 </div>
 
                 <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 text-sm text-gray-500 flex-wrap">
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
                         {breadcrumbs.map((crumb, index) => (
                             <span key={`${crumb}-${index}`} className="flex items-center gap-2">
                                 {index > 0 && <span>/</span>}
                                 <span
                                     className={
                                         index === breadcrumbs.length - 1
-                                            ? "text-gray-800 font-medium"
+                                            ? "font-medium text-gray-800"
                                             : ""
                                     }
                                 >
@@ -90,18 +94,18 @@ const BaseStaffHeader = ({
                     </div>
 
                     {centerHint ? (
-                        <p className="mt-1 text-xs text-gray-400 truncate">
+                        <p className="mt-1 truncate text-xs text-gray-400">
                             {centerHint}
                         </p>
                     ) : null}
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex shrink-0 items-center gap-3">
                     {headerActions}
 
                     <button
                         type="button"
-                        className="text-gray-500 hover:text-green-600 h-10 w-10 rounded-xl hover:bg-white/70 transition grid place-items-center"
+                        className="grid h-10 w-10 place-items-center rounded-xl text-gray-500 transition hover:bg-white/70 hover:text-green-600"
                     >
                         <Bell size={20} />
                     </button>
@@ -110,10 +114,10 @@ const BaseStaffHeader = ({
                         <button
                             type="button"
                             onClick={() => setOpen((v) => !v)}
-                            className="flex items-center gap-3 hover:bg-white/60 px-3 py-2 rounded-xl transition"
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/60"
                         >
                             <div
-                                className={`w-9 h-9 rounded-full bg-gradient-to-br ${accentClass} text-white flex items-center justify-center font-bold`}
+                                className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${accentClass} font-bold text-white`}
                             >
                                 {avatarText}
                             </div>
@@ -130,17 +134,57 @@ const BaseStaffHeader = ({
                         </button>
 
                         {open && (
-                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
+                            <div className="absolute right-0 mt-2 w-72 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-lg">
+                                <div className="border-b border-gray-100 px-4 py-3">
+                                    <p className="text-sm font-semibold text-slate-900">
+                                        {user?.fullName ?? "Người dùng"}
+                                    </p>
+                                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                                        {user?.email ?? ""}
+                                    </p>
+                                </div>
+
                                 <button
                                     type="button"
                                     onClick={() => {
                                         setOpen(false)
                                         navigate(profileRoute)
                                     }}
-                                    className="w-full px-4 py-3 text-left hover:bg-gray-50"
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-gray-50"
                                 >
-                                    Hồ sơ
+                                    <ShieldCheck size={16} className="text-slate-500" />
+                                    <span>Hồ sơ</span>
                                 </button>
+
+                                {onLogoutAll ? (
+                                    <>
+                                        <div className="mx-4 h-px bg-gray-100" />
+
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                setOpen(false)
+                                                await onLogoutAll()
+                                            }}
+                                            disabled={loggingOutAll}
+                                            className="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            <ShieldCheck size={16} className="mt-0.5 text-rose-600" />
+                                            <div>
+                                                <p className="text-sm font-medium text-slate-800">
+                                                    {loggingOutAll
+                                                        ? "Đang xử lý..."
+                                                        : "Đăng xuất tất cả thiết bị"}
+                                                </p>
+                                                <p className="mt-0.5 text-xs text-slate-500">
+                                                    Thu hồi toàn bộ phiên đang đăng nhập
+                                                </p>
+                                            </div>
+                                        </button>
+                                    </>
+                                ) : null}
+
+                                <div className="mx-4 h-px bg-gray-100" />
 
                                 <button
                                     type="button"
@@ -149,10 +193,10 @@ const BaseStaffHeader = ({
                                         await logout()
                                         navigate("/", { replace: true })
                                     }}
-                                    className="w-full px-4 py-3 text-left text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                    className="flex w-full items-center gap-3 px-4 py-3 text-left text-red-600 transition hover:bg-red-50"
                                 >
                                     <LogOut size={16} />
-                                    Đăng xuất
+                                    <span>Đăng xuất</span>
                                 </button>
                             </div>
                         )}

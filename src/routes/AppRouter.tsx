@@ -12,18 +12,19 @@ import ForgotPassword from "@/pages/Auth/ForgotPassword"
 
 import Home from "@/pages/Home/Home"
 
-import CartPage from "@/pages/Vendor/VendorOrders/CartPage"
-import CheckoutPage from "@/pages/Vendor/VendorPayments/CheckoutPage"
-import PaymentReturnPage from "@/pages/Vendor/VendorPayments"
+import CartPage from "@/pages/Vendor/CartPage"
+import CheckoutPage from "@/pages/Vendor/CheckoutPage"
+import PaymentReturnPage from "@/pages/Vendor/PaymentReturnPage"
+import VendorProfile from "@/pages/Vendor/vProfile"
 
-import SDashboard from "@/pages/SupermarketStaff/SDashboard"
-import ProductList from "@/pages/SupermarketStaff/SProducts/ProductList/ProductsList"
-import AddProduct from "@/pages/SupermarketStaff/SProducts/AddProduct/AddProduct"
-import ConfirmProduct from "@/pages/SupermarketStaff/SProducts/ConfirmProduct/ConfirmProduct"
-import PricingProduct from "@/pages/SupermarketStaff/SProducts/PricingProduct/PricingProduct"
-import PublishProduct from "@/pages/SupermarketStaff/SProducts/PublishProduct/PublishPage"
-import ProfilePage from "@/pages/SupermarketStaff/SProfile/ProfilePage"
-import ProductsLotsPage from "@/pages/SupermarketStaff/SProducts/ProductList/ProductsLotsPage"
+import SDashboard from "@/pages/SupermarketStaff/sDashboard"
+import ProductList from "@/pages/SupermarketStaff/sProducts/ProductList/ProductsList"
+import AddProduct from "@/pages/SupermarketStaff/sProducts/AddProduct/AddProduct"
+import ConfirmProduct from "@/pages/SupermarketStaff/sProducts/ConfirmProduct/ConfirmProduct"
+import PricingProduct from "@/pages/SupermarketStaff/sProducts/PricingProduct/PricingProduct"
+import PublishProduct from "@/pages/SupermarketStaff/sProducts/PublishProduct/PublishPage"
+import ProfilePage from "@/pages/SupermarketStaff/sProfile"
+import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductList/ProductsLotsPage"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 import AdminUsers from "@/pages/Admin/AdminUsers"
@@ -38,10 +39,15 @@ import AdminOperations from "@/pages/Admin/AdminOperations"
 import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets"
 import AdminProfile from "@/pages/Admin/AdminProfile"
 
-import PackageOrders from "@/pages/PackagingStaff/PackageOrders"
-import PackageCollect from "@/pages/PackagingStaff/PackageCollect"
-import PackagePacking from "@/pages/PackagingStaff/PackagePacking"
-import PackageReports from "@/pages/PackagingStaff/PackageReports"
+import PackageOrders from "@/pages/PackagingStaff/pOrders"
+import PackageCollect from "@/pages/PackagingStaff/pCollect"
+import PackagePacking from "@/pages/PackagingStaff/pPacking"
+import PackageReports from "@/pages/PackagingStaff/pReports"
+import PackageProfile from "@/pages/PackagingStaff/pProfile"
+
+import MarketingProfile from "@/pages/MarketingStaff/mProfile"
+import MarketingPromotions from "@/pages/MarketingStaff/mPromotions"
+import MarketingReports from "@/pages/MarketingStaff/mReports"
 
 import NotFound from "@/pages/Common/NotFound"
 import Forbidden from "@/pages/Common/Forbidden"
@@ -91,10 +97,20 @@ const AppRouter: React.FC = () => {
                     {/* ===== SUPERMARKET STAFF ===== */}
                     <Route element={<RoleRoute allow={["SupermarketStaff"]} />}>
                         <Route element={<MainLayout />}>
+                            <Route
+                                path="/supermarketStaff"
+                                element={<Navigate to="/supermarketStaff/dashboard" replace />}
+                            />
                             <Route path="/supermarketStaff/dashboard" element={<SDashboard />} />
                             <Route path="/supermarketStaff/products" element={<ProductList />} />
-                            <Route path="/supermarketStaff/products/add" element={<AddProduct />} />
-                            <Route path="/supermarketStaff/products/confirm" element={<ConfirmProduct />} />
+                            <Route
+                                path="/supermarketStaff/products/add"
+                                element={<AddProduct />}
+                            />
+                            <Route
+                                path="/supermarketStaff/products/confirm"
+                                element={<ConfirmProduct />}
+                            />
                             <Route
                                 path="/supermarketStaff/products/:productId/confirm"
                                 element={<ConfirmProduct />}
@@ -108,24 +124,41 @@ const AppRouter: React.FC = () => {
                                 element={<PublishProduct />}
                             />
                             <Route path="/supermarketStaff/profile" element={<ProfilePage />} />
-                            <Route path="/supermarketStaff/setting" element={<ProductsLotsPage />} />
+                            <Route
+                                path="/supermarketStaff/setting"
+                                element={<ProductsLotsPage />}
+                            />
                         </Route>
                     </Route>
 
-                    {/* ===== PACKAGE STAFF ===== */}
+                    {/* ===== PACKAGING STAFF ===== */}
                     <Route element={<RoleRoute allow={["PackagingStaff"]} />}>
                         <Route element={<MainLayout />}>
+                            <Route
+                                path="/package"
+                                element={<Navigate to="/package/orders" replace />}
+                            />
                             <Route path="/package/orders" element={<PackageOrders />} />
                             <Route path="/package/collect" element={<PackageCollect />} />
                             <Route path="/package/packing" element={<PackagePacking />} />
                             <Route path="/package/reports" element={<PackageReports />} />
+                            <Route path="/package/profile" element={<PackageProfile />} />
                         </Route>
                     </Route>
 
                     {/* ===== MARKETING STAFF ===== */}
                     <Route element={<RoleRoute allow={["MarketingStaff"]} />}>
                         <Route element={<MainLayout />}>
-                            {/* thêm sau */}
+                            <Route
+                                path="/marketing"
+                                element={<Navigate to="/marketing/profile" replace />}
+                            />
+                            <Route path="/marketing/profile" element={<MarketingProfile />} />
+                            <Route
+                                path="/marketing/promotions"
+                                element={<MarketingPromotions />}
+                            />
+                            <Route path="/marketing/reports" element={<MarketingReports />} />
                         </Route>
                     </Route>
 
@@ -136,6 +169,7 @@ const AppRouter: React.FC = () => {
                             <Route path="/checkout" element={<CheckoutPage />} />
                             <Route path="/payment-return" element={<PaymentReturnPage />} />
                             <Route path="/vendor" element={<Home />} />
+                            <Route path="/vendor/profile" element={<VendorProfile />} />
                         </Route>
                     </Route>
                 </Route>

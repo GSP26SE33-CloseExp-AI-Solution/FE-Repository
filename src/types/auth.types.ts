@@ -32,6 +32,7 @@ export interface MarketStaffInfo {
     joinedAt: string
     isManager?: boolean
     employeeCodeHint?: string
+    parentSuperStaffId?: string | null
     supermarket: Supermarket
 }
 

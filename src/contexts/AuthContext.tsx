@@ -7,6 +7,9 @@ type AuthContextType = {
     user: User | null
     roleName: string | null
     supermarketName: string
+    isSupermarketManager: boolean
+    isSubSupermarketStaff: boolean
+    employeeCodeHint: string
     initialized: boolean
     loginSuccess: (session: AuthData) => void
     logout: () => Promise<void>
@@ -15,29 +18,70 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+const getDerivedAuthState = (user: User | null) => {
+    const marketStaffInfo = user?.marketStaffInfo ?? null
+    const parentSuperStaffId = marketStaffInfo?.parentSuperStaffId ?? null
+
+    const isSupermarketManager = !!marketStaffInfo && !parentSuperStaffId
+    const isSubSupermarketStaff = !!parentSuperStaffId
+    const supermarketName = marketStaffInfo?.supermarket?.name ?? ""
+    const employeeCodeHint = marketStaffInfo?.employeeCodeHint ?? ""
+
+    return {
+        isSupermarketManager,
+        isSubSupermarketStaff,
+        supermarketName,
+        employeeCodeHint,
+    }
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null)
     const [roleName, setRoleName] = useState<string | null>(null)
     const [supermarketName, setSupermarketName] = useState("")
+    const [isSupermarketManager, setIsSupermarketManager] = useState(false)
+    const [isSubSupermarketStaff, setIsSubSupermarketStaff] = useState(false)
+    const [employeeCodeHint, setEmployeeCodeHint] = useState("")
     const [initialized, setInitialized] = useState(false)
 
     useEffect(() => {
         const session = getAuthSession()
 
         if (session?.user) {
+            const derived = getDerivedAuthState(session.user)
+
             setUser(session.user)
             setRoleName(session.user.roleName ?? null)
-            setSupermarketName(session.user.marketStaffInfo?.supermarket?.name ?? "")
+            setSupermarketName(derived.supermarketName)
+            setIsSupermarketManager(derived.isSupermarketManager)
+            setIsSubSupermarketStaff(derived.isSubSupermarketStaff)
+            setEmployeeCodeHint(derived.employeeCodeHint)
         }
 
         setInitialized(true)
     }, [])
 
     const loginSuccess = (session: AuthData) => {
+        const derived = getDerivedAuthState(session.user)
+
         saveAuth(session)
         setUser(session.user)
         setRoleName(session.user.roleName ?? null)
-        setSupermarketName(session.user.marketStaffInfo?.supermarket?.name ?? "")
+        setSupermarketName(derived.supermarketName)
+        setIsSupermarketManager(derived.isSupermarketManager)
+        setIsSubSupermarketStaff(derived.isSubSupermarketStaff)
+        setEmployeeCodeHint(derived.employeeCodeHint)
+        setInitialized(true)
+    }
+
+    const resetAuthState = () => {
+        clearAuth()
+        setUser(null)
+        setRoleName(null)
+        setSupermarketName("")
+        setIsSupermarketManager(false)
+        setIsSubSupermarketStaff(false)
+        setEmployeeCodeHint("")
         setInitialized(true)
     }
 
@@ -50,11 +94,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 await authService.logout(refreshToken)
             }
         } finally {
-            clearAuth()
-            setUser(null)
-            setRoleName(null)
-            setSupermarketName("")
-            setInitialized(true)
+            resetAuthState()
         }
     }
 
@@ -62,11 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
             await authService.logoutAll()
         } finally {
-            clearAuth()
-            setUser(null)
-            setRoleName(null)
-            setSupermarketName("")
-            setInitialized(true)
+            resetAuthState()
         }
     }
 
@@ -76,6 +112,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 user,
                 roleName,
                 supermarketName,
+                isSupermarketManager,
+                isSubSupermarketStaff,
+                employeeCodeHint,
                 initialized,
                 loginSuccess,
                 logout,
