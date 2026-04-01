@@ -37,4 +37,19 @@ export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/marketing/profile": ["Marketing", "Hồ sơ"],
     "/marketing/setting": ["Marketing", "Cài đặt"],
     "/marketing/dashboard": ["Marketing", "Tổng quan"],
+
+    "/vendor": ["Mua sắm", "Trang chủ"],
+    "/vendor/profile": ["Mua sắm", "Tài khoản"],
+    "/cart": ["Mua sắm", "Giỏ hàng"],
+    "/checkout": ["Mua sắm", "Thanh toán"],
+    "/impact": ["Mua sắm", "Tác động"],
+    "/payment-return": ["Mua sắm", "Kết quả thanh toán"],
+}
+
+export const getBreadcrumbsByPath = (pathname: string): string[] => {
+    const matchedKey = Object.keys(BREAD_CRUMB_MAP)
+        .sort((a, b) => b.length - a.length)
+        .find((key) => pathname.startsWith(key))
+
+    return matchedKey ? BREAD_CRUMB_MAP[matchedKey] : []
 }

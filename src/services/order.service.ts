@@ -1,8 +1,10 @@
 import axiosClient from "@/utils/axiosClient"
 import type {
     ApiEnvelope,
+    CreateMyOrderPayload,
     CreateOrderPayload,
     OrderDetails,
+    OrderTimeSlot,
     PaginationResult,
     UpdateOrderPayload,
 } from "@/types/order.type"
@@ -29,6 +31,14 @@ export const orderService = {
         return unwrap(response)
     },
 
+    async createMyOrder(payload: CreateMyOrderPayload) {
+        const response = await axiosClient.post<ApiEnvelope<OrderDetails>>(
+            "/Orders/my-orders",
+            payload
+        )
+        return unwrap(response)
+    },
+
     async getOrder(orderId: string) {
         const response = await axiosClient.get<ApiEnvelope<OrderDetails>>(
             `/Orders/${orderId}`
@@ -38,7 +48,7 @@ export const orderService = {
 
     async getOrderDetails(orderId: string) {
         const response = await axiosClient.get<ApiEnvelope<OrderDetails>>(
-            `/Orders/${orderId}/details`
+            `/Orders/${orderId}`
         )
         return unwrap(response)
     },
@@ -49,6 +59,16 @@ export const orderService = {
 
     async deleteOrder(orderId: string) {
         await axiosClient.delete(`/Orders/${orderId}`)
+    },
+
+    /* =========================
+       Order Meta
+    ========================= */
+    async getTimeSlots() {
+        const response = await axiosClient.get<ApiEnvelope<OrderTimeSlot[]>>(
+            "/Orders/time-slots"
+        )
+        return unwrap(response)
     },
 
     /* =========================

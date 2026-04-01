@@ -6,8 +6,7 @@ import {
 } from "@/constants/storageKeys"
 import type {
     CartItem,
-    CustomerOrderContext,
-    PickupSlotId,
+    CustomerOrderContext
 } from "@/types/order.type"
 import { getAuthSession } from "@/utils/authStorage"
 
@@ -59,6 +58,7 @@ export const orderContextStorage = {
 
     set(value: CustomerOrderContext) {
         localStorage.setItem(ORDER_CONTEXT_KEY, JSON.stringify(value))
+        window.dispatchEvent(new Event("order-context:updated"))
     },
 
     patch(value: Partial<CustomerOrderContext>) {
@@ -68,8 +68,14 @@ export const orderContextStorage = {
 
     clear() {
         localStorage.removeItem(ORDER_CONTEXT_KEY)
+        window.dispatchEvent(new Event("order-context:updated"))
     },
 
+    /**
+     * ready để đi tiếp từ cart -> checkout
+     * chưa ép phải có addressId/timeSlotId ở cart,
+     * vì 2 field này có thể được chọn ở checkout
+     */
     isReady(ctx?: CustomerOrderContext) {
         const value = ctx ?? this.get()
 
@@ -84,10 +90,29 @@ export const orderContextStorage = {
         }
 
         if (value.deliveryMethodId === "PICKUP") {
-            return !!value.pickupPointId && !!value.pickupPointName
+            return !!(
+                value.collectionId ||
+                value.collectionPointId ||
+                value.pickupPointId
+            )
         }
 
         return false
+    },
+
+    getResolvedCollectionId(ctx?: CustomerOrderContext) {
+        const value = ctx ?? this.get()
+        return value.collectionId || value.collectionPointId || value.pickupPointId || ""
+    },
+
+    getResolvedCollectionName(ctx?: CustomerOrderContext) {
+        const value = ctx ?? this.get()
+        return value.collectionPointName || value.pickupPointName || ""
+    },
+
+    getResolvedCollectionAddress(ctx?: CustomerOrderContext) {
+        const value = ctx ?? this.get()
+        return value.collectionPointAddress || value.pickupPointAddress || ""
     },
 }
 
@@ -123,12 +148,6 @@ export const money = (value: number) => `${value.toLocaleString("vi-VN")} đ`
 export const googleMapsUrl = (lat: number, lng: number) =>
     `https://www.google.com/maps?q=${lat},${lng}`
 
-export const getPickupSlotLabel = (slot?: PickupSlotId) => {
-    if (slot === "SLOT_1") return "Khung 1 (19:00 – 20:30)"
-    if (slot === "SLOT_2") return "Khung 2 (21:00 – 22:30)"
-    return "Chưa chọn"
-}
-
 export const getAuthenticatedUserId = () => {
     const session = getAuthSession()
     const user = session?.user as Record<string, unknown> | undefined
@@ -147,5 +166,3 @@ export const getAuthenticatedUserId = () => {
 export const getCheckoutUserId = () => {
     return getAuthenticatedUserId()
 }
-
-export type { PickupSlotId }

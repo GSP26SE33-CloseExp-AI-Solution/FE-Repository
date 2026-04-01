@@ -34,12 +34,27 @@ export type TimeSpanDto = {
 }
 
 /* =========================
-   Customer Context
+   Order / Delivery enums
+   bám theo BE enum-state-BE
 ========================= */
 export type DeliveryMethodId = "DELIVERY" | "PICKUP"
 
-export type PickupSlotId = "SLOT_1" | "SLOT_2"
+export type OrderStatusValue =
+    | "Pending"
+    | "PaidProcessing"
+    | "ReadyToShip"
+    | "DeliveredWaitConfirm"
+    | "Completed"
+    | "Canceled"
+    | "Refunded"
+    | "Failed"
 
+export type PromotionStatusValue = "Draft" | "Active" | "Expired" | "Disabled"
+
+/* =========================
+   Customer Context
+   context này là context FE trước checkout
+========================= */
 export type SupermarketLite = {
     supermarketId: string
     name: string
@@ -57,6 +72,7 @@ export type CustomerOrderContext = {
     lng?: number
     addressText?: string
 
+    // FE local context cho pickup
     pickupPointId?: string
     pickupPointName?: string
     pickupPointAddress?: string
@@ -65,8 +81,15 @@ export type CustomerOrderContext = {
 
     nearbySupermarkets?: SupermarketLite[]
 
-    pickupSlotId?: PickupSlotId
+    // meta thật dùng cho checkout/order
+    collectionId?: string
+    collectionPointId?: string
+    collectionPointName?: string
+    collectionPointAddress?: string
+
     timeSlotId?: string
+    addressId?: string
+    promotionId?: string
     orderId?: string
 }
 
@@ -96,6 +119,10 @@ export type UpdateOrderItemPayload = {
     unitPrice: number
 }
 
+/**
+ * /api/Orders
+ * admin/general create
+ */
 export type CreateOrderPayload = {
     userId: string
     timeSlotId: string
@@ -109,6 +136,22 @@ export type CreateOrderPayload = {
     deliveryNote?: string
     discountAmount: number
     finalAmount: number
+    deliveryFee: number
+    cancelDeadline?: string
+    orderItems: OrderItemPayload[]
+}
+
+/**
+ * /api/Orders/my-orders
+ * current customer create
+ */
+export type CreateMyOrderPayload = {
+    timeSlotId: string
+    collectionId?: string | null
+    deliveryType: DeliveryMethodId
+    addressId?: string | null
+    promotionId?: string | null
+    deliveryNote?: string
     deliveryFee: number
     cancelDeadline?: string
     orderItems: OrderItemPayload[]
@@ -177,12 +220,14 @@ export type OrderTimeSlot = {
     startTime: TimeSpanDto
     endTime: TimeSpanDto
     displayTimeRange: string
+    relatedOrderCount?: number
 }
 
 export type OrderCollectionPoint = {
-    pickupPointId: string
+    collectionPointId: string
     name: string
     address: string
+    relatedOrderCount?: number
 }
 
 /* =========================
