@@ -12,60 +12,33 @@ import {
 } from "lucide-react"
 
 import MapboxLocationPicker from "./MapboxLocationPicker"
-import {
-    supermarketService,
-    type PickupPoint,
-} from "@/services/supermarket.service"
+import { supermarketService } from "@/services/supermarket.service"
+import type { PickupPoint, Supermarket } from "@/types/supermarket.type"
 import {
     administrativeService,
     type AdministrativeDistrict,
     type AdministrativeWard,
 } from "@/services/administrative.service"
-import {
-    nominatimService,
-    type NominatimReverseResult,
-    type NominatimSearchItem,
-} from "@/services/nominatim.service"
+import type { CustomerOrderContext } from "@/types/order.type"
 
-export type DeliveryMethodId = "DELIVERY" | "PICKUP"
+type DeliveryMethodId = "DELIVERY" | "PICKUP"
+type DeliveryContext = CustomerOrderContext
 
-export type Supermarket = {
-    supermarketId: string
-    name: string
-    address: string
-    latitude: number
-    longitude: number
-    contactPhone?: string
-    status?: number
-    createdAt?: string
-    distanceKm?: number
-}
-
-export type DeliveryContext = {
-    deliveryMethodId?: DeliveryMethodId
-
-    locationSource?: "gps" | "search" | "map"
-    lat?: number
-    lng?: number
-    addressText?: string
-
-    pickupPointId?: string
-    pickupPointName?: string
-    pickupPointAddress?: string
-    pickupLat?: number
-    pickupLng?: number
-
-    nearbySupermarkets?: Supermarket[]
+type SearchResultItem = {
+    id: string
+    displayName: string
+    lat: number
+    lng: number
 }
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
 
 const primaryBtn =
-    "rounded-2xl bg-slate-900 text-white font-semibold transition hover:bg-slate-800 active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
+    "rounded-2xl bg-slate-900 text-white font-semibold transition hover:bg-slate-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
 
 const secondaryBtn =
-    "rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
+    "rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
 
 const googleMapsUrl = (lat: number, lng: number) =>
     `https://www.google.com/maps?q=${lat},${lng}`
@@ -116,37 +89,6 @@ const locationSourceLabel: Record<
     map: "Chỉnh trên bản đồ",
 }
 
-const normalizeNearbySupermarkets = (input: any): Supermarket[] => {
-    const rawItems = Array.isArray(input)
-        ? input
-        : Array.isArray(input?.items)
-            ? input.items
-            : Array.isArray(input?.data?.items)
-                ? input.data.items
-                : Array.isArray(input?.data)
-                    ? input.data
-                    : []
-
-    return rawItems
-        .map((item: any) => ({
-            supermarketId: String(item?.supermarketId ?? item?.id ?? "").trim(),
-            name: item?.name ?? "",
-            address: item?.address ?? "",
-            latitude: Number(item?.latitude ?? item?.lat ?? 0),
-            longitude: Number(item?.longitude ?? item?.lng ?? 0),
-            contactPhone: item?.contactPhone,
-            status: item?.status,
-            createdAt: item?.createdAt,
-            distanceKm:
-                typeof item?.distanceKm === "number"
-                    ? item.distanceKm
-                    : typeof item?.distance === "number"
-                        ? item.distance
-                        : undefined,
-        }))
-        .filter((item: Supermarket) => !!item.supermarketId)
-}
-
 const DeliveryGateModal = ({
     open,
     initialValue,
@@ -173,7 +115,7 @@ const DeliveryGateModal = ({
     const [streetLine, setStreetLine] = useState("")
 
     const [searching, setSearching] = useState(false)
-    const [searchResults, setSearchResults] = useState<NominatimSearchItem[]>([])
+    const [searchResults, setSearchResults] = useState<SearchResultItem[]>([])
     const [administrativeLoading, setAdministrativeLoading] = useState(false)
 
     const [pickupPointId, setPickupPointId] = useState(initialValue?.pickupPointId ?? "")
@@ -304,10 +246,13 @@ const DeliveryGateModal = ({
             .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
     }, [pickupPoints, currentLocation])
 
-    const syncAdministrativeFromReverse = async (item: NominatimReverseResult) => {
+    const syncAdministrativeFromReverse = async (params: {
+        district?: string
+        region?: string
+    }) => {
         try {
-            const districtKeyword = normalizeText(item.district)
-            const wardKeyword = normalizeText(item.ward)
+            const districtKeyword = normalizeText(params.district)
+            const regionKeyword = normalizeText(params.region)
 
             const districtList =
                 districts.length > 0 ? districts : await administrativeService.getHcmDistricts()
@@ -318,7 +263,12 @@ const DeliveryGateModal = ({
 
             const matchedDistrict = districtList.find((d) => {
                 const name = normalizeText(d.name)
-                return districtKeyword && (name.includes(districtKeyword) || districtKeyword.includes(name))
+                return (
+                    (districtKeyword &&
+                        (name.includes(districtKeyword) || districtKeyword.includes(name))) ||
+                    (regionKeyword &&
+                        (name.includes(regionKeyword) || regionKeyword.includes(name)))
+                )
             })
 
             if (!matchedDistrict) return
@@ -327,13 +277,6 @@ const DeliveryGateModal = ({
 
             const wardList = await administrativeService.getWardsByDistrictCode(matchedDistrict.code)
             setWards(wardList)
-
-            const matchedWard = wardList.find((w) => {
-                const name = normalizeText(w.name)
-                return wardKeyword && (name.includes(wardKeyword) || wardKeyword.includes(name))
-            })
-
-            setWardCode(matchedWard?.code ?? "")
         } catch {
             //
         }
@@ -352,19 +295,19 @@ const DeliveryGateModal = ({
         setSearchResults([])
 
         try {
-            const reverse = await nominatimService.reverseGeocode(nextLat, nextLng)
+            const reverse = await supermarketService.reverseGeocode(nextLat, nextLng)
 
             const prettyAddress =
-                nominatimService.buildPrettyAddressFromReverse(reverse) || reverse.displayName
+                reverse?.fullAddress?.trim() ||
+                reverse?.placeName?.trim() ||
+                `${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`
 
             setAddressText(prettyAddress)
 
-            const nextStreetLine = nominatimService.buildStreetLineFromReverse(reverse)
-            if (nextStreetLine) {
-                setStreetLine(nextStreetLine)
-            }
-
-            await syncAdministrativeFromReverse(reverse)
+            await syncAdministrativeFromReverse({
+                district: reverse?.district,
+                region: reverse?.region,
+            })
         } catch {
             setAddressText(`${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`)
         }
@@ -402,38 +345,57 @@ const DeliveryGateModal = ({
             setSearching(true)
             setSearchResults([])
 
-            if (!districtCode || !selectedDistrict) {
-                setError("Bạn hãy chọn quận/huyện trước.")
+            const parts = [streetLine, selectedWard?.name, selectedDistrict?.name, HCMC_NAME]
+                .map((item) => item?.trim())
+                .filter(Boolean)
+
+            if (!parts.length) {
+                setError("Bạn hãy nhập ít nhất một phần địa chỉ để tìm kiếm.")
                 return
             }
 
-            if (!streetLine.trim()) {
-                setError("Bạn hãy nhập số nhà và tên đường.")
+            const query = parts.join(", ")
+            const suggestions = await supermarketService.suggestGeocode(query, 5)
+
+            const mappedResults: SearchResultItem[] = suggestions.map((item, index) => ({
+                id: `${item.latitude}-${item.longitude}-${index}`,
+                displayName: item.fullAddress || item.placeName || query,
+                lat: Number(item.latitude),
+                lng: Number(item.longitude),
+            }))
+
+            if (mappedResults.length) {
+                setSearchResults(mappedResults)
                 return
             }
 
-            const results = await nominatimService.searchStructuredAddress({
-                streetLine: streetLine.trim(),
-                wardName: selectedWard?.name,
-                districtName: selectedDistrict.name,
-                city: HCMC_NAME,
-                country: "Việt Nam",
-                limit: 5,
-            })
+            const forward = await supermarketService.forwardGeocode(query)
 
-            setSearchResults(results)
-
-            if (!results.length) {
-                setError("Mình chưa tìm thấy địa chỉ phù hợp. Bạn thử nhập chi tiết hơn hoặc chỉnh trên bản đồ nhé.")
+            if (forward) {
+                setSearchResults([
+                    {
+                        id: `${forward.latitude}-${forward.longitude}-0`,
+                        displayName: forward.fullAddress || forward.placeName || query,
+                        lat: Number(forward.latitude),
+                        lng: Number(forward.longitude),
+                    },
+                ])
+                return
             }
+
+            setError("Mình chưa tìm thấy địa chỉ phù hợp. Bạn thử nhập chi tiết hơn hoặc chỉnh trên bản đồ nhé.")
         } catch (e: any) {
-            setError(e?.message ?? "Không tìm được địa chỉ.")
+            setError(
+                e?.response?.data?.message ??
+                e?.message ??
+                "Không tìm được địa chỉ."
+            )
         } finally {
             setSearching(false)
         }
     }
 
-    const handleSelectSearchResult = async (item: NominatimSearchItem) => {
+    const handleSelectSearchResult = async (item: SearchResultItem) => {
         await applyReverseGeocodeToForm(item.lat, item.lng, "search")
         setSearchResults([])
     }
@@ -495,14 +457,11 @@ const DeliveryGateModal = ({
 
                 setSubmitInfo("Đang tìm các siêu thị phù hợp gần bạn...")
 
-                const supermarketsResponse =
-                    await supermarketService.getNearbySupermarketsByClientFilter({
-                        lat,
-                        lng,
-                        radiusKm: 5,
-                    })
-
-                const normalizedSupermarkets = normalizeNearbySupermarkets(supermarketsResponse)
+                const supermarkets = await supermarketService.getNearbySupermarketsByClientFilter({
+                    lat,
+                    lng,
+                    radiusKm: 5,
+                })
 
                 onDone({
                     deliveryMethodId: "DELIVERY",
@@ -515,7 +474,7 @@ const DeliveryGateModal = ({
                     pickupPointAddress: "",
                     pickupLat: undefined,
                     pickupLng: undefined,
-                    nearbySupermarkets: normalizedSupermarkets,
+                    nearbySupermarkets: supermarkets,
                 })
                 return
             }
@@ -527,14 +486,11 @@ const DeliveryGateModal = ({
 
             setSubmitInfo("Đang tìm các siêu thị phù hợp quanh điểm nhận...")
 
-            const supermarketsResponse =
-                await supermarketService.getNearbySupermarketsByClientFilter({
-                    lat: selectedPickupPoint.lat,
-                    lng: selectedPickupPoint.lng,
-                    radiusKm: 5,
-                })
-
-            const normalizedSupermarkets = normalizeNearbySupermarkets(supermarketsResponse)
+            const supermarkets = await supermarketService.getNearbySupermarketsByClientFilter({
+                lat: selectedPickupPoint.lat,
+                lng: selectedPickupPoint.lng,
+                radiusKm: 5,
+            })
 
             onDone({
                 deliveryMethodId: "PICKUP",
@@ -547,7 +503,7 @@ const DeliveryGateModal = ({
                 lng: undefined,
                 addressText: undefined,
                 locationSource: undefined,
-                nearbySupermarkets: normalizedSupermarkets,
+                nearbySupermarkets: supermarkets,
             })
         } catch (e: any) {
             setError(
@@ -833,7 +789,7 @@ const DeliveryGateModal = ({
                                                     <div className="grid gap-2">
                                                         {searchResults.map((item) => (
                                                             <button
-                                                                key={item.placeId}
+                                                                key={item.id}
                                                                 type="button"
                                                                 onClick={() => void handleSelectSearchResult(item)}
                                                                 className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left transition hover:border-slate-200 hover:bg-slate-100"

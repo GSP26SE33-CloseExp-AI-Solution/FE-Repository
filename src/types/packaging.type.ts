@@ -37,10 +37,3 @@ export type PaginationResult<T> = {
     page: number
     pageSize: number
 }
-
-export type ApiResponse<T> = {
-    success: boolean
-    message: string
-    data: T
-    errors: string[] | null
-}

@@ -1,11 +1,11 @@
 import axiosClient from "@/utils/axiosClient"
 import type {
-    ApiResponse,
     PackagingActionPayload,
     PackagingOrderDetail,
     PackagingOrderSummary,
     PaginationResult,
 } from "@/types/packaging.type"
+import type { ApiResponse } from "@/types/auth.types"
 
 const BASE_URL = "/Packaging/orders"
 

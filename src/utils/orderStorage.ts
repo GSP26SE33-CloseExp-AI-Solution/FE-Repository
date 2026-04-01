@@ -72,10 +72,15 @@ export const orderContextStorage = {
 
     isReady(ctx?: CustomerOrderContext) {
         const value = ctx ?? this.get()
+
         if (!value.deliveryMethodId) return false
 
         if (value.deliveryMethodId === "DELIVERY") {
-            return !!value.addressText && typeof value.lat === "number" && typeof value.lng === "number"
+            return (
+                !!value.addressText &&
+                typeof value.lat === "number" &&
+                typeof value.lng === "number"
+            )
         }
 
         if (value.deliveryMethodId === "PICKUP") {
@@ -124,25 +129,6 @@ export const getPickupSlotLabel = (slot?: PickupSlotId) => {
     return "Chưa chọn"
 }
 
-const parseJwt = (token: string) => {
-    try {
-        const base64 = token.split(".")[1]
-        if (!base64) return null
-
-        const normalized = base64.replace(/-/g, "+").replace(/_/g, "/")
-        const json = decodeURIComponent(
-            atob(normalized)
-                .split("")
-                .map((char) => `%${`00${char.charCodeAt(0).toString(16)}`.slice(-2)}`)
-                .join("")
-        )
-
-        return JSON.parse(json) as Record<string, unknown>
-    } catch {
-        return null
-    }
-}
-
 export const getAuthenticatedUserId = () => {
     const session = getAuthSession()
     const user = session?.user as Record<string, unknown> | undefined
@@ -157,3 +143,9 @@ export const getAuthenticatedUserId = () => {
 
     return typeof candidate === "string" ? candidate : ""
 }
+
+export const getCheckoutUserId = () => {
+    return getAuthenticatedUserId()
+}
+
+export type { PickupSlotId }

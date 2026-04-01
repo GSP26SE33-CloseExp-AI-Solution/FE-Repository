@@ -30,11 +30,8 @@ import {
     type AdministrativeDistrict,
     type AdministrativeWard,
 } from "@/services/administrative.service"
-import {
-    nominatimService,
-    type NominatimReverseResult,
-    type NominatimSearchItem,
-} from "@/services/nominatim.service"
+import { supermarketService } from "@/services/supermarket.service"
+import type { GeocodeItem } from "@/types/supermarket.type"
 
 type TabKey =
     | "timeSlots"
@@ -63,6 +60,13 @@ type TimeSlotUsageRow = AdminTimeSlot & {
 type UnitUsageRow = UnitItem & {
     relatedStockLotCount: number
     isInUse: boolean
+}
+
+type CollectionSearchResultItem = {
+    id: string
+    displayName: string
+    lat: number
+    lng: number
 }
 
 const logApiError = (label: string, error: any) => {
@@ -292,7 +296,7 @@ const AdminSettings = () => {
     const [streetLine, setStreetLine] = useState("")
 
     const [collectionSearching, setCollectionSearching] = useState(false)
-    const [collectionSearchResults, setCollectionSearchResults] = useState<NominatimSearchItem[]>([])
+    const [collectionSearchResults, setCollectionSearchResults] = useState<CollectionSearchResultItem[]>([])
     const [collectionAdministrativeLoading, setCollectionAdministrativeLoading] = useState(false)
     const [collectionMapStatus, setCollectionMapStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle")
 
@@ -567,10 +571,13 @@ const AdminSettings = () => {
         }
     }
 
-    const syncAdministrativeFromReverse = async (item: NominatimReverseResult) => {
+    const syncAdministrativeFromReverse = async (params: {
+        district?: string
+        region?: string
+    }) => {
         try {
-            const districtKeyword = normalizeText(item.district)
-            const wardKeyword = normalizeText(item.ward)
+            const districtKeyword = normalizeText(params.district)
+            const regionKeyword = normalizeText(params.region)
 
             const districtList =
                 districts.length > 0 ? districts : await administrativeService.getHcmDistricts()
@@ -581,7 +588,10 @@ const AdminSettings = () => {
 
             const matchedDistrict = districtList.find((d) => {
                 const name = normalizeText(d.name)
-                return districtKeyword && (name.includes(districtKeyword) || districtKeyword.includes(name))
+                return (
+                    (districtKeyword && (name.includes(districtKeyword) || districtKeyword.includes(name))) ||
+                    (regionKeyword && (name.includes(regionKeyword) || regionKeyword.includes(name)))
+                )
             })
 
             if (!matchedDistrict) return
@@ -590,13 +600,6 @@ const AdminSettings = () => {
 
             const wardList = await administrativeService.getWardsByDistrictCode(matchedDistrict.code)
             setWards(wardList)
-
-            const matchedWard = wardList.find((w) => {
-                const name = normalizeText(w.name)
-                return wardKeyword && (name.includes(wardKeyword) || wardKeyword.includes(name))
-            })
-
-            setWardCode(matchedWard?.code ?? "")
         } catch (error: any) {
             logApiError("collectionPoints - syncAdministrativeFromReverse", error)
         }
@@ -618,23 +621,23 @@ const AdminSettings = () => {
         setCollectionSearchResults([])
 
         try {
-            const reverse = await nominatimService.reverseGeocode(lat, lng)
+            const reverse = await supermarketService.reverseGeocode(lat, lng)
 
             console.group("[AdminSettings] collectionPoints - reverseGeocode response")
             console.log("response:", reverse)
             console.groupEnd()
 
             const prettyAddress =
-                nominatimService.buildPrettyAddressFromReverse(reverse) || reverse.displayName
+                reverse?.fullAddress?.trim() ||
+                reverse?.placeName?.trim() ||
+                `${lat.toFixed(6)}, ${lng.toFixed(6)}`
 
             setNewCollectionAddress(prettyAddress)
 
-            const nextStreetLine = nominatimService.buildStreetLineFromReverse(reverse)
-            if (nextStreetLine) {
-                setStreetLine(nextStreetLine)
-            }
-
-            await syncAdministrativeFromReverse(reverse)
+            await syncAdministrativeFromReverse({
+                district: reverse?.district,
+                region: reverse?.region,
+            })
         } catch (error: any) {
             logApiError("collectionPoints - reverseGeocode", error)
             setNewCollectionAddress(`${lat.toFixed(6)}, ${lng.toFixed(6)}`)
@@ -671,49 +674,76 @@ const AdminSettings = () => {
 
     const handleSearchCollectionAddress = async () => {
         try {
-            if (!districtCode || !selectedDistrict) {
-                showError("Bạn hãy chọn quận / huyện trước")
-                return
-            }
-
-            if (!streetLine.trim()) {
-                showError("Bạn hãy nhập số nhà và tên đường")
-                return
-            }
-
             setCollectionSearching(true)
             setCollectionSearchResults([])
 
-            const results = await nominatimService.searchStructuredAddress({
-                streetLine: streetLine.trim(),
-                wardName: selectedWard?.name,
-                districtName: selectedDistrict.name,
-                city: HCMC_NAME,
-                country: "Việt Nam",
-                limit: 5,
-            })
+            const parts = [streetLine, selectedWard?.name, selectedDistrict?.name, HCMC_NAME]
+                .map((item) => item?.trim())
+                .filter(Boolean)
 
-            console.group("[AdminSettings] collectionPoints - searchStructuredAddress")
+            if (!parts.length) {
+                showError("Bạn hãy nhập ít nhất một phần địa chỉ")
+                return
+            }
+
+            const query = parts.join(", ")
+
+            const suggestions = await supermarketService.suggestGeocode(query, 5)
+
+            console.group("[AdminSettings] collectionPoints - suggestGeocode")
             console.log("districtCode:", districtCode)
             console.log("wardCode:", wardCode)
             console.log("streetLine:", streetLine)
-            console.log("response:", results)
+            console.log("response:", suggestions)
             console.groupEnd()
 
-            setCollectionSearchResults(results)
+            const mappedResults: CollectionSearchResultItem[] = suggestions.map(
+                (item: GeocodeItem, index: number) => ({
+                    id: `${item.latitude}-${item.longitude}-${index}`,
+                    displayName: item.fullAddress || item.placeName || query,
+                    lat: Number(item.latitude),
+                    lng: Number(item.longitude),
+                })
+            )
 
-            if (!results.length) {
-                showError("Không tìm thấy địa chỉ phù hợp")
+            if (mappedResults.length) {
+                setCollectionSearchResults(mappedResults)
+                return
             }
+
+            const forward = await supermarketService.forwardGeocode(query)
+
+            console.group("[AdminSettings] collectionPoints - forwardGeocode")
+            console.log("query:", query)
+            console.log("response:", forward)
+            console.groupEnd()
+
+            if (forward) {
+                setCollectionSearchResults([
+                    {
+                        id: `${forward.latitude}-${forward.longitude}-0`,
+                        displayName: forward.fullAddress || forward.placeName || query,
+                        lat: Number(forward.latitude),
+                        lng: Number(forward.longitude),
+                    },
+                ])
+                return
+            }
+
+            showError("Không tìm thấy địa chỉ phù hợp")
         } catch (error: any) {
-            logApiError("collectionPoints - searchStructuredAddress", error)
-            showError("Không tìm được địa chỉ")
+            logApiError("collectionPoints - handleSearchCollectionAddress", error)
+            showError(
+                error?.response?.data?.message ??
+                error?.message ??
+                "Không tìm được địa chỉ"
+            )
         } finally {
             setCollectionSearching(false)
         }
     }
 
-    const handleSelectCollectionSearchResult = async (item: NominatimSearchItem) => {
+    const handleSelectCollectionSearchResult = async (item: CollectionSearchResultItem) => {
         console.group("[AdminSettings] collectionPoints - select search result")
         console.log("item:", item)
         console.groupEnd()
@@ -1269,7 +1299,7 @@ const AdminSettings = () => {
                                                         <div className="grid gap-2">
                                                             {collectionSearchResults.map((item) => (
                                                                 <button
-                                                                    key={item.placeId}
+                                                                    key={item.id}
                                                                     type="button"
                                                                     onClick={() => void handleSelectCollectionSearchResult(item)}
                                                                     className="rounded-2xl border border-slate-100 bg-white p-3 text-left transition hover:border-slate-200 hover:bg-slate-50"
