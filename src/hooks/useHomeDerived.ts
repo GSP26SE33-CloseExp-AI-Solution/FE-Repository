@@ -223,14 +223,27 @@ export const useHomeDerived = ({
     const allCategory = categories.find((item) => item.value === ALL_CATEGORY_KEY)
     const nonAllCategories = categories.filter((item) => item.value !== ALL_CATEGORY_KEY)
 
-    const nonEmptyCategories = nonAllCategories.filter((item) => item.count > 0)
-    const emptyCategories = nonAllCategories.filter((item) => item.count === 0)
+    const sortCategories = (items: HomeCategoryItem[]) =>
+      [...items].sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count
+        return a.label.localeCompare(b.label, "vi")
+      })
+
+    const nonEmptyCategories = sortCategories(
+      nonAllCategories.filter((item) => item.count > 0)
+    )
+
+    const emptyCategories = sortCategories(
+      nonAllCategories.filter((item) => item.count === 0)
+    )
 
     return {
       allCategory,
       nonEmptyCategories,
       emptyCategories,
-      displayedCategories: showEmptyCategories ? nonAllCategories : nonEmptyCategories,
+      displayedCategories: showEmptyCategories
+        ? [...nonEmptyCategories, ...emptyCategories]
+        : nonEmptyCategories,
     }
   }, [categories, showEmptyCategories])
 

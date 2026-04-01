@@ -16,11 +16,12 @@ export type PickupPoint = {
     address: string
     lat: number
     lng: number
+    distanceKm?: number
 }
 
 export type GeocodeItem = {
-    latitude: number
-    longitude: number
+    latitude: number | string
+    longitude: number | string
     fullAddress: string
     placeName?: string
     region?: string
@@ -31,35 +32,71 @@ export type GeocodeItem = {
 }
 
 export type SupermarketApiItem = {
-    supermarketId: string
-    name: string
-    address: string
-    latitude: number
-    longitude: number
+    supermarketId?: string
+    id?: string
+
+    name?: string
+    supermarketName?: string
+
+    address?: string
+    addressLine?: string
+    location?: string
+
+    latitude?: number | string | null
+    longitude?: number | string | null
+    lat?: number | string | null
+    lng?: number | string | null
+
     contactPhone?: string
-    status?: number
+    phone?: string
+
+    status?: number | string
     createdAt?: string
+    createdDate?: string
+
+    [key: string]: unknown
 }
 
 export type PickupPointApiItem = {
     collectionPointId?: string
     collectionId?: string
     pickupPointId?: string
-    name: string
+    id?: string
+
+    name?: string
+    collectionPointName?: string
+
     address?: string
     addressLine?: string
-    latitude: number
-    longitude: number
+    location?: string
+
+    latitude?: number | string | null
+    longitude?: number | string | null
+    lat?: number | string | null
+    lng?: number | string | null
+
+    [key: string]: unknown
+}
+
+export type PaginationLike<T> = {
+    items?: T[]
+    totalResult?: number
+    page?: number
+    pageSize?: number
+    total?: number
+    totalItems?: number
 }
 
 export type SupermarketsPageResponse = {
-    success: boolean
-    message: string
-    data?: {
-        items?: SupermarketApiItem[]
-        totalResult?: number
-        page?: number
-        pageSize?: number
-    }
+    success?: boolean
+    message?: string
+    data?: SupermarketApiItem[] | PaginationLike<SupermarketApiItem> | null
+    errors?: string[] | null
+}
+
+export type PickupPointsResponse = {
+    success?: boolean
+    message?: string
+    data?: PickupPointApiItem[] | PaginationLike<PickupPointApiItem> | null
     errors?: string[] | null
 }

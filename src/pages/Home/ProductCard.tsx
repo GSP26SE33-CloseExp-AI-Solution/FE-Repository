@@ -28,8 +28,8 @@ const getExpiryBadgeText = (daysToExpiry: number | null, hoursRemaining: number 
         return "Trong ngày"
     }
 
-    if (daysToExpiry === 1) return "1 ngày nữa hết hạn"
-    return `${daysToExpiry} ngày nữa hết hạn`
+    if (daysToExpiry === 1) return "sử dụng trong ngày"
+    return `hạn dùng ${daysToExpiry} ngày`
 }
 
 const ProductCard = ({
@@ -115,7 +115,7 @@ const ProductCard = ({
                             </div>
 
                             {hasPrice ? (
-                                <div className="mt-0.5 text-[15px] font-bold leading-4 tracking-[-0.02em] text-slate-900">
+                                <div className="mt-0.5 text-[15px] font-bold leading-4 tracking-[-0.02em] text-rose-600">
                                     {formatCurrency(product.price)}
                                 </div>
                             ) : (

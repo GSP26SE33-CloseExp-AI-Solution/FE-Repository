@@ -3,7 +3,6 @@ import { Clock3 } from "lucide-react"
 import { cn } from "@/utils/home"
 import type { HomeProductView } from "@/types/home.type"
 import ProductCard from "./ProductCard"
-import { primaryBtn, secondaryBtn } from "@/constants/home.constants"
 
 type HomeProductSectionProps = {
     loading: boolean
@@ -40,14 +39,18 @@ const HomeProductSection = ({
             <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
                 <div className="flex flex-col gap-3 border-b border-slate-100 pb-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
-                        <div className="text-[21px] font-bold tracking-[-0.03em] text-slate-900">
-                            Ưu đãi dành cho bạn
+                        <div className="mt-2 text-[21px] font-bold tracking-[-0.03em] text-slate-900">
+                            Món ngon giá tốt gần bạn
+                        </div>
+
+                        <div className="mt-1 text-[13px] font-medium text-slate-500">
+                            Chọn nhanh những sản phẩm phù hợp với khu vực và danh mục bạn quan tâm.
                         </div>
                     </div>
 
-                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5">
-                        <Clock3 size={14} className="text-slate-600" />
-                        <span className="text-[11px] font-semibold text-slate-700">
+                    <div className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-sky-50/80 px-3 py-1.5">
+                        <Clock3 size={14} className="text-sky-700" />
+                        <span className="text-[11px] font-semibold text-sky-800">
                             {loading ? "Đang tải..." : `${displayCount} món đang hiển thị`}
                         </span>
                     </div>
@@ -117,14 +120,16 @@ const HomeProductSection = ({
                 )}
 
                 {!noMatchedSupermarket && !!filteredProducts.length && (
-                    <div className="mt-5 rounded-[20px] border border-slate-200 bg-slate-50 px-6 py-5 text-center">
-                        <p className="text-[13px] font-medium leading-5 text-slate-500">
+                    <div className="mt-5 rounded-[20px] border border-sky-100 bg-sky-50/60 px-6 py-5 text-center">
+                        <p className="text-[13px] font-medium leading-5 text-sky-800/80">
                             Bạn đã xem hết những ưu đãi hiện phù hợp với lựa chọn này.
                         </p>
                         <button
                             type="button"
                             onClick={onOpenGate}
-                            className={cn(secondaryBtn, "mt-4 px-4 py-2 text-[12px] font-semibold")}
+                            className={cn(
+                                "mt-4 inline-flex items-center justify-center rounded-2xl border border-sky-200 bg-white px-4 py-2 text-[12px] font-semibold text-sky-700 transition hover:bg-sky-50",
+                            )}
                         >
                             Chọn lại khu vực
                         </button>

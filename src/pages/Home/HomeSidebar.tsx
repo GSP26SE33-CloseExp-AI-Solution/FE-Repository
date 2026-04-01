@@ -1,3 +1,5 @@
+import { Clock3 } from "lucide-react"
+
 import { cn } from "@/utils/home"
 import type { HomeCategoryItem } from "@/types/home.type"
 
@@ -52,25 +54,20 @@ const HomeSidebar = ({
 
     return (
         <aside className="w-full xl:w-[292px] xl:shrink-0">
-            <div className="sticky top-4 overflow-hidden rounded-[26px] border border-emerald-100 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
-                <div className="border-b border-slate-100 bg-[linear-gradient(135deg,#f8fffc_0%,#effaf6_45%,#eef8ff_100%)] px-4 py-4">
+            <div className="sticky top-4 overflow-hidden rounded-[26px] border border-emerald-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
+                <div className="border-b border-emerald-800/10 bg-[linear-gradient(135deg,#065f46_0%,#047857_55%,#059669_100%)] px-4 py-4">
                     <div className="flex items-start justify-between gap-3">
                         <div>
-                            <div className="text-[16px] font-bold tracking-[-0.02em] text-slate-900">
+                            <div className="text-[16px] font-bold tracking-[-0.02em] text-white">
                                 Danh mục
-                            </div>
-                            <div className="mt-1 text-[12px] leading-5 text-slate-500">
-                                Gọn hơn, dễ chọn hơn.
                             </div>
                         </div>
 
-                        <div className="rounded-[18px] border border-emerald-100 bg-white/90 px-3 py-2 text-right shadow-sm">
-                            <div className="text-[8px] font-semibold uppercase tracking-[0.08em] text-slate-400">
-                                Đang xem
-                            </div>
-                            <div className="mt-1 text-[17px] font-bold leading-none text-slate-900">
-                                {filteredCount}
-                            </div>
+                        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/12 px-3 py-1.5 backdrop-blur-sm">
+                            <Clock3 size={13} className="text-emerald-50" />
+                            <span className="text-[11px] font-semibold text-white">
+                                {filteredCount} món hàng
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -89,14 +86,14 @@ const HomeSidebar = ({
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1 rounded-full bg-slate-100 p-1">
+                            <div className="flex items-center gap-1 rounded-full bg-sky-50 p-1">
                                 <button
                                     type="button"
                                     onClick={() => onChangeSupermarketSort("distance")}
                                     className={cn(
                                         "rounded-full px-2.5 py-1 text-[10px] font-semibold transition",
                                         supermarketSortBy === "distance"
-                                            ? "bg-white text-slate-900 shadow-sm"
+                                            ? "bg-white text-sky-700 shadow-sm"
                                             : "text-slate-500 hover:text-slate-700"
                                     )}
                                 >
@@ -130,8 +127,8 @@ const HomeSidebar = ({
                                         className={cn(
                                             "w-full rounded-[18px] border px-3 py-2.5 text-left transition",
                                             active
-                                                ? "border-emerald-500 bg-[linear-gradient(135deg,#0f766e_0%,#059669_100%)] text-white shadow-[0_8px_18px_rgba(5,150,105,0.18)]"
-                                                : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200 hover:bg-emerald-50/40"
+                                                ? "border-sky-500 bg-[linear-gradient(135deg,#0ea5e9_0%,#2563eb_100%)] text-white shadow-[0_8px_18px_rgba(37,99,235,0.18)]"
+                                                : "border-slate-200 bg-white text-slate-700 hover:border-sky-200 hover:bg-sky-50/40"
                                         )}
                                     >
                                         <div className="flex items-center justify-between gap-2">
@@ -158,7 +155,7 @@ const HomeSidebar = ({
                                                         ? "bg-white/12 text-white"
                                                         : item.count === 0
                                                             ? "bg-slate-100 text-slate-400"
-                                                            : "bg-emerald-50 text-emerald-700"
+                                                            : "bg-sky-50 text-sky-700"
                                                 )}
                                             >
                                                 <div className="text-[13px] font-bold leading-none">{item.count}</div>
@@ -202,8 +199,8 @@ const HomeSidebar = ({
                                             className={cn(
                                                 "w-full rounded-[18px] border px-3 py-2.5 text-left transition",
                                                 active
-                                                    ? "border-slate-900 bg-slate-900 text-white shadow-[0_8px_18px_rgba(15,23,42,0.12)]"
-                                                    : "border-slate-200 bg-[linear-gradient(135deg,#f8fafc_0%,#f1f5f9_100%)] text-slate-700 hover:border-slate-300"
+                                                    ? "border-sky-500 bg-[linear-gradient(135deg,#0ea5e9_0%,#2563eb_100%)] text-white shadow-[0_8px_18px_rgba(37,99,235,0.18)]"
+                                                    : "border-slate-200 bg-[linear-gradient(135deg,#f8fbff_0%,#eef6ff_100%)] text-slate-700 hover:border-sky-200"
                                             )}
                                         >
                                             <div className="flex items-center justify-between gap-2">
@@ -214,7 +211,7 @@ const HomeSidebar = ({
                                                     <div
                                                         className={cn(
                                                             "mt-0.5 text-[10px]",
-                                                            active ? "text-white/75" : "text-slate-400"
+                                                            active ? "text-sky-50/90" : "text-slate-400"
                                                         )}
                                                     >
                                                         Hiển thị toàn bộ lô hiện phù hợp
@@ -225,8 +222,8 @@ const HomeSidebar = ({
                                                     className={cn(
                                                         "shrink-0 rounded-[15px] px-2.5 py-1.5 text-center",
                                                         active
-                                                            ? "bg-white/10 text-white"
-                                                            : "bg-white text-slate-700 ring-1 ring-slate-200"
+                                                            ? "bg-white/12 text-white"
+                                                            : "bg-white text-sky-700 ring-1 ring-sky-100"
                                                     )}
                                                 >
                                                     <div className="text-[13px] font-bold leading-none">

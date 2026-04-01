@@ -35,10 +35,10 @@ const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
 
 const primaryBtn =
-    "rounded-2xl bg-slate-900 text-white font-semibold transition hover:bg-slate-800 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+    "rounded-2xl bg-sky-500 text-white font-semibold transition hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
 
 const secondaryBtn =
-    "rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+    "rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
 
 const googleMapsUrl = (lat: number, lng: number) =>
     `https://www.google.com/maps?q=${lat},${lng}`
@@ -463,6 +463,20 @@ const DeliveryGateModal = ({
                     radiusKm: 5,
                 })
 
+                console.log("[DeliveryGateModal][DELIVERY] selected location =", {
+                    lat,
+                    lng,
+                    addressText,
+                    locationSource,
+                })
+                console.log("[DeliveryGateModal][DELIVERY] nearby supermarkets =", supermarkets)
+
+                if (!supermarkets.length) {
+                    console.warn("[DeliveryGateModal][DELIVERY] no nearby supermarkets found")
+                    setError("Chưa tìm thấy siêu thị phù hợp gần khu vực này. Bạn thử vị trí khác nhé.")
+                    return
+                }
+
                 onDone({
                     deliveryMethodId: "DELIVERY",
                     locationSource,
@@ -492,6 +506,15 @@ const DeliveryGateModal = ({
                 radiusKm: 5,
             })
 
+            console.log("[DeliveryGateModal][PICKUP] selected pickup point =", selectedPickupPoint)
+            console.log("[DeliveryGateModal][PICKUP] nearby supermarkets =", supermarkets)
+
+            if (!supermarkets.length) {
+                console.warn("[DeliveryGateModal][PICKUP] no nearby supermarkets found")
+                setError("Chưa tìm thấy siêu thị phù hợp quanh điểm nhận này. Bạn thử điểm khác nhé.")
+                return
+            }
+
             onDone({
                 deliveryMethodId: "PICKUP",
                 pickupPointId: selectedPickupPoint.pickupPointId,
@@ -520,7 +543,7 @@ const DeliveryGateModal = ({
     if (!open) return null
 
     return (
-        <div className="fixed inset-0 z-[9999] bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[9999] bg-sky-950/20 backdrop-blur-sm">
             <div className="mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-6">
                 <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_80px_rgba(15,23,42,0.24)]">
                     <div className="border-b border-slate-100 px-6 py-5">
@@ -554,11 +577,13 @@ const DeliveryGateModal = ({
                             <div
                                 className={cn(
                                     "rounded-2xl border px-4 py-3",
-                                    step === 1 ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white"
+                                    step === 1
+                                        ? "border-sky-300 bg-sky-100 text-sky-900"
+                                        : "border-slate-200 bg-white"
                                 )}
                             >
                                 <div className="text-[13px] font-semibold">Bước 1</div>
-                                <div className={cn("mt-1 text-[12px]", step === 1 ? "text-white/70" : "text-slate-500")}>
+                                <div className={cn("mt-1 text-[12px]", step === 1 ? "text-sky-700" : "text-slate-500")}>
                                     Chọn cách nhận
                                 </div>
                             </div>
@@ -566,11 +591,13 @@ const DeliveryGateModal = ({
                             <div
                                 className={cn(
                                     "rounded-2xl border px-4 py-3",
-                                    step === 2 ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white"
+                                    step === 2
+                                        ? "border-sky-300 bg-sky-100 text-sky-900"
+                                        : "border-slate-200 bg-white"
                                 )}
                             >
                                 <div className="text-[13px] font-semibold">Bước 2</div>
-                                <div className={cn("mt-1 text-[12px]", step === 2 ? "text-white/70" : "text-slate-500")}>
+                                <div className={cn("mt-1 text-[12px]", step === 2 ? "text-sky-700" : "text-slate-500")}>
                                     Xác nhận khu vực
                                 </div>
                             </div>
@@ -586,8 +613,8 @@ const DeliveryGateModal = ({
                                     className={cn(
                                         "rounded-[24px] border p-5 text-left transition",
                                         deliveryMethodId === "DELIVERY"
-                                            ? "border-slate-900 bg-slate-900 text-white"
-                                            : "border-slate-200 bg-white hover:bg-slate-50"
+                                            ? "border-sky-300 bg-sky-100 text-sky-900 shadow-sm"
+                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60"
                                     )}
                                 >
                                     <div className="flex items-start gap-4">
@@ -595,8 +622,8 @@ const DeliveryGateModal = ({
                                             className={cn(
                                                 "mt-1 rounded-2xl p-2.5",
                                                 deliveryMethodId === "DELIVERY"
-                                                    ? "bg-white/10 text-white"
-                                                    : "bg-slate-100 text-slate-700"
+                                                    ? "bg-white text-sky-700"
+                                                    : "bg-sky-50 text-sky-700"
                                             )}
                                         >
                                             <Truck size={18} />
@@ -606,7 +633,9 @@ const DeliveryGateModal = ({
                                             <div
                                                 className={cn(
                                                     "mt-1 text-[13px] leading-6",
-                                                    deliveryMethodId === "DELIVERY" ? "text-white/75" : "text-slate-500"
+                                                    deliveryMethodId === "DELIVERY"
+                                                        ? "text-sky-700"
+                                                        : "text-slate-500"
                                                 )}
                                             >
                                                 Dùng vị trí hiện tại, tìm theo địa chỉ hoặc chỉnh lại trên bản đồ.
@@ -621,8 +650,8 @@ const DeliveryGateModal = ({
                                     className={cn(
                                         "rounded-[24px] border p-5 text-left transition",
                                         deliveryMethodId === "PICKUP"
-                                            ? "border-slate-900 bg-slate-900 text-white"
-                                            : "border-slate-200 bg-white hover:bg-slate-50"
+                                            ? "border-sky-300 bg-sky-100 text-sky-900 shadow-sm"
+                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60"
                                     )}
                                 >
                                     <div className="flex items-start gap-4">
@@ -630,8 +659,8 @@ const DeliveryGateModal = ({
                                             className={cn(
                                                 "mt-1 rounded-2xl p-2.5",
                                                 deliveryMethodId === "PICKUP"
-                                                    ? "bg-white/10 text-white"
-                                                    : "bg-slate-100 text-slate-700"
+                                                    ? "bg-white text-sky-700"
+                                                    : "bg-sky-50 text-sky-700"
                                             )}
                                         >
                                             <PackageCheck size={18} />
@@ -641,7 +670,9 @@ const DeliveryGateModal = ({
                                             <div
                                                 className={cn(
                                                     "mt-1 text-[13px] leading-6",
-                                                    deliveryMethodId === "PICKUP" ? "text-white/75" : "text-slate-500"
+                                                    deliveryMethodId === "DELIVERY"
+                                                        ? "text-sky-700"
+                                                        : "text-slate-500"
                                                 )}
                                             >
                                                 Chọn một điểm nhận sẵn có để xem ưu đãi phù hợp khu vực đó.
@@ -996,8 +1027,8 @@ const DeliveryGateModal = ({
                                                     className={cn(
                                                         "rounded-[24px] border p-4 text-left transition",
                                                         active
-                                                            ? "border-slate-900 bg-slate-900 text-white"
-                                                            : "border-slate-200 bg-white hover:bg-slate-50"
+                                                            ? "border-sky-300 bg-sky-100 text-sky-900 shadow-sm"
+                                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60"
                                                     )}
                                                 >
                                                     <div className="flex items-start justify-between gap-4">
@@ -1008,14 +1039,16 @@ const DeliveryGateModal = ({
                                                             <div
                                                                 className={cn(
                                                                     "mt-1 text-[13px] font-medium leading-6",
-                                                                    active ? "text-white/75" : "text-slate-500"
+                                                                    active
+                                                                        ? "text-sky-700"
+                                                                        : "text-slate-500"
                                                                 )}
                                                             >
                                                                 {item.address}
                                                             </div>
 
                                                             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-medium">
-                                                                <span className={active ? "text-white/70" : "text-slate-500"}>
+                                                                <span className={active ? "text-sky-700" : "text-slate-500"}>
                                                                     {item.lat.toFixed(6)}, {item.lng.toFixed(6)}
                                                                 </span>
 
@@ -1024,8 +1057,8 @@ const DeliveryGateModal = ({
                                                                         className={cn(
                                                                             "rounded-full px-2 py-1 text-[10px] font-semibold",
                                                                             active
-                                                                                ? "bg-white/10 text-white"
-                                                                                : "bg-slate-100 text-slate-700"
+                                                                                ? "bg-white text-sky-700"
+                                                                                : "bg-sky-50 text-sky-700"
                                                                         )}
                                                                     >
                                                                         Cách bạn {item.distanceKm.toFixed(1)} km
@@ -1042,8 +1075,8 @@ const DeliveryGateModal = ({
                                                             className={cn(
                                                                 "shrink-0 rounded-2xl border px-3 py-2 text-[11px] font-semibold",
                                                                 active
-                                                                    ? "border-white/15 bg-white/10 text-white"
-                                                                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                                                    ? "border-sky-200 bg-white text-sky-700"
+                                                                    : "border-slate-200 bg-white text-slate-700 hover:bg-sky-50"
                                                             )}
                                                         >
                                                             Xem đường đi
