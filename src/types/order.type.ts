@@ -245,3 +245,51 @@ export type OrderItemUpdatePayload = {
     quantity: number
     unitPrice: number
 }
+
+/* =========================
+   My Order Page
+========================= */
+export type MyOrderLineItem = {
+    orderItemId: string
+    orderId: string
+    lotId: string
+    quantity: number
+    unitPrice: number
+    totalPrice?: number
+    lineTotal?: number
+    productName?: string
+    expiryDate?: string
+}
+
+export type MyOrderItem = {
+    orderId: string
+    orderCode: string
+    userId: string
+    userName?: string
+    timeSlotId?: string
+    timeSlotDisplay?: string
+    collectionId?: string | null
+    collectionPointName?: string | null
+    deliveryType?: string
+    totalAmount: number
+    discountAmount: number
+    finalAmount: number
+    deliveryFee: number
+    status: string
+    orderDate?: string
+    addressId?: string | null
+    promotionId?: string | null
+    deliveryGroupId?: string | null
+    deliveryNote?: string
+    cancelDeadline?: string
+    createdAt?: string
+    updatedAt?: string
+    orderItems: MyOrderLineItem[]
+}
+
+export type MyOrdersPageResult = {
+    items: MyOrderItem[]
+    totalResult: number
+    page: number
+    pageSize: number
+}

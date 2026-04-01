@@ -383,11 +383,6 @@ const VendorProfile: React.FC = () => {
                                     {savingProfile ? "Đang lưu..." : "Lưu thay đổi"}
                                 </button>
                             </div>
-
-                            <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-[13px] text-emerald-700">
-                                Phần cập nhật hồ sơ khách hàng hiện đang là placeholder UI. Khi
-                                Swagger có API cập nhật hồ sơ Vendor, mình sẽ nối thật phần này.
-                            </div>
                         </div>
 
                         <div className="rounded-[24px] border border-emerald-200 bg-white p-5 shadow-sm">

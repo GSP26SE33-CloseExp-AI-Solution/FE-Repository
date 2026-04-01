@@ -23,6 +23,14 @@ export const orderService = {
         return unwrap(response)
     },
 
+    async getMyOrders(params?: { pageNumber?: number; pageSize?: number }) {
+        const response = await axiosClient.get<ApiEnvelope<PaginationResult<OrderDetails>>>(
+            "/Orders/my-orders",
+            { params }
+        )
+        return unwrap(response)
+    },
+
     async createOrder(payload: CreateOrderPayload) {
         const response = await axiosClient.post<ApiEnvelope<OrderDetails>>(
             "/Orders",

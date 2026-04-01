@@ -61,6 +61,17 @@ const CheckoutPage: React.FC = () => {
   useEffect(() => {
     const syncCart = () => setCart(cartStorage.get())
     const syncCtx = () => setCtx(orderContextStorage.get())
+    // const syncCtx = () => {
+    //   const stored = orderContextStorage.get()
+
+    //   const nextCtx: CustomerOrderContext = {
+    //     ...stored,
+    //     orderId: undefined,
+    //   }
+
+    //   setCtx(nextCtx)
+    //   orderContextStorage.set(nextCtx)
+    // }
 
     syncCart()
     syncCtx()
@@ -219,12 +230,20 @@ const CheckoutPage: React.FC = () => {
     setSubmitError("")
     setPaying(true)
 
+    const nextCtx: CustomerOrderContext = {
+      ...ctx,
+      orderId: undefined,
+    }
+
+    setCtx(nextCtx)
+    orderContextStorage.set(nextCtx)
+
     console.log("CheckoutPage.handlePayAndRedirect -> payload preview:", {
-      deliveryMethodId: ctx.deliveryMethodId,
-      timeSlotId: ctx.timeSlotId,
+      deliveryMethodId: nextCtx.deliveryMethodId,
+      timeSlotId: nextCtx.timeSlotId,
       collectionId:
-        ctx.collectionId || ctx.collectionPointId || ctx.pickupPointId || null,
-      addressText: ctx.addressText,
+        nextCtx.collectionId || nextCtx.collectionPointId || nextCtx.pickupPointId || null,
+      addressText: nextCtx.addressText,
       deliveryFee,
       orderItems: cart.map((item) => ({
         lotId: item.lotId,

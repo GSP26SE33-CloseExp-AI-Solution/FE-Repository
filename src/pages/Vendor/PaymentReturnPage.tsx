@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useMemo, useState } from "react"
+import React, { Fragment, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom"
 import {
     CheckCircle2,
@@ -147,6 +147,7 @@ const PaymentReturnPage: React.FC = () => {
     const navigate = useNavigate()
     const location = useLocation()
     const [params] = useSearchParams()
+    const createOrderOnceRef = useRef(false)
 
     const status = params.get("status") || "failed"
 
@@ -190,11 +191,55 @@ const PaymentReturnPage: React.FC = () => {
 
     useEffect(() => {
         const run = async () => {
-            if (status !== "success") return
+            if (status !== "success") {
+                setLoading(false)
+                return
+            }
+
+            if (createOrderOnceRef.current) {
+                console.warn("PaymentReturnPage.run -> skipped because create order already ran once")
+                return
+            }
+
+            createOrderOnceRef.current = true
 
             try {
                 console.log("PaymentReturnPage.run -> cart:", cart)
                 console.log("PaymentReturnPage.run -> ctx:", ctx)
+
+                if (ctx.orderId) {
+                    console.warn(
+                        "PaymentReturnPage.run -> found stale/current orderId in context, skipping createMyOrder and reusing:",
+                        ctx.orderId
+                    )
+
+                    const existingDetails = await orderService.getOrderDetails(ctx.orderId)
+
+                    const fallbackLastOrder = lastOrderStorage.get?.() as OrderDetails | null | undefined
+                    const fallbackItems =
+                        fallbackLastOrder?.orderId === existingDetails.orderId
+                            ? fallbackLastOrder?.orderItems || []
+                            : []
+
+                    const resolvedExistingDetails: OrderDetails = {
+                        ...existingDetails,
+                        orderItems:
+                            existingDetails?.orderItems && existingDetails.orderItems.length > 0
+                                ? existingDetails.orderItems
+                                : fallbackItems,
+                    }
+
+                    console.log(
+                        "PaymentReturnPage.run -> reused existing order details:",
+                        resolvedExistingDetails
+                    )
+
+                    lastOrderStorage.setId(ctx.orderId)
+                    lastOrderStorage.set(resolvedExistingDetails)
+                    setOrder(resolvedExistingDetails)
+                    cartStorage.clear()
+                    return
+                }
 
                 if (!cart.length) {
                     throw new Error("Giỏ hàng đang trống nên không thể tạo đơn.")
@@ -211,6 +256,10 @@ const PaymentReturnPage: React.FC = () => {
                 const payload = buildCreateMyOrderPayload(cart, ctx)
 
                 console.log("PaymentReturnPage.run -> createMyOrder payload:", payload)
+                console.log(
+                    "PaymentReturnPage.run -> createMyOrder locked at:",
+                    new Date().toISOString()
+                )
 
                 const created = await orderService.createMyOrder(payload)
 
@@ -227,8 +276,18 @@ const PaymentReturnPage: React.FC = () => {
 
                 console.log("PaymentReturnPage.run -> order details:", details)
 
-                lastOrderStorage.set(details)
-                setOrder(details)
+                const resolvedDetails: OrderDetails = {
+                    ...details,
+                    orderItems:
+                        details?.orderItems && details.orderItems.length > 0
+                            ? details.orderItems
+                            : created?.orderItems || [],
+                }
+
+                console.log("PaymentReturnPage.run -> resolved order details:", resolvedDetails)
+
+                lastOrderStorage.set(resolvedDetails)
+                setOrder(resolvedDetails)
 
                 cartStorage.clear()
             } catch (e: any) {
@@ -244,7 +303,7 @@ const PaymentReturnPage: React.FC = () => {
         }
 
         void run()
-    }, [cart, ctx, status])
+    }, [status, cart, ctx])
 
     if (status !== "success") {
         return (
@@ -507,12 +566,12 @@ const PaymentReturnPage: React.FC = () => {
                                     </div>
                                 </section>
 
-                                {!!order.orderItems?.length && (
-                                    <section className={cn(panel, "p-4 sm:p-5")}>
-                                        <div className="text-base font-bold text-slate-900">
-                                            Sản phẩm trong đơn
-                                        </div>
+                                <section className={cn(panel, "p-4 sm:p-5")}>
+                                    <div className="text-base font-bold text-slate-900">
+                                        Sản phẩm trong đơn
+                                    </div>
 
+                                    {!!order.orderItems?.length ? (
                                         <div className="mt-4 space-y-3">
                                             {order.orderItems.map((item) => (
                                                 <article
@@ -538,8 +597,12 @@ const PaymentReturnPage: React.FC = () => {
                                                 </article>
                                             ))}
                                         </div>
-                                    </section>
-                                )}
+                                    ) : (
+                                        <div className="mt-4 rounded-[18px] border border-slate-200 bg-slate-50/70 px-4 py-4 text-[13px] text-slate-500">
+                                            Đơn hàng hiện chưa có dữ liệu sản phẩm để hiển thị.
+                                        </div>
+                                    )}
+                                </section>
 
                                 <div className="flex justify-end gap-3">
                                     <button className={secondaryBtn} onClick={() => navigate("/orders")}>
