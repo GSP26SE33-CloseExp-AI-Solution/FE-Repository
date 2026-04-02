@@ -69,31 +69,59 @@ const buildQueryString = (params?: Query) => {
     return query ? `?${query}` : ""
 }
 
-const unwrap = <T>(response: ApiResponse<T>): T => response.data
+const isApiResponse = <T,>(value: unknown): value is ApiResponse<T> => {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        "success" in value &&
+        "message" in value &&
+        "data" in value
+    )
+}
 
-const get = async <T>(url: string) => {
+const unwrap = <T,>(payload: unknown): T => {
+    const normalized = isApiResponse<T>((payload as { data?: unknown })?.data)
+        ? (payload as { data: ApiResponse<T> }).data
+        : (payload as ApiResponse<T>)
+
+    if (!normalized) {
+        throw new Error("Không nhận được dữ liệu phản hồi từ máy chủ")
+    }
+
+    if (normalized.success === false) {
+        throw new Error(
+            normalized.errors?.filter(Boolean).join(", ") ||
+            normalized.message ||
+            "Yêu cầu thất bại"
+        )
+    }
+
+    return normalized.data
+}
+
+const get = async <T,>(url: string) => {
     const response = await axiosClient.get<ApiResponse<T>>(url)
-    return unwrap(response.data)
+    return unwrap<T>(response)
 }
 
 const post = async <T, P = unknown>(url: string, payload?: P) => {
     const response = await axiosClient.post<ApiResponse<T>>(url, payload)
-    return unwrap(response.data)
+    return unwrap<T>(response)
 }
 
 const put = async <T, P = unknown>(url: string, payload?: P) => {
     const response = await axiosClient.put<ApiResponse<T>>(url, payload)
-    return unwrap(response.data)
+    return unwrap<T>(response)
 }
 
 const patch = async <T, P = unknown>(url: string, payload?: P) => {
     const response = await axiosClient.patch<ApiResponse<T>>(url, payload)
-    return unwrap(response.data)
+    return unwrap<T>(response)
 }
 
-const remove = async <T>(url: string) => {
+const remove = async <T,>(url: string) => {
     const response = await axiosClient.delete<ApiResponse<T>>(url)
-    return unwrap(response.data)
+    return unwrap<T>(response)
 }
 
 const paginateLocal = <T>(

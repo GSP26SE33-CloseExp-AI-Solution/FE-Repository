@@ -9,6 +9,7 @@ import RoleRedirect from "@/routes/RoleRedirect"
 import Login from "@/pages/Auth/Login"
 import Register from "@/pages/Auth/Register"
 import ForgotPassword from "@/pages/Auth/ForgotPassword"
+import PartnerRegister from "@/pages/Auth/PartnerRegister"
 
 import Home from "@/pages/Home/Home"
 
@@ -18,16 +19,14 @@ import PaymentReturnPage from "@/pages/Vendor/PaymentReturnPage"
 import VendorProfile from "@/pages/Vendor/vProfile"
 import MyOrdersPage from "@/pages/Vendor/MyOrdersPage"
 import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage"
-import PartnerRegister from "@/pages/Auth/PartnerRegister"
 
-import SDashboard from "@/pages/SupermarketStaff/sDashboard"
-import ProductList from "@/pages/SupermarketStaff/sProducts/ProductList/ProductsList"
-import AddProduct from "@/pages/SupermarketStaff/sProducts/AddProduct/AddProduct"
-import ConfirmProduct from "@/pages/SupermarketStaff/sProducts/ConfirmProduct/ConfirmProduct"
-import PricingProduct from "@/pages/SupermarketStaff/sProducts/PricingProduct/PricingProduct"
-import PublishProduct from "@/pages/SupermarketStaff/sProducts/PublishProduct/PublishPage"
+import SDashboard from "@/pages/SupermarketStaff/sDashboard/SDashboard"
+import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductsLotsPage"
+import AddProduct from "@/pages/SupermarketStaff/sProducts/step1_AddProduct"
+import ConfirmProduct from "@/pages/SupermarketStaff/sProducts/step2_ConfirmProduct"
+import PricingProduct from "@/pages/SupermarketStaff/sProducts/step3_PricingPage"
+import PublishProduct from "@/pages/SupermarketStaff/sProducts/step4_PublishPage"
 import ProfilePage from "@/pages/SupermarketStaff/sProfile"
-import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductList/ProductsLotsPage"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
 import AdminUsers from "@/pages/Admin/AdminUsers"
@@ -59,7 +58,6 @@ const AppRouter: React.FC = () => {
     return (
         <BrowserRouter>
             <Routes>
-                {/* ===== PUBLIC ===== */}
                 <Route element={<PublicLayout />}>
                     <Route path="/" element={<Home />} />
                 </Route>
@@ -70,10 +68,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/redirect" element={<RoleRedirect />} />
                 <Route path="/forbidden" element={<Forbidden />} />
 
-                {/* ===== PRIVATE ===== */}
                 <Route element={<PrivateRoute />}>
-
-                    {/* ===== ADMIN ===== */}
                     <Route element={<RoleRoute allow={["Admin"]} />}>
                         <Route element={<MainLayout />}>
                             <Route path="/admin" element={<AdminDashboard />} />
@@ -87,26 +82,42 @@ const AppRouter: React.FC = () => {
                                 path="/admin/internal-staff"
                                 element={<AdminInternalStaff />}
                             />
-                            <Route path="/admin/transactions" element={<AdminTransactions />} />
+                            <Route
+                                path="/admin/transactions"
+                                element={<AdminTransactions />}
+                            />
                             <Route path="/admin/delivery" element={<AdminDelivery />} />
                             <Route path="/admin/operations" element={<AdminOperations />} />
                             <Route path="/admin/feedbacks" element={<AdminFeedbacks />} />
                             <Route path="/admin/reports" element={<AdminReports />} />
-                            <Route path="/admin/supermarkets" element={<AdminSupermarkets />} />
+                            <Route
+                                path="/admin/supermarkets"
+                                element={<AdminSupermarkets />}
+                            />
                             <Route path="/admin/settings" element={<AdminSettings />} />
                             <Route path="/admin/profile" element={<AdminProfile />} />
                         </Route>
                     </Route>
 
-                    {/* ===== SUPERMARKET STAFF ===== */}
                     <Route element={<RoleRoute allow={["SupermarketStaff"]} />}>
                         <Route element={<MainLayout />}>
                             <Route
                                 path="/supermarketStaff"
-                                element={<Navigate to="/supermarketStaff/dashboard" replace />}
+                                element={
+                                    <Navigate
+                                        to="/supermarketStaff/dashboard"
+                                        replace
+                                    />
+                                }
                             />
-                            <Route path="/supermarketStaff/dashboard" element={<SDashboard />} />
-                            <Route path="/supermarketStaff/products" element={<ProductList />} />
+                            <Route
+                                path="/supermarketStaff/dashboard"
+                                element={<SDashboard />}
+                            />
+                            <Route
+                                path="/supermarketStaff/products"
+                                element={<ProductsLotsPage />}
+                            />
                             <Route
                                 path="/supermarketStaff/products/add"
                                 element={<AddProduct />}
@@ -127,15 +138,13 @@ const AppRouter: React.FC = () => {
                                 path="/supermarketStaff/products/:productId/publish"
                                 element={<PublishProduct />}
                             />
-                            <Route path="/supermarketStaff/profile" element={<ProfilePage />} />
                             <Route
-                                path="/supermarketStaff/setting"
-                                element={<ProductsLotsPage />}
+                                path="/supermarketStaff/profile"
+                                element={<ProfilePage />}
                             />
                         </Route>
                     </Route>
 
-                    {/* ===== PACKAGING STAFF ===== */}
                     <Route element={<RoleRoute allow={["PackagingStaff"]} />}>
                         <Route element={<MainLayout />}>
                             <Route
@@ -150,38 +159,53 @@ const AppRouter: React.FC = () => {
                         </Route>
                     </Route>
 
-                    {/* ===== MARKETING STAFF ===== */}
                     <Route element={<RoleRoute allow={["MarketingStaff"]} />}>
                         <Route element={<MainLayout />}>
                             <Route
                                 path="/marketing"
                                 element={<Navigate to="/marketing/profile" replace />}
                             />
-                            <Route path="/marketing/profile" element={<MarketingProfile />} />
+                            <Route
+                                path="/marketing/profile"
+                                element={<MarketingProfile />}
+                            />
                             <Route
                                 path="/marketing/promotions"
                                 element={<MarketingPromotions />}
                             />
-                            <Route path="/marketing/reports" element={<MarketingReports />} />
+                            <Route
+                                path="/marketing/reports"
+                                element={<MarketingReports />}
+                            />
                         </Route>
                     </Route>
 
-                    {/* ===== VENDOR / CUSTOMER FLOW ===== */}
                     <Route element={<RoleRoute allow={["Vendor"]} />}>
                         <Route element={<PublicLayout />}>
                             <Route path="/cart" element={<CartPage />} />
                             <Route path="/checkout" element={<CheckoutPage />} />
-                            <Route path="/payment-return" element={<PaymentReturnPage />} />
+                            <Route
+                                path="/payment-return"
+                                element={<PaymentReturnPage />}
+                            />
                             <Route path="/orders" element={<MyOrdersPage />} />
-                            <Route path="/orders/:orderId" element={<MyOrderDetailPage />} />
+                            <Route
+                                path="/orders/:orderId"
+                                element={<MyOrderDetailPage />}
+                            />
                             <Route path="/vendor" element={<Home />} />
-                            <Route path="/vendor/profile" element={<VendorProfile />} />
-                            <Route path="/partner/register" element={<PartnerRegister />} />
+                            <Route
+                                path="/vendor/profile"
+                                element={<VendorProfile />}
+                            />
+                            <Route
+                                path="/partner/register"
+                                element={<PartnerRegister />}
+                            />
                         </Route>
                     </Route>
                 </Route>
 
-                {/* ===== NOT FOUND ===== */}
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </BrowserRouter>
