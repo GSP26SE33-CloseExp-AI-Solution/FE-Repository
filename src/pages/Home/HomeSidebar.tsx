@@ -52,20 +52,46 @@ const HomeSidebar = ({
         supermarketOptions.find((item) => item.supermarketId === activeSupermarketId)?.name ||
         "siêu thị đã chọn"
 
+    const isSearchFiltered =
+        activeCategory !== allCategoryKey || activeSupermarketId !== allMarketKey
+
+    const sidebarTitle = isSearchFiltered ? "Kết quả đang lọc" : "Danh mục"
+
+    const sidebarSubtext = isSearchFiltered
+        ? "Bạn đang xem danh sách đã được tinh chỉnh theo tiêu chí hiện tại."
+        : "Khám phá các nhóm sản phẩm và siêu thị đang khả dụng."
+
+    const supermarketDescription =
+        activeSupermarketId === allMarketKey
+            ? isSearchFiltered
+                ? "Đang giữ phạm vi tất cả siêu thị phù hợp với bộ lọc hiện tại"
+                : "Đang xem tất cả nơi bán phù hợp"
+            : `Đang lọc theo ${activeMarketName}`
+
+    const categoryDescription =
+        activeCategory === allCategoryKey
+            ? isSearchFiltered
+                ? "Danh sách đang giữ toàn bộ nhóm phù hợp sau khi lọc"
+                : "Sắp theo số lượng lô giảm dần"
+            : "Danh sách đang ưu tiên nhóm sản phẩm bạn đã chọn"
+
     return (
         <aside className="w-full xl:w-[292px] xl:shrink-0">
             <div className="sticky top-4 overflow-hidden rounded-[26px] border border-emerald-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.06)]">
                 <div className="border-b border-emerald-800/10 bg-[linear-gradient(135deg,#065f46_0%,#047857_55%,#059669_100%)] px-4 py-4">
-                    <div className="flex items-start justify-between gap-3">
-                        <div>
-                            <div className="text-[16px] font-bold tracking-[-0.02em] text-white">
-                                Danh mục
+                    <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1 pr-1">
+                            <div className="truncate text-[16px] font-bold tracking-[-0.02em] text-white">
+                                {sidebarTitle}
+                            </div>
+                            <div className="mt-1 max-w-[170px] text-[11px] leading-4 text-emerald-50/90">
+                                {sidebarSubtext}
                             </div>
                         </div>
 
-                        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/12 px-3 py-1.5 backdrop-blur-sm">
+                        <div className="inline-flex shrink-0 items-center gap-2 rounded-full border border-white/20 bg-white/12 px-3 py-1.5 backdrop-blur-sm">
                             <Clock3 size={13} className="text-emerald-50" />
-                            <span className="text-[11px] font-semibold text-white">
+                            <span className="whitespace-nowrap text-[11px] font-semibold text-white">
                                 {filteredCount} món hàng
                             </span>
                         </div>
@@ -80,9 +106,7 @@ const HomeSidebar = ({
                                     Siêu thị
                                 </div>
                                 <div className="mt-1 text-[12px] leading-5 text-slate-600">
-                                    {activeSupermarketId === allMarketKey
-                                        ? "Đang xem tất cả nơi bán phù hợp"
-                                        : `Đang lọc theo ${activeMarketName}`}
+                                    {supermarketDescription}
                                 </div>
                             </div>
 
@@ -133,7 +157,9 @@ const HomeSidebar = ({
                                     >
                                         <div className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
-                                                <div className="line-clamp-1 text-[12px] font-semibold">{item.name}</div>
+                                                <div className="line-clamp-1 text-[12px] font-semibold">
+                                                    {item.name}
+                                                </div>
                                                 <div
                                                     className={cn(
                                                         "mt-0.5 text-[10px]",
@@ -158,7 +184,9 @@ const HomeSidebar = ({
                                                             : "bg-sky-50 text-sky-700"
                                                 )}
                                             >
-                                                <div className="text-[13px] font-bold leading-none">{item.count}</div>
+                                                <div className="text-[13px] font-bold leading-none">
+                                                    {item.count}
+                                                </div>
                                                 <div className="mt-0.5 text-[7px] font-semibold uppercase tracking-[0.08em]">
                                                     lô
                                                 </div>
@@ -177,7 +205,7 @@ const HomeSidebar = ({
                                     Nhóm sản phẩm
                                 </div>
                                 <div className="mt-1 text-[12px] leading-5 text-slate-600">
-                                    Sắp theo số lượng lô giảm dần
+                                    {categoryDescription}
                                 </div>
                             </div>
 
@@ -214,7 +242,9 @@ const HomeSidebar = ({
                                                             active ? "text-sky-50/90" : "text-slate-400"
                                                         )}
                                                     >
-                                                        Hiển thị toàn bộ lô hiện phù hợp
+                                                        {isSearchFiltered
+                                                            ? "Xóa ưu tiên nhóm để xem toàn bộ kết quả phù hợp"
+                                                            : "Hiển thị toàn bộ lô hiện phù hợp"}
                                                     </div>
                                                 </div>
 
@@ -258,7 +288,22 @@ const HomeSidebar = ({
                                     >
                                         <div className="flex items-center justify-between gap-2">
                                             <div className="min-w-0">
-                                                <div className="line-clamp-1 text-[12px] font-semibold">{item.label}</div>
+                                                <div className="line-clamp-1 text-[12px] font-semibold">
+                                                    {item.label}
+                                                </div>
+                                                {active ? (
+                                                    <div className="mt-0.5 text-[10px] text-white/85">
+                                                        Đang là nhóm sản phẩm được ưu tiên hiển thị
+                                                    </div>
+                                                ) : item.count > 0 ? (
+                                                    <div className="mt-0.5 text-[10px] text-slate-400">
+                                                        Hiển thị các món hiện phù hợp trong nhóm này
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-0.5 text-[10px] text-slate-400">
+                                                        Hiện chưa có món phù hợp trong nhóm này
+                                                    </div>
+                                                )}
                                             </div>
 
                                             <div
@@ -271,7 +316,9 @@ const HomeSidebar = ({
                                                             : "bg-sky-50 text-sky-700"
                                                 )}
                                             >
-                                                <div className="text-[13px] font-bold leading-none">{item.count}</div>
+                                                <div className="text-[13px] font-bold leading-none">
+                                                    {item.count}
+                                                </div>
                                                 <div className="mt-0.5 text-[7px] font-semibold uppercase tracking-[0.08em]">
                                                     lô
                                                 </div>

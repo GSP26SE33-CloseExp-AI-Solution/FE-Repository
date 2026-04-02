@@ -1,74 +1,99 @@
 import React from "react"
+import { useNavigate } from "react-router-dom"
 
 const CustomerFooter: React.FC = () => {
+    const navigate = useNavigate()
+
+    const quickLinks = [
+        { label: "Cách thức hoạt động", href: "/how-it-works" },
+        { label: "Trở thành đối tác", href: "/partner/register" },
+        { label: "Báo cáo tác động", href: "/impact" },
+    ]
+
+    const supportLinks = [
+        { label: "Trung tâm trợ giúp", href: "/help-center" },
+        { label: "Liên hệ", href: "/contact" },
+        { label: "Điều khoản dịch vụ", href: "/terms" },
+    ]
+
     return (
-        <footer className="w-full bg-white/70 backdrop-blur-xl border-t border-white/40 shadow-sm">
-            <div className="max-w-[1440px] mx-auto px-8 py-10">
-                <div className="flex flex-col gap-10 lg:flex-row lg:gap-10">
-                    {/* Brand */}
-                    <div className="w-full lg:w-[300px]">
-                        <div className="flex items-center gap-3">
-                            <span className="text-[18px] font-bold text-gray-800">CloseExp AI</span>
+        <footer className="w-full border-t border-emerald-100/70 bg-[linear-gradient(180deg,#ffffff_0%,#f8fffb_100%)]">
+            <div className="mx-auto max-w-[1440px] px-5 py-3 md:px-8 md:py-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6">
+                    <div className="w-full lg:w-[250px]">
+                        <div className="text-[16px] font-bold tracking-[-0.01em] text-slate-700">
+                            CloseExp AI
                         </div>
 
-                        <p className="mt-5 text-[14px] text-gray-500 leading-6">
+                        <p className="mt-2 max-w-[230px] text-[12px] leading-5 text-slate-400">
                             Giảm lãng phí thực phẩm qua từng món hời. Hãy tham gia cùng chúng tôi.
                         </p>
 
-                        <p className="mt-6 text-xs text-gray-400">
+                        <p className="mt-3 text-[10.5px] text-slate-350">
                             © {new Date().getFullYear()} CloseExp AI Việt Nam
                         </p>
                     </div>
 
-                    {/* Quick links */}
-                    <div className="w-full lg:w-[300px]">
-                        <div className="text-[16px] font-bold text-gray-800">Liên Kết Nhanh</div>
-                        <ul className="mt-4 space-y-2">
-                            {["Cách thức hoạt động", "Trở thành đối tác", "Báo cáo tác động"].map((x) => (
-                                <li key={x}>
-                                    <a className="text-[14px] text-gray-500 hover:text-gray-800 transition" href="#">
-                                        {x}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                    <div className="flex w-full flex-col gap-4 sm:flex-row lg:w-auto lg:gap-8">
+                        <div className="w-full sm:w-[180px]">
+                            <div className="text-[13px] font-semibold text-slate-700">
+                                Liên Kết Nhanh
+                            </div>
 
-                    {/* Support */}
-                    <div className="w-full lg:w-[300px]">
-                        <div className="text-[16px] font-bold text-gray-800">Hỗ Trợ</div>
-                        <ul className="mt-4 space-y-2">
-                            {["Trung tâm trợ giúp", "Liên hệ", "Điều khoản dịch vụ"].map((x) => (
-                                <li key={x}>
-                                    <a className="text-[14px] text-gray-500 hover:text-gray-800 transition" href="#">
-                                        {x}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
+                            <ul className="mt-2 space-y-1">
+                                {quickLinks.map((item) => (
+                                    <li key={item.label}>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(item.href)}
+                                            className="text-left text-[12px] text-slate-400 transition hover:text-emerald-600"
+                                        >
+                                            {item.label}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
 
-                    {/* Newsletter */}
-                    <div className="w-full lg:w-[347px]">
-                        <div className="text-[16px] font-bold text-gray-800">Cập Nhật Tin Tức</div>
-                        <p className="mt-3 text-[14px] text-gray-500">
-                            Nhận thông báo ưu đãi mới và các cập nhật quan trọng.
-                        </p>
+                        <div className="w-full sm:w-[180px]">
+                            <div className="text-[13px] font-semibold text-slate-700">Hỗ Trợ</div>
 
-                        <div className="mt-4 flex gap-2">
-                            <input
-                                className="h-[52px] w-full rounded-xl bg-white shadow-md border border-gray-100 px-4 outline-none
-                           focus:ring-2 focus:ring-green-200 placeholder:text-gray-400"
-                                placeholder="email@example.com"
-                            />
-                            <button
-                                type="button"
-                                className="h-[52px] w-[118px] bg-gradient-to-r from-green-400 to-emerald-500
-                           text-white font-semibold rounded-xl shadow-md
-                           transition-all duration-300 active:scale-95"
-                            >
-                                Đăng ký
-                            </button>
+                            <ul className="mt-2 space-y-1">
+                                {supportLinks.map((item) => (
+                                    <li key={item.label}>
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(item.href)}
+                                            className="text-left text-[12px] text-slate-400 transition hover:text-emerald-600"
+                                        >
+                                            {item.label}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        <div className="w-full sm:w-[300px]">
+                            <div className="text-[13px] font-semibold text-slate-700">
+                                Cập Nhật Tin Tức
+                            </div>
+
+                            <p className="mt-2 text-[12px] leading-5 text-slate-400">
+                                Nhận thông báo ưu đãi mới và các cập nhật quan trọng.
+                            </p>
+
+                            <div className="mt-2 flex gap-2">
+                                <input
+                                    className="h-[36px] w-full rounded-lg border border-emerald-50 bg-white px-3 text-[12px] outline-none placeholder:text-slate-350 focus:ring-2 focus:ring-emerald-100"
+                                    placeholder="email@example.com"
+                                />
+                                <button
+                                    type="button"
+                                    className="h-[36px] min-w-[84px] rounded-lg bg-[linear-gradient(135deg,#6ee7b7_0%,#34d399_100%)] px-3 text-[12px] font-semibold text-white transition active:scale-95"
+                                >
+                                    Đăng ký
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

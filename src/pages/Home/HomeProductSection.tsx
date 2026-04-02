@@ -93,25 +93,20 @@ const HomeProductSection = ({
                 ) : null}
 
                 {!loading && (!filteredProducts.length || noMatchedSupermarket) && (
-                    <div className="mt-5 rounded-[20px] border border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center">
-                        <div className="text-[17px] font-semibold tracking-[-0.01em] text-slate-900">
-                            Chưa có món phù hợp để hiển thị
-                        </div>
-                        <p className="mt-2 text-[14px] font-medium leading-6 text-slate-500">
+                    <div className="mt-5 rounded-[20px] border border-sky-100 bg-sky-50/60 px-6 py-5 text-center">
+                        <p className="mt-2 text-[13px] font-medium leading-5 text-sky-800/80">
                             {noMatchedSupermarket
-                                ? "Khu vực hiện tại chưa có siêu thị phù hợp. Bạn thử đổi khu vực để xem thêm lựa chọn nhé."
+                                ? "Khu vực hiện tại chưa có siêu thị phù hợp. Bạn thử đổi khu vực để xem thêm lựa chọn khác."
                                 : "Hiện chưa có dữ liệu phù hợp với danh mục bạn đang chọn."}
                         </p>
+
                         <button
                             type="button"
                             onClick={() =>
                                 noMatchedSupermarket ? onOpenGate() : onResetCategory(allCategoryKey)
                             }
                             className={cn(
-                                "mt-4 inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-[12.5px] font-semibold transition-all duration-200 active:scale-[0.98]",
-                                noMatchedSupermarket
-                                    ? "bg-[linear-gradient(135deg,#0f766e_0%,#059669_100%)] text-white shadow-[0_10px_24px_rgba(5,150,105,0.22)] hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(5,150,105,0.28)]"
-                                    : "border border-slate-200 bg-white text-slate-800 shadow-sm hover:border-slate-300 hover:bg-slate-50"
+                                "mt-4 inline-flex items-center justify-center rounded-2xl border border-sky-200 bg-white px-4 py-2 text-[12px] font-semibold text-sky-700 transition hover:bg-sky-50"
                             )}
                         >
                             {noMatchedSupermarket ? "Đổi khu vực" : "Xem tất cả"}
