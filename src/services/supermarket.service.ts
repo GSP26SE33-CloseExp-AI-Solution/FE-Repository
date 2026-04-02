@@ -4,10 +4,17 @@ import type {
   GeocodeItem,
   PickupPoint,
   PickupPointApiItem,
+  PickupPointsResponse,
   Supermarket,
   SupermarketApiItem,
   SupermarketsPageResponse,
+  CreateSupermarketApplicationPayload,
+  MySupermarketApplication,
 } from "@/types/supermarket.type"
+
+// ======================================================
+// Internal helpers
+// ======================================================
 
 const toRad = (value: number) => (value * Math.PI) / 180
 
@@ -41,8 +48,6 @@ const toNumber = (value: unknown): number => {
   return NaN
 }
 
-const isFiniteCoordinate = (value: unknown) => Number.isFinite(toNumber(value))
-
 const isValidLatLng = (lat: unknown, lng: unknown) => {
   const nextLat = toNumber(lat)
   const nextLng = toNumber(lng)
@@ -74,7 +79,9 @@ const extractArray = <T>(raw: unknown): T[] => {
   return []
 }
 
-const mapSupermarket = (item: Partial<SupermarketApiItem> & Record<string, any>): Supermarket => {
+const mapSupermarket = (
+  item: Partial<SupermarketApiItem> & Record<string, any>
+): Supermarket => {
   const latitude = toNumber(item.latitude ?? item.lat)
   const longitude = toNumber(item.longitude ?? item.lng)
 
@@ -90,6 +97,10 @@ const mapSupermarket = (item: Partial<SupermarketApiItem> & Record<string, any>)
         : typeof item.phone === "string"
           ? item.phone
           : undefined,
+    contactEmail:
+      typeof item.contactEmail === "string"
+        ? item.contactEmail
+        : undefined,
     status:
       typeof item.status === "number"
         ? item.status
@@ -110,7 +121,9 @@ const mapSupermarket = (item: Partial<SupermarketApiItem> & Record<string, any>)
   return mapped
 }
 
-const mapPickupPoint = (item: Partial<PickupPointApiItem> & Record<string, any>): PickupPoint => {
+const mapPickupPoint = (
+  item: Partial<PickupPointApiItem> & Record<string, any>
+): PickupPoint => {
   const mapped: PickupPoint = {
     pickupPointId: String(
       item.pickupPointId ?? item.collectionPointId ?? item.collectionId ?? item.id ?? ""
@@ -134,7 +147,15 @@ const logAxiosError = (label: string, error: any) => {
 }
 
 export const supermarketService = {
-  async getSupermarkets(params?: { pageNumber?: number; pageSize?: number }): Promise<Supermarket[]> {
+  // ======================================================
+  // Supermarket listing APIs
+  // ======================================================
+
+  // GET /api/Supermarkets
+  async getSupermarkets(params?: {
+    pageNumber?: number
+    pageSize?: number
+  }): Promise<Supermarket[]> {
     try {
       const res = await axiosClient.get<SupermarketsPageResponse>("/Supermarkets", {
         params: {
@@ -160,11 +181,12 @@ export const supermarketService = {
     }
   },
 
+  // GET /api/Supermarkets/available
   async getAvailableSupermarkets(): Promise<Supermarket[]> {
     try {
-      const res = await axiosClient.get<ApiResponse<SupermarketApiItem[] | { items?: SupermarketApiItem[] }>>(
-        "/Supermarkets/available"
-      )
+      const res = await axiosClient.get<
+        ApiResponse<SupermarketApiItem[] | { items?: SupermarketApiItem[] }>
+      >("/Supermarkets/available")
 
       console.log("[supermarketService][getAvailableSupermarkets] raw response =", res.data)
 
@@ -174,27 +196,23 @@ export const supermarketService = {
 
       console.log("[supermarketService][getAvailableSupermarkets] extracted items =", items)
 
-      const mapped = items
+      return items
         .map(mapSupermarket)
         .filter((item) => item.supermarketId && item.name)
-
-      console.log("[supermarketService][getAvailableSupermarkets] mapped items =", mapped)
-
-      return mapped
     } catch (error) {
       logAxiosError("getAvailableSupermarkets", error)
       throw error
     }
   },
 
+  // GET /api/Supermarkets/search
   async searchSupermarkets(query: string): Promise<Supermarket[]> {
     try {
-      const res = await axiosClient.get<ApiResponse<SupermarketApiItem[] | { items?: SupermarketApiItem[] }>>(
-        "/Supermarkets/search",
-        {
-          params: { query },
-        }
-      )
+      const res = await axiosClient.get<
+        ApiResponse<SupermarketApiItem[] | { items?: SupermarketApiItem[] }>
+      >("/Supermarkets/search", {
+        params: { query },
+      })
 
       console.log("[supermarketService][searchSupermarkets] query =", query)
       console.log("[supermarketService][searchSupermarkets] raw response =", res.data)
@@ -214,11 +232,16 @@ export const supermarketService = {
     }
   },
 
+  // ======================================================
+  // Pickup point APIs
+  // ======================================================
+
+  // GET /api/admin/system-config/collection-points
   async getPickupPoints(): Promise<PickupPoint[]> {
     try {
-      const res = await axiosClient.get<
-        ApiResponse<PickupPointApiItem[] | { items?: PickupPointApiItem[] }>
-      >("/admin/system-config/collection-points")
+      const res = await axiosClient.get<PickupPointsResponse>(
+        "/admin/system-config/collection-points"
+      )
 
       console.log("[supermarketService][getPickupPoints] raw response =", res.data)
 
@@ -237,11 +260,19 @@ export const supermarketService = {
     }
   },
 
+  // ======================================================
+  // Geocode APIs
+  // ======================================================
+
+  // GET /api/Supermarkets/geocode/forward
   async forwardGeocode(address: string): Promise<GeocodeItem | null> {
     try {
-      const res = await axiosClient.get<ApiResponse<GeocodeItem>>("/Supermarkets/geocode/forward", {
-        params: { address },
-      })
+      const res = await axiosClient.get<ApiResponse<GeocodeItem>>(
+        "/Supermarkets/geocode/forward",
+        {
+          params: { address },
+        }
+      )
 
       console.log("[supermarketService][forwardGeocode] address =", address)
       console.log("[supermarketService][forwardGeocode] raw response =", res.data)
@@ -253,11 +284,15 @@ export const supermarketService = {
     }
   },
 
+  // GET /api/Supermarkets/geocode/reverse
   async reverseGeocode(lat: number, lng: number): Promise<GeocodeItem | null> {
     try {
-      const res = await axiosClient.get<ApiResponse<GeocodeItem>>("/Supermarkets/geocode/reverse", {
-        params: { lat, lng },
-      })
+      const res = await axiosClient.get<ApiResponse<GeocodeItem>>(
+        "/Supermarkets/geocode/reverse",
+        {
+          params: { lat, lng },
+        }
+      )
 
       console.log("[supermarketService][reverseGeocode] params =", { lat, lng })
       console.log("[supermarketService][reverseGeocode] raw response =", res.data)
@@ -269,11 +304,15 @@ export const supermarketService = {
     }
   },
 
+  // GET /api/Supermarkets/geocode/suggest
   async suggestGeocode(query: string, limit = 5): Promise<GeocodeItem[]> {
     try {
-      const res = await axiosClient.get<ApiResponse<GeocodeItem[]>>("/Supermarkets/geocode/suggest", {
-        params: { query, limit },
-      })
+      const res = await axiosClient.get<ApiResponse<GeocodeItem[]>>(
+        "/Supermarkets/geocode/suggest",
+        {
+          params: { query, limit },
+        }
+      )
 
       console.log("[supermarketService][suggestGeocode] params =", { query, limit })
       console.log("[supermarketService][suggestGeocode] raw response =", res.data)
@@ -284,6 +323,10 @@ export const supermarketService = {
       throw error
     }
   },
+
+  // ======================================================
+  // Client-side supermarket distance filtering
+  // ======================================================
 
   async getNearbySupermarketsByClientFilter(params: {
     lat: number
@@ -303,14 +346,6 @@ export const supermarketService = {
     }
 
     const all = await this.getSupermarkets({ pageNumber: 1, pageSize: 200 })
-
-    console.log(
-      "[supermarketService][getNearbySupermarketsByClientFilter] source = /Supermarkets"
-    )
-    console.log(
-      "[supermarketService][getNearbySupermarketsByClientFilter] source supermarkets =",
-      all
-    )
 
     const validSupermarkets = all.filter((item) => {
       const valid = isValidLatLng(item.latitude, item.longitude)
@@ -337,36 +372,61 @@ export const supermarketService = {
       }
     })
 
-    console.log(
-      "[supermarketService][getNearbySupermarketsByClientFilter] supermarkets with distance =",
-      withDistance.map((item) => ({
-        supermarketId: item.supermarketId,
-        name: item.name,
-        latitude: item.latitude,
-        longitude: item.longitude,
-        distanceKm: item.distanceKm,
-      }))
-    )
-
-    const filtered = withDistance
+    return withDistance
       .filter((item) => (item.distanceKm ?? Number.MAX_SAFE_INTEGER) <= radiusKm)
       .sort(
         (a, b) =>
           (a.distanceKm ?? Number.MAX_SAFE_INTEGER) -
           (b.distanceKm ?? Number.MAX_SAFE_INTEGER)
       )
+  },
 
-    console.log(
-      "[supermarketService][getNearbySupermarketsByClientFilter] filtered result =",
-      {
-        totalSourceItems: all.length,
-        totalValidCoordinates: validSupermarkets.length,
-        totalInRadius: filtered.length,
-        radiusKm,
-        items: filtered,
+  // ======================================================
+  // Partner application APIs
+  // ======================================================
+
+  // POST /api/Supermarkets/applications
+  async submitApplication(
+    payload: CreateSupermarketApplicationPayload
+  ): Promise<MySupermarketApplication> {
+    try {
+      const res = await axiosClient.post<ApiResponse<MySupermarketApplication>>(
+        "/Supermarkets/applications",
+        payload
+      )
+
+      console.log("[supermarketService][submitApplication] payload =", payload)
+      console.log("[supermarketService][submitApplication] raw response =", res.data)
+
+      if (!res.data?.data) {
+        throw new Error("Empty application response data")
       }
-    )
 
-    return filtered
+      return res.data.data
+    } catch (error) {
+      logAxiosError("submitApplication", error)
+      throw error
+    }
+  },
+
+  // GET /api/Supermarkets/applications/my
+  // Chỉ dùng sau khi user đã gửi hồ sơ và muốn kiểm tra trạng thái hồ sơ đăng ký
+  async getMyApplications(): Promise<MySupermarketApplication[]> {
+    try {
+      console.log("[supermarketService][getMyApplications] start")
+
+      const res = await axiosClient.get<ApiResponse<MySupermarketApplication[]>>(
+        "/Supermarkets/applications/my"
+      )
+
+      console.log("[supermarketService][getMyApplications] raw response =", res.data)
+
+      return extractArray<MySupermarketApplication>(res.data?.data ?? (res.data as unknown))
+    } catch (error) {
+      console.error("[supermarketService][getMyApplications] error =", error)
+      console.error("[supermarketService][getMyApplications] response =", (error as any)?.response)
+      console.error("[supermarketService][getMyApplications] request =", (error as any)?.request)
+      throw error
+    }
   },
 }

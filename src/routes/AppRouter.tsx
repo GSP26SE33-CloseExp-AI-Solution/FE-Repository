@@ -18,6 +18,7 @@ import PaymentReturnPage from "@/pages/Vendor/PaymentReturnPage"
 import VendorProfile from "@/pages/Vendor/vProfile"
 import MyOrdersPage from "@/pages/Vendor/MyOrdersPage"
 import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage"
+import PartnerRegister from "@/pages/Auth/PartnerRegister"
 
 import SDashboard from "@/pages/SupermarketStaff/sDashboard"
 import ProductList from "@/pages/SupermarketStaff/sProducts/ProductList/ProductsList"
@@ -71,7 +72,7 @@ const AppRouter: React.FC = () => {
 
                 {/* ===== PRIVATE ===== */}
                 <Route element={<PrivateRoute />}>
-                
+
                     {/* ===== ADMIN ===== */}
                     <Route element={<RoleRoute allow={["Admin"]} />}>
                         <Route element={<MainLayout />}>
@@ -175,6 +176,7 @@ const AppRouter: React.FC = () => {
                             <Route path="/orders/:orderId" element={<MyOrderDetailPage />} />
                             <Route path="/vendor" element={<Home />} />
                             <Route path="/vendor/profile" element={<VendorProfile />} />
+                            <Route path="/partner/register" element={<PartnerRegister />} />
                         </Route>
                     </Route>
                 </Route>

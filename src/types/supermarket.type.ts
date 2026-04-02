@@ -1,3 +1,12 @@
+// ======================================================
+// Shared domain models used across supermarket-related UI
+// ======================================================
+
+// Dùng cho:
+// - GET /api/Supermarkets
+// - GET /api/Supermarkets/available
+// - GET /api/Supermarkets/search
+// - client-side nearby supermarket filtering
 export type Supermarket = {
     supermarketId: string
     name: string
@@ -5,11 +14,15 @@ export type Supermarket = {
     latitude: number
     longitude: number
     contactPhone?: string
+    contactEmail?: string
     status?: number
     createdAt?: string
     distanceKm?: number
 }
 
+// Dùng cho:
+// - GET /api/admin/system-config/collection-points
+// - chọn điểm nhận hàng phía client
 export type PickupPoint = {
     pickupPointId: string
     name: string
@@ -19,6 +32,10 @@ export type PickupPoint = {
     distanceKm?: number
 }
 
+// Dùng cho:
+// - GET /api/Supermarkets/geocode/forward
+// - GET /api/Supermarkets/geocode/reverse
+// - GET /api/Supermarkets/geocode/suggest
 export type GeocodeItem = {
     latitude: number | string
     longitude: number | string
@@ -31,6 +48,14 @@ export type GeocodeItem = {
     accuracy?: string
 }
 
+// ======================================================
+// Raw API item models
+// ======================================================
+
+// Raw item dùng cho:
+// - GET /api/Supermarkets
+// - GET /api/Supermarkets/available
+// - GET /api/Supermarkets/search
 export type SupermarketApiItem = {
     supermarketId?: string
     id?: string
@@ -49,6 +74,7 @@ export type SupermarketApiItem = {
 
     contactPhone?: string
     phone?: string
+    contactEmail?: string
 
     status?: number | string
     createdAt?: string
@@ -57,6 +83,8 @@ export type SupermarketApiItem = {
     [key: string]: unknown
 }
 
+// Raw item dùng cho:
+// - GET /api/admin/system-config/collection-points
 export type PickupPointApiItem = {
     collectionPointId?: string
     collectionId?: string
@@ -78,6 +106,10 @@ export type PickupPointApiItem = {
     [key: string]: unknown
 }
 
+// ======================================================
+// Generic helpers for APIs returning list / pagination-like
+// ======================================================
+
 export type PaginationLike<T> = {
     items?: T[]
     totalResult?: number
@@ -87,6 +119,8 @@ export type PaginationLike<T> = {
     totalItems?: number
 }
 
+// Response wrapper dùng cho:
+// - GET /api/Supermarkets
 export type SupermarketsPageResponse = {
     success?: boolean
     message?: string
@@ -94,9 +128,46 @@ export type SupermarketsPageResponse = {
     errors?: string[] | null
 }
 
+// Response wrapper dùng cho:
+// - GET /api/admin/system-config/collection-points
 export type PickupPointsResponse = {
     success?: boolean
     message?: string
     data?: PickupPointApiItem[] | PaginationLike<PickupPointApiItem> | null
     errors?: string[] | null
+}
+
+// ======================================================
+// Partner application flow
+// ======================================================
+
+// Payload dùng cho:
+// - POST /api/Supermarkets/applications
+export type CreateSupermarketApplicationPayload = {
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    contactPhone: string
+    contactEmail?: string
+}
+
+// Model dùng cho:
+// - response từ POST /api/Supermarkets/applications
+// - GET /api/Supermarkets/applications/my
+export type MySupermarketApplication = {
+    supermarketId: string
+    applicationReference: string
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    contactPhone: string
+    contactEmail?: string | null
+    status: number
+    applicantUserId?: string
+    submittedAt?: string | null
+    reviewedAt?: string | null
+    adminReviewNote?: string | null
+    createdAt?: string | null
 }

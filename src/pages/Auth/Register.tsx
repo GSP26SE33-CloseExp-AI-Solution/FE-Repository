@@ -303,8 +303,6 @@ const Register = () => {
                     <p className="text-sm text-gray-500">
                         {step === "form" && "Điền thông tin để tạo tài khoản khách hàng"}
                         {step === "otp" && "Nhập mã OTP đã được gửi về email của bạn"}
-                        {step === "done" &&
-                            "Tài khoản của bạn đã được xác minh thành công. Bạn có thể đăng nhập để tiếp tục."}
                     </p>
                 </div>
 
@@ -498,10 +496,6 @@ const Register = () => {
                             <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
                                 <ShieldCheck className="text-emerald-600" size={24} />
                             </div>
-
-                            <h2 className="mt-4 text-xl font-bold text-gray-800">
-                                Xác minh tài khoản thành công
-                            </h2>
 
                             <p className="mt-2 text-sm text-gray-600">
                                 Email của bạn đã được xác minh. Bây giờ bạn có thể đăng nhập vào hệ

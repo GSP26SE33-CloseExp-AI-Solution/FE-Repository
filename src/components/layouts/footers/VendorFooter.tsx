@@ -1,19 +1,50 @@
 import React from "react"
 import { useNavigate } from "react-router-dom"
 
+import { useAuthContext } from "@/contexts/AuthContext"
+
+const getPartnerDestinationByRole = (roleName?: string | null) => {
+    switch (roleName) {
+        case "Vendor":
+            return "/partner/register"
+        case "SupermarketStaff":
+            return "/supermarketStaff/dashboard"
+        case "Admin":
+            return "/admin"
+        case "PackagingStaff":
+            return "/package/orders"
+        case "MarketingStaff":
+            return "/marketing/profile"
+        default:
+            return "/partner/register"
+    }
+}
+
 const CustomerFooter: React.FC = () => {
     const navigate = useNavigate()
+    const { user, roleName } = useAuthContext()
+
+    const handlePartnerClick = () => {
+        if (!user) {
+            navigate("/login", {
+                state: { redirectTo: "/partner/register" },
+            })
+            return
+        }
+
+        navigate(getPartnerDestinationByRole(roleName))
+    }
 
     const quickLinks = [
-        { label: "Cách thức hoạt động", href: "/how-it-works" },
-        { label: "Trở thành đối tác", href: "/partner/register" },
-        { label: "Báo cáo tác động", href: "/impact" },
+        { label: "Cách thức hoạt động", onClick: () => navigate("/how-it-works") },
+        { label: "Trở thành đối tác", onClick: handlePartnerClick },
+        { label: "Báo cáo tác động", onClick: () => navigate("/impact") },
     ]
 
     const supportLinks = [
-        { label: "Trung tâm trợ giúp", href: "/help-center" },
-        { label: "Liên hệ", href: "/contact" },
-        { label: "Điều khoản dịch vụ", href: "/terms" },
+        { label: "Trung tâm trợ giúp", onClick: () => navigate("/help-center") },
+        { label: "Liên hệ", onClick: () => navigate("/contact") },
+        { label: "Điều khoản dịch vụ", onClick: () => navigate("/terms") },
     ]
 
     return (
@@ -29,7 +60,7 @@ const CustomerFooter: React.FC = () => {
                             Giảm lãng phí thực phẩm qua từng món hời. Hãy tham gia cùng chúng tôi.
                         </p>
 
-                        <p className="mt-3 text-[10.5px] text-slate-350">
+                        <p className="mt-3 text-[10.5px] text-slate-400">
                             © {new Date().getFullYear()} CloseExp AI Việt Nam
                         </p>
                     </div>
@@ -45,7 +76,7 @@ const CustomerFooter: React.FC = () => {
                                     <li key={item.label}>
                                         <button
                                             type="button"
-                                            onClick={() => navigate(item.href)}
+                                            onClick={item.onClick}
                                             className="text-left text-[12px] text-slate-400 transition hover:text-emerald-600"
                                         >
                                             {item.label}
@@ -63,7 +94,7 @@ const CustomerFooter: React.FC = () => {
                                     <li key={item.label}>
                                         <button
                                             type="button"
-                                            onClick={() => navigate(item.href)}
+                                            onClick={item.onClick}
                                             className="text-left text-[12px] text-slate-400 transition hover:text-emerald-600"
                                         >
                                             {item.label}
@@ -84,7 +115,7 @@ const CustomerFooter: React.FC = () => {
 
                             <div className="mt-2 flex gap-2">
                                 <input
-                                    className="h-[36px] w-full rounded-lg border border-emerald-50 bg-white px-3 text-[12px] outline-none placeholder:text-slate-350 focus:ring-2 focus:ring-emerald-100"
+                                    className="h-[36px] w-full rounded-lg border border-emerald-50 bg-white px-3 text-[12px] outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-100"
                                     placeholder="email@example.com"
                                 />
                                 <button

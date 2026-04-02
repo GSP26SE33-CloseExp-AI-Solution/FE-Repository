@@ -56,6 +56,23 @@ const LOGIN_ROUTE = "/login"
 const PROFILE_ROUTE = "/vendor/profile"
 const CART_KEY = "customer_cart_v1"
 
+const getPartnerDestinationByRole = (roleName?: string | null) => {
+    switch (roleName) {
+        case "Vendor":
+            return PARTNER_ROUTE
+        case "SupermarketStaff":
+            return "/supermarketStaff/dashboard"
+        case "Admin":
+            return "/admin"
+        case "PackagingStaff":
+            return "/package/orders"
+        case "MarketingStaff":
+            return "/marketing/profile"
+        default:
+            return PARTNER_ROUTE
+    }
+}
+
 const CustomerHeader = () => {
     const { user, roleName, logout } = useAuthContext()
     const { logoutAll, loggingOutAll } = useLogoutAll()
@@ -174,16 +191,19 @@ const CustomerHeader = () => {
             .slice(0, 4)
     }, [normalizedKeyword, searchIndex.categories])
 
-    const goHome = () => {
-        navigate(HOME_ROUTE)
+    const closeAllMenus = () => {
         setMobileNavOpen(false)
         setOpen(false)
     }
 
+    const goHome = () => {
+        navigate(HOME_ROUTE)
+        closeAllMenus()
+    }
+
     const goShop = () => {
         navigate(`${HOME_ROUTE}?view=shop`)
-        setMobileNavOpen(false)
-        setOpen(false)
+        closeAllMenus()
 
         requestAnimationFrame(() => {
             window.dispatchEvent(new CustomEvent("home:scroll-products"))
@@ -192,14 +212,20 @@ const CustomerHeader = () => {
 
     const goImpact = () => {
         navigate(IMPACT_ROUTE)
-        setMobileNavOpen(false)
-        setOpen(false)
+        closeAllMenus()
     }
 
     const goPartner = () => {
-        navigate(PARTNER_ROUTE)
-        setMobileNavOpen(false)
-        setOpen(false)
+        if (!user) {
+            navigate(LOGIN_ROUTE, {
+                state: { redirectTo: PARTNER_ROUTE },
+            })
+            closeAllMenus()
+            return
+        }
+
+        navigate(getPartnerDestinationByRole(roleName))
+        closeAllMenus()
     }
 
     const handleNavClick = (key: "home" | "shop" | "impact" | "partner") => {
@@ -362,7 +388,12 @@ const CustomerHeader = () => {
         <>
             <header className="fixed top-0 left-0 z-50 h-20 w-full border-b border-white/40 bg-white/70 shadow-sm backdrop-blur-xl">
                 <div className="flex h-full w-full items-center justify-between gap-6 px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center gap-0">
+                    <button
+                        type="button"
+                        onClick={goHome}
+                        className="flex items-center gap-0"
+                        aria-label="Về trang chủ"
+                    >
                         <img
                             src={Logo}
                             alt="CloseExp AI"
@@ -372,7 +403,7 @@ const CustomerHeader = () => {
                             <p className="text-base font-bold text-gray-800">CloseExp AI</p>
                             <p className="text-sm text-gray-500">Mua sắm thông minh, giảm lãng phí</p>
                         </div>
-                    </div>
+                    </button>
 
                     <nav className="mr-1 hidden items-center gap-5 text-sm lg:flex">
                         {navItems.map((item) => {
@@ -640,17 +671,19 @@ const CustomerHeader = () => {
                                             <span>Hồ sơ</span>
                                         </button>
 
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setOpen(false)
-                                                navigate(PARTNER_ROUTE)
-                                            }}
-                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-emerald-50"
-                                        >
-                                            <Store size={16} className="text-emerald-600" />
-                                            <span>Trở thành đối tác</span>
-                                        </button>
+                                        {roleName === "Vendor" && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setOpen(false)
+                                                    navigate(PARTNER_ROUTE)
+                                                }}
+                                                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-emerald-50"
+                                            >
+                                                <Store size={16} className="text-emerald-600" />
+                                                <span>Trở thành đối tác</span>
+                                            </button>
+                                        )}
 
                                         <div className="mx-4 h-px bg-gray-100" />
 
@@ -836,17 +869,19 @@ const CustomerHeader = () => {
                                         <span>Hồ sơ</span>
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setMobileNavOpen(false)
-                                            navigate(PARTNER_ROUTE)
-                                        }}
-                                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-emerald-50"
-                                    >
-                                        <Store size={16} className="text-emerald-600" />
-                                        <span>Trở thành đối tác</span>
-                                    </button>
+                                    {roleName === "Vendor" && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setMobileNavOpen(false)
+                                                navigate(PARTNER_ROUTE)
+                                            }}
+                                            className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-emerald-50"
+                                        >
+                                            <Store size={16} className="text-emerald-600" />
+                                            <span>Trở thành đối tác</span>
+                                        </button>
+                                    )}
 
                                     <button
                                         type="button"
