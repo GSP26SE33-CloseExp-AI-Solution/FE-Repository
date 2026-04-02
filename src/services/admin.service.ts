@@ -3,6 +3,7 @@ import type {
     AdminApprovalRow,
     AdminDashboardOverview,
     AdminOrder,
+    AdminOrdersQuery,
     AdminSupermarketItem,
     AdminTimeSlot,
     AdminUser,
@@ -29,7 +30,9 @@ import type {
     PackagingPendingOrderItem,
     PaginationResult,
     PatchUserStatusPayload,
+    PendingSupermarketApplication,
     PromotionItem,
+    RejectSupermarketApplicationPayload,
     ReportDeliveryFailurePayload,
     RevenueTrendItem,
     RevenueTrendQuery,
@@ -37,17 +40,17 @@ import type {
     SlaAlertQuery,
     SystemParameter,
     TimeSpanDto,
+    UnitItem,
     UpdateCurrentUserProfilePayload,
     UpdateDeliveryAssignmentPayload,
+    UpdatePromotionStatusPayload,
     UpdateSupermarketPayload,
     UpdateSystemParameterPayload,
     UpdateUserPayload,
     UpsertCollectionPointPayload,
     UpsertPromotionPayload,
-    UpdatePromotionStatusPayload,
     UpsertTimeSlotPayload,
     UpsertUnitPayload,
-    UnitItem,
     UserImageItem,
 } from "@/types/admin.type"
 
@@ -248,16 +251,10 @@ export const adminService = {
 
     /* ========================= Users ========================= */
 
-    /**
-     * Raw API: swagger hiện tại trả AdminUser[]
-     */
     listUsersRaw() {
         return get<AdminUser[]>("/Users")
     },
 
-    /**
-     * FE wrapper: local filter + local paginate để không phá page hiện tại
-     */
     async getUsers(params?: {
         pageNumber?: number
         pageSize?: number
@@ -425,11 +422,24 @@ export const adminService = {
 
     /* ========================= Orders / Transactions ========================= */
 
-    getOrders(params?: {
-        pageNumber?: number
-        pageSize?: number
-    }) {
-        return get<PaginationResult<AdminOrder>>(`/Orders${buildQueryString(params)}`)
+    getOrders(params?: AdminOrdersQuery) {
+        return get<PaginationResult<AdminOrder>>(
+            `/admin/orders${buildQueryString({
+                PageNumber: params?.pageNumber,
+                PageSize: params?.pageSize,
+                FromUtc: params?.fromUtc,
+                ToUtc: params?.toUtc,
+                Status: params?.status,
+                DeliveryType: params?.deliveryType,
+                UserId: params?.userId,
+                TimeSlotId: params?.timeSlotId,
+                CollectionId: params?.collectionId,
+                DeliveryGroupId: params?.deliveryGroupId,
+                Search: params?.search,
+                SortBy: params?.sortBy,
+                SortDir: params?.sortDir,
+            })}`
+        )
     },
 
     getOrderById(orderId: string) {
@@ -510,6 +520,54 @@ export const adminService = {
     searchSupermarkets(query: string) {
         return get<AdminSupermarketItem[]>(
             `/Supermarkets/search${buildQueryString({ query })}`
+        )
+    },
+
+    /* ========================= Supermarket Applications ========================= */
+
+    getPendingSupermarketApplications() {
+        return get<PendingSupermarketApplication[]>(
+            "/admin/supermarkets/applications/pending"
+        )
+    },
+
+    approveSupermarketApplication(supermarketId: string) {
+        return post<string>(`/admin/supermarkets/applications/${supermarketId}/approve`)
+    },
+
+    rejectSupermarketApplication(
+        supermarketId: string,
+        payload: RejectSupermarketApplicationPayload
+    ) {
+        return post<string, RejectSupermarketApplicationPayload>(
+            `/admin/supermarkets/applications/${supermarketId}/reject`,
+            payload
+        )
+    },
+
+    async getBlockingCustomerOrders(userId: string) {
+        const result = await this.getOrders({
+            userId,
+            pageNumber: 1,
+            pageSize: 100,
+            sortBy: "OrderDate",
+            sortDir: "desc",
+        })
+
+        const normalize = (value?: string) =>
+            String(value || "")
+                .toLowerCase()
+                .replace(/[\s_-]+/g, "")
+
+        const blockingStatuses = new Set([
+            "pending",
+            "paidprocessing",
+            "readytoship",
+            "deliveredwaitconfirm",
+        ])
+
+        return (result.items ?? []).filter((item) =>
+            blockingStatuses.has(normalize(item.status))
         )
     },
 

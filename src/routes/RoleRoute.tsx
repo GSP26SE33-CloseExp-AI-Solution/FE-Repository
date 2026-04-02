@@ -7,13 +7,21 @@ interface Props {
 }
 
 const RoleRoute = ({ allow }: Props) => {
-    const { user } = useAuthContext()
+    const { user, roleName, initialized } = useAuthContext()
+
+    if (!initialized) {
+        return (
+            <div className="flex min-h-[40vh] items-center justify-center text-sm text-slate-500">
+                Đang kiểm tra quyền truy cập...
+            </div>
+        )
+    }
 
     if (!user) {
         return <Navigate to="/login" replace />
     }
 
-    if (!allow.includes(user.roleName)) {
+    if (!roleName || !allow.includes(roleName)) {
         return <Navigate to="/forbidden" replace />
     }
 

@@ -333,6 +333,22 @@ export type OrderCollectionPoint = {
     address: string
 }
 
+export type AdminOrdersQuery = {
+    pageNumber?: number
+    pageSize?: number
+    fromUtc?: string
+    toUtc?: string
+    status?: string
+    deliveryType?: string
+    userId?: string
+    timeSlotId?: string
+    collectionId?: string
+    deliveryGroupId?: string
+    search?: string
+    sortBy?: string
+    sortDir?: string
+}
+
 /* ========================= Delivery ========================= */
 
 export type DeliveryGroupListItem = {
@@ -580,6 +596,28 @@ export type UpdateSupermarketPayload = {
     status: number
 }
 
+/* ========================= Supermarket Applications ========================= */
+
+export type PendingSupermarketApplication = {
+    supermarketId: string
+    applicationReference: string
+    name: string
+    address: string
+    latitude: number
+    longitude: number
+    contactPhone: string
+    contactEmail?: string
+    applicantUserId: string
+    applicantEmail: string
+    applicantFullName: string
+    submittedAt: string
+    createdAt: string
+}
+
+export type RejectSupermarketApplicationPayload = {
+    adminReviewNote: string
+}
+
 /* ========================= User Images ========================= */
 
 export type UserImageItem = {
@@ -636,6 +674,23 @@ export const SUPERMARKET_STATUS = {
     ACTIVE: 1,
     SUSPENDED: 2,
     CLOSED: 3,
+} as const
+
+export const SUPERMARKET_STAFF_STATUS = {
+    PENDING_APPROVAL: 0,
+    ACTIVE: 1,
+    SUSPENDED: 2,
+    CLOSED: 3,
+    REJECTED: 4,
+} as const
+
+export const ROLE_USER = {
+    ADMIN: 1,
+    PACKAGING_STAFF: 2,
+    MARKETING_STAFF: 3,
+    SUPERMARKET_STAFF: 4,
+    DELIVERY_STAFF: 5,
+    VENDOR: 6,
 } as const
 
 export const PROMOTION_STATUS = {
