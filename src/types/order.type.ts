@@ -495,7 +495,7 @@ export type MyOrdersPageResult = {
 /**
  * dùng cho:
  * - PUT /api/Orders/{id}/pending
- * - PUT /api/Orders/{id}/paid-processing
+ * - PUT /api/Orders/{id}/paid
  * - PUT /api/Orders/{id}/ready-to-ship
  * - PUT /api/Orders/{id}/delivered-wait-confirm
  * - PUT /api/Orders/{id}/completed
@@ -505,7 +505,7 @@ export type MyOrdersPageResult = {
  */
 export type OrderStatusAction =
   | "pending"
-  | "paid-processing"
+  | "paid"
   | "ready-to-ship"
   | "delivered-wait-confirm"
   | "completed"

@@ -204,8 +204,9 @@ export const orderService = {
         await axiosClient.put(`/Orders/${orderId}/pending`)
     },
 
+    /** PUT /api/Orders/{id}/paid — đồng bộ OrderState.Paid trên BE */
     async markPaid(orderId: string) {
-        await axiosClient.put(`/Orders/${orderId}/paid-processing`)
+        await axiosClient.put(`/Orders/${orderId}/paid`)
     },
 
     async markReadyToShip(orderId: string) {

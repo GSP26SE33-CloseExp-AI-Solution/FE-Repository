@@ -21,7 +21,7 @@ const currency = new Intl.NumberFormat("vi-VN", {
 const statusOptions = [
     { label: "Tất cả", value: "" },
     { label: "Pending", value: "pending" },
-    { label: "Paid-Processing", value: "paid-processing" },
+    { label: "Paid", value: "paid" },
     { label: "Ready-To-Ship", value: "ready-to-ship" },
     { label: "Delivered-Wait-Confirm", value: "delivered-wait-confirm" },
     { label: "Completed", value: "completed" },
@@ -47,6 +47,7 @@ const getStatusLabel = (status?: string) => {
     switch (normalized) {
         case "pending":
             return "Chờ xử lý"
+        case "paid":
         case "paid-processing":
             return "Đã thanh toán / đang xử lý"
         case "ready-to-ship":
@@ -72,6 +73,7 @@ const getStatusClass = (status?: string) => {
     switch (normalized) {
         case "pending":
             return "border border-amber-200 bg-amber-100 text-amber-700"
+        case "paid":
         case "paid-processing":
             return "border border-sky-200 bg-sky-100 text-sky-700"
         case "ready-to-ship":
@@ -198,7 +200,7 @@ const AdminTransactions = () => {
 
     const stats = useMemo(() => {
         const revenueStatuses = [
-            "paid-processing",
+            "paid",
             "ready-to-ship",
             "delivered-wait-confirm",
             "completed",
@@ -245,7 +247,7 @@ const AdminTransactions = () => {
         orderId: string,
         action:
             | "pending"
-            | "paid-processing"
+            | "paid"
             | "ready-to-ship"
             | "delivered-wait-confirm"
             | "completed"
@@ -260,7 +262,7 @@ const AdminTransactions = () => {
                 case "pending":
                     await orderService.markPending(orderId)
                     break
-                case "paid-processing":
+                case "paid":
                     await orderService.markPaid(orderId)
                     break
                 case "ready-to-ship":
@@ -657,12 +659,12 @@ const AdminTransactions = () => {
                                         onClick={() =>
                                             handleStatusAction(
                                                 selectedOrder.orderId,
-                                                "paid-processing"
+                                                "paid"
                                             )
                                         }
                                         className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-700 hover:bg-sky-100 disabled:opacity-50"
                                     >
-                                        Paid-Processing
+                                        Paid
                                     </button>
 
                                     <button
