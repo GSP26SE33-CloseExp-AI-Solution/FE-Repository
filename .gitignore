@@ -9,6 +9,8 @@
 /coverage
 
 # production
+.vscode
+.cursor
 /build
 
 # misc
