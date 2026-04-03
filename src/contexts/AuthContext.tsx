@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useState } from "react"
-import type { AuthData, User } from "@/types/auth.types"
+import type { AuthData, AuthUser } from "@/types/auth.types"
 import { getAuthSession, clearAuth, saveAuth } from "@/utils/authStorage"
 import { authService } from "@/services/auth.service"
 import { adminService } from "@/services/admin.service"
 
 type AuthContextType = {
-    user: User | null
+    user: AuthUser | null
     roleName: string | null
     supermarketName: string
     isSupermarketManager: boolean
@@ -15,7 +15,7 @@ type AuthContextType = {
     loginSuccess: (session: AuthData) => void
     logout: () => Promise<void>
     logoutAll: () => Promise<void>
-    refreshProfile: () => Promise<User | null>
+    refreshProfile: () => Promise<AuthUser | null>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -23,7 +23,7 @@ const AuthContext = createContext<AuthContextType | null>(null)
 const CUSTOMER_CART_KEY = "customer_cart_v1"
 const CUSTOMER_DELIVERY_CONTEXT_KEY = "customer_delivery_context_v3"
 
-const getDerivedAuthState = (user: User | null) => {
+const getDerivedAuthState = (user: AuthUser | null) => {
     const marketStaffInfo = user?.marketStaffInfo ?? null
     const parentSuperStaffId = marketStaffInfo?.parentSuperStaffId ?? null
 
@@ -40,7 +40,7 @@ const getDerivedAuthState = (user: User | null) => {
     }
 }
 
-const clearCustomerPurchaseStateIfNeeded = (user: User | null) => {
+const clearCustomerPurchaseStateIfNeeded = (user: AuthUser | null) => {
     const roleName = user?.roleName ?? ""
 
     if (roleName !== "Vendor") {
@@ -50,7 +50,7 @@ const clearCustomerPurchaseStateIfNeeded = (user: User | null) => {
 }
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-    const [user, setUser] = useState<User | null>(null)
+    const [user, setUser] = useState<AuthUser | null>(null)
     const [roleName, setRoleName] = useState<string | null>(null)
     const [supermarketName, setSupermarketName] = useState("")
     const [isSupermarketManager, setIsSupermarketManager] = useState(false)
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [employeeCodeHint, setEmployeeCodeHint] = useState("")
     const [initialized, setInitialized] = useState(false)
 
-    const applyUserState = (nextUser: User | null) => {
+    const applyUserState = (nextUser: AuthUser | null) => {
         const derived = getDerivedAuthState(nextUser)
 
         clearCustomerPurchaseStateIfNeeded(nextUser)
@@ -71,14 +71,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setEmployeeCodeHint(derived.employeeCodeHint)
     }
 
-    const refreshProfile = async (): Promise<User | null> => {
+    const refreshProfile = async (): Promise<AuthUser | null> => {
         try {
             const latestUser = await adminService.getCurrentUserProfile()
 
             const normalizedUser = {
                 ...latestUser,
                 phone: latestUser.phone ?? "",
-            } as User
+            } as AuthUser
 
             const currentSession = getAuthSession()
 

@@ -1,7 +1,7 @@
 // src/services/product-ai.service.ts
 
 import axiosClient from "@/utils/axiosClient"
-import type { ApiResponse } from "@/types/auth.types"
+import type { ApiResponse } from "@/types/api.types"
 import type {
     AiDirectPricingResult,
     AiExtractPayload,

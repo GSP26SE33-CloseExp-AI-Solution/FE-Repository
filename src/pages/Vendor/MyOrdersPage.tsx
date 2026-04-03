@@ -50,7 +50,7 @@ const ORDER_STATUS_META: Record<
         className: "border-amber-200 bg-amber-50 text-amber-700",
         group: "PENDING",
     },
-    PaidProcessing: {
+    Paid: {
         label: "Đang chuẩn bị hàng",
         className: "border-sky-200 bg-sky-50 text-sky-700",
         group: "PROCESSING",
@@ -211,7 +211,7 @@ const MyOrdersPage: React.FC = () => {
         return {
             total: totalResult,
             processing: allOrders.filter((o) =>
-                ["Pending", "PaidProcessing", "ReadyToShip", "DeliveredWaitConfirm"].includes(
+                ["Pending", "Paid", "ReadyToShip", "DeliveredWaitConfirm"].includes(
                     o.status || ""
                 )
             ).length,

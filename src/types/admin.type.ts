@@ -1,9 +1,4 @@
-export type ApiResponse<T> = {
-    success: boolean
-    message: string
-    data: T
-    errors?: string[] | null
-}
+export type { ApiResponse } from "./api.types"
 
 export type PaginationResult<T> = {
     items: T[]

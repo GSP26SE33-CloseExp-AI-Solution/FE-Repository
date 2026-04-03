@@ -6,12 +6,12 @@ import {
     resendOtpApi,
     googleLoginApi,
 } from "@/services/auth.service"
+import type { ApiResponse } from "@/types/api.types"
 import type {
     AuthData,
     RegisterPayload,
     VerifyOtpPayload,
     ResendOtpPayload,
-    ApiResponse,
     GoogleLoginPayload,
 } from "@/types/auth.types"
 import { useAuthContext } from "@/contexts/AuthContext"

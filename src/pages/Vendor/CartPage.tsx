@@ -57,7 +57,7 @@ const ORDER_STATUS_META = {
         label: "Chờ xử lý",
         className: "border-amber-200 bg-amber-50 text-amber-700",
     },
-    PaidProcessing: {
+    Paid: {
         label: "Đã thanh toán, đang xử lý",
         className: "border-sky-200 bg-sky-50 text-sky-700",
     },

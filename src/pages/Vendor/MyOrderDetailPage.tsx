@@ -60,7 +60,7 @@ const getOrderStatusMeta = (status?: string) => {
                 note: "Đơn hàng đã được ghi nhận và đang chờ hệ thống xử lý.",
             }
 
-        case "paidprocessing":
+        case "paid":
             return {
                 label: "Đang chuẩn bị hàng",
                 className: "border-sky-200 bg-sky-50 text-sky-700",

@@ -58,7 +58,7 @@ const getOrderStatusLabel = (status?: string) => {
     switch ((status || "").toLowerCase()) {
         case "pending":
             return "Chờ xử lý"
-        case "paidprocessing":
+        case "paid":
             return "Đã thanh toán, đang xử lý"
         case "readytoship":
             return "Sẵn sàng giao"
@@ -81,7 +81,7 @@ const getOrderStatusClass = (status?: string) => {
     switch ((status || "").toLowerCase()) {
         case "pending":
             return "border-amber-200 bg-amber-50 text-amber-700"
-        case "paidprocessing":
+        case "paid":
             return "border-sky-200 bg-sky-50 text-sky-700"
         case "readytoship":
             return "border-violet-200 bg-violet-50 text-violet-700"

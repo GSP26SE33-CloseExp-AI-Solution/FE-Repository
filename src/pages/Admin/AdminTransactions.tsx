@@ -261,7 +261,7 @@ const AdminTransactions = () => {
                     await orderService.markPending(orderId)
                     break
                 case "paid-processing":
-                    await orderService.markPaidProcessing(orderId)
+                    await orderService.markPaid(orderId)
                     break
                 case "ready-to-ship":
                     await orderService.markReadyToShip(orderId)

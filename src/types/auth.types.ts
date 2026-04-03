@@ -1,19 +1,15 @@
-export interface ApiResponse<T> {
-    success: boolean
-    message: string
-    data: T
-    errors: string[] | null
-}
+export type { ApiResponse } from "./api.types"
 
 export interface AuthData {
     accessToken: string
     refreshToken: string
     expiresAt: string
-    user: User
+    user: AuthUser
     requiresStaffContext?: boolean
 }
 
-export interface User {
+/** Logged-in user from auth/session (JWT + profile). Distinct from admin list User in user.type. */
+export interface AuthUser {
     userId: string
     fullName: string
     email: string

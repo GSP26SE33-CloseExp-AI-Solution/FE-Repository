@@ -5,7 +5,7 @@ import type {
     PackagingOrderSummary,
     PaginationResult,
 } from "@/types/packaging.type"
-import type { ApiResponse } from "@/types/auth.types"
+import type { ApiResponse } from "@/types/api.types"
 
 const BASE_URL = "/Packaging/orders"
 

@@ -1,4 +1,5 @@
 import axiosClient from "@/utils/axiosClient"
+import type { ApiResponse } from "@/types/api.types"
 import type {
     AdminApprovalRow,
     AdminDashboardOverview,
@@ -8,7 +9,6 @@ import type {
     AdminTimeSlot,
     AdminUser,
     AiPricingHistoryItem,
-    ApiResponse,
     AssignDeliveryPayload,
     CollectionPoint,
     ConfirmDeliveryPayload,
@@ -589,7 +589,7 @@ export const adminService = {
 
         const blockingStatuses = new Set([
             "pending",
-            "paidprocessing",
+            "paid",
             "readytoship",
             "deliveredwaitconfirm",
         ])

@@ -112,6 +112,7 @@ const mapOrderStatusLabel = (status?: string) => {
     switch (normalized) {
         case "pending":
             return "Chờ xác nhận"
+        case "paid":
         case "paid_processing":
         case "paidprocessing":
             return "Đang xử lý sau thanh toán"
@@ -167,6 +168,7 @@ const getStatusClass = (status?: string) => {
     switch (normalized) {
         case "pending":
             return "bg-amber-100 text-amber-700 border border-amber-200"
+        case "paid":
         case "paid_processing":
         case "paidprocessing":
         case "processing":

@@ -17,7 +17,7 @@ import toast from "react-hot-toast"
 
 import axiosClient from "@/utils/axiosClient"
 import { authStorage } from "@/utils/authStorage"
-import type { ApiResponse } from "@/types/auth.types"
+import type { ApiResponse } from "@/types/api.types"
 
 type LotStatusFilter = "ALL" | "DRAFT" | "PRICED" | "PUBLISHED"
 type ExpiryFilter =

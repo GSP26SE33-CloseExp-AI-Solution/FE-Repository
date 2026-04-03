@@ -1,6 +1,6 @@
 import axios from "axios"
 import axiosClient from "@/utils/axiosClient"
-import { ApiResponse } from "@/types/auth.types"
+import type { ApiResponse } from "@/types/api.types"
 import { User, UpdateUserStatusPayload } from "@/types/user.type"
 
 const unwrap = <T>(res: ApiResponse<T>): T => {

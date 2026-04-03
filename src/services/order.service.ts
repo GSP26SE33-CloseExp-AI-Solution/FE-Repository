@@ -1,6 +1,6 @@
 import axiosClient from "@/utils/axiosClient"
+import type { ApiEnvelope } from "@/types/api.types"
 import type {
-    ApiEnvelope,
     CreateMyOrderPayload,
     CreateOrderPayload,
     OrderDetails,
@@ -86,8 +86,8 @@ export const orderService = {
         await axiosClient.put(`/Orders/${orderId}/pending`)
     },
 
-    async markPaidProcessing(orderId: string) {
-        await axiosClient.put(`/Orders/${orderId}/paid-processing`)
+    async markPaid(orderId: string) {
+        await axiosClient.put(`/Orders/${orderId}/paid`)
     },
 
     async markReadyToShip(orderId: string) {

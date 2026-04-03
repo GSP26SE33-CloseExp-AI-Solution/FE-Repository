@@ -1,8 +1,8 @@
 import axios from "axios"
 import axiosClient from "@/utils/axiosClient"
+import type { ApiResponse } from "@/types/api.types"
 import type {
     AuthData,
-    ApiResponse,
     RegisterPayload,
     VerifyOtpPayload,
     ResendOtpPayload,
