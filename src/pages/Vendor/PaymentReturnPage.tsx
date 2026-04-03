@@ -8,8 +8,8 @@ import {
     XCircle,
 } from "lucide-react"
 
-import { confirmPaymentWithRetry } from "@/services/payment.service"
-import type { ConfirmPaymentResponse } from "@/types/payment.types"
+import { orderService } from "@/services/order.service"
+import type { ConfirmPaymentResponse } from "@/types/order.type"
 import { cartStorage } from "@/utils/orderStorage"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 
@@ -43,7 +43,7 @@ const PaymentReturnPage: React.FC = () => {
     const runConfirmWithRetry = useCallback(async (orderCode: string) => {
         try {
             const result: ConfirmPaymentResponse =
-                await confirmPaymentWithRetry(orderCode)
+                await orderService.confirmPaymentWithRetry(orderCode)
 
             if (result.success) {
                 cartStorage.clear()
@@ -63,8 +63,8 @@ const PaymentReturnPage: React.FC = () => {
         }
     }, [])
 
-    // Parse query theo chuỗi search để effect chỉ chạy lại khi URL query đổi (tránh lặp với PayOS redirect)
     const { search } = location
+
     useEffect(() => {
         const q = new URLSearchParams(search)
         const code = q.get("code")
@@ -129,10 +129,6 @@ const PaymentReturnPage: React.FC = () => {
                                     Đang xác nhận thanh toán...
                                 </div>
                             </div>
-                            <p className={cn("mt-3 text-[13px] leading-relaxed", muted)}>
-                                Hệ thống đang đồng bộ với PayOS (có thể thử lại vài lần nếu
-                                redirect nhanh hơn webhook).
-                            </p>
                         </section>
                     </div>
                 </main>

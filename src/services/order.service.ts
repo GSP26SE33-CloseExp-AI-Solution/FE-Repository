@@ -1,15 +1,31 @@
+import axios from "axios"
 import axiosClient from "@/utils/axiosClient"
 import type { ApiEnvelope } from "@/types/api.types"
 import type {
+    ConfirmPaymentResponse,
     CreateMyOrderPayload,
     CreateOrderPayload,
+    CreatePaymentLinkPayload,
     OrderDetails,
     OrderTimeSlot,
     PaginationResult,
+    PaymentLinkResponse,
     UpdateOrderPayload,
 } from "@/types/order.type"
 
 const unwrap = <T,>(response: { data: ApiEnvelope<T> }) => response.data.data
+
+const getAxiosErrorMessage = (error: unknown, fallback: string): string => {
+    if (axios.isAxiosError(error)) {
+        const data = error.response?.data as
+            | { message?: string; errors?: string[]; error?: string }
+            | undefined
+        return data?.errors?.[0] || data?.message || data?.error || fallback
+    }
+    return fallback
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 export const orderService = {
     /* =========================
@@ -32,19 +48,27 @@ export const orderService = {
     },
 
     async createOrder(payload: CreateOrderPayload) {
-        const response = await axiosClient.post<ApiEnvelope<OrderDetails>>(
-            "/Orders",
-            payload
-        )
-        return unwrap(response)
+        try {
+            const response = await axiosClient.post<ApiEnvelope<OrderDetails>>(
+                "/Orders",
+                payload
+            )
+            return unwrap(response)
+        } catch (error) {
+            throw new Error(getAxiosErrorMessage(error, "Tạo đơn hàng không thành công"))
+        }
     },
 
     async createMyOrder(payload: CreateMyOrderPayload) {
-        const response = await axiosClient.post<ApiEnvelope<OrderDetails>>(
-            "/Orders/my-orders",
-            payload
-        )
-        return unwrap(response)
+        try {
+            const response = await axiosClient.post<ApiEnvelope<OrderDetails>>(
+                "/Orders/my-orders",
+                payload
+            )
+            return unwrap(response)
+        } catch (error) {
+            throw new Error(getAxiosErrorMessage(error, "Tạo đơn hàng không thành công"))
+        }
     },
 
     async getOrder(orderId: string) {
@@ -62,11 +86,19 @@ export const orderService = {
     },
 
     async updateOrder(orderId: string, payload: UpdateOrderPayload) {
-        await axiosClient.put(`/Orders/${orderId}`, payload)
+        try {
+            await axiosClient.put(`/Orders/${orderId}`, payload)
+        } catch (error) {
+            throw new Error(getAxiosErrorMessage(error, "Cập nhật đơn hàng không thành công"))
+        }
     },
 
     async deleteOrder(orderId: string) {
-        await axiosClient.delete(`/Orders/${orderId}`)
+        try {
+            await axiosClient.delete(`/Orders/${orderId}`)
+        } catch (error) {
+            throw new Error(getAxiosErrorMessage(error, "Xóa đơn hàng không thành công"))
+        }
     },
 
     /* =========================
@@ -80,6 +112,92 @@ export const orderService = {
     },
 
     /* =========================
+       Payment
+    ========================= */
+    async createPaymentLink(
+        payload: CreatePaymentLinkPayload
+    ): Promise<PaymentLinkResponse> {
+        try {
+            const response = await axiosClient.post<PaymentLinkResponse>(
+                "/Payment/create-payment-link",
+                payload
+            )
+            return response.data
+        } catch (error) {
+            throw new Error(
+                getAxiosErrorMessage(error, "Tạo link thanh toán không thành công")
+            )
+        }
+    },
+
+    /**
+     * Gọi POST /api/Payment/confirm.
+     * Trả 200 + success khi đã paid;
+     * 400/404 với body JSON khi chưa settled hoặc lỗi.
+     */
+    async confirmPayment(orderCode: string): Promise<ConfirmPaymentResponse> {
+        try {
+            const response = await axiosClient.post<ConfirmPaymentResponse>(
+                "/Payment/confirm",
+                { orderCode },
+                {
+                    validateStatus: (status) =>
+                        status === 200 || status === 400 || status === 404,
+                }
+            )
+
+            if (response.status === 200) {
+                return { success: true }
+            }
+
+            const data = response.data as ConfirmPaymentResponse
+            return {
+                success: false,
+                message: data?.message,
+                errorCode: data?.errorCode,
+                payOsStatus: data?.payOsStatus,
+                amountPaid: data?.amountPaid,
+                amount: data?.amount,
+            }
+        } catch (error) {
+            throw new Error(
+                getAxiosErrorMessage(error, "Xác nhận thanh toán không thành công")
+            )
+        }
+    },
+
+    /**
+     * Gọi confirm lặp lại khi PayOS/BE trả PaymentNotComplete
+     * (race với webhook hoặc redirect sớm).
+     */
+    async confirmPaymentWithRetry(
+        orderCode: string,
+        options?: { maxAttempts?: number; delayMs?: number }
+    ): Promise<ConfirmPaymentResponse> {
+        const maxAttempts = options?.maxAttempts ?? 5
+        const delayMs = options?.delayMs ?? 2500
+
+        let last: ConfirmPaymentResponse = {
+            success: false,
+            message: "Không xác nhận được thanh toán",
+        }
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const result = await this.confirmPayment(orderCode)
+            if (result.success) return result
+
+            last = result
+            if (result.errorCode !== "PaymentNotComplete") return result
+
+            if (attempt < maxAttempts - 1) {
+                await sleep(delayMs)
+            }
+        }
+
+        return last
+    },
+
+    /* =========================
        Order Status Actions
     ========================= */
     async markPending(orderId: string) {
@@ -87,7 +205,7 @@ export const orderService = {
     },
 
     async markPaid(orderId: string) {
-        await axiosClient.put(`/Orders/${orderId}/paid`)
+        await axiosClient.put(`/Orders/${orderId}/paid-processing`)
     },
 
     async markReadyToShip(orderId: string) {

@@ -1,42 +1,68 @@
 /* =========================
    Shared
 ========================= */
-export type PaginationResult<T> = {
-  items: T[];
-  totalResult: number;
-  page: number;
-  pageSize: number;
-};
 
+/**
+ * Generic paged result
+ * dùng cho:
+ * - GET /api/Orders
+ * - GET /api/Orders/my-orders
+ */
+export type PaginationResult<T> = {
+  items: T[]
+  totalResult: number
+  page: number
+  pageSize: number
+}
+
+/**
+ * .NET TimeSpan DTO
+ * dùng cho:
+ * - GET /api/Orders/time-slots
+ * - GET /api/admin/system-config/time-slots
+ */
 export type TimeSpanDto = {
-  ticks: number;
-  days: number;
-  hours: number;
-  milliseconds: number;
-  microseconds: number;
-  nanoseconds: number;
-  minutes: number;
-  seconds: number;
-  totalDays: number;
-  totalHours: number;
-  totalMilliseconds: number;
-  totalMicroseconds: number;
-  totalNanoseconds: number;
-  totalMinutes: number;
-  totalSeconds: number;
-};
+  ticks: number
+  days: number
+  hours: number
+  milliseconds: number
+  microseconds: number
+  nanoseconds: number
+  minutes: number
+  seconds: number
+  totalDays: number
+  totalHours: number
+  totalMilliseconds: number
+  totalMicroseconds: number
+  totalNanoseconds: number
+  totalMinutes: number
+  totalSeconds: number
+}
 
 /* =========================
    Order / Delivery enums
    bám theo BE enum-state-BE
 ========================= */
-export type DeliveryMethodId = "DELIVERY" | "PICKUP";
 
-/** FE pickup slot choice (baseline windows map to BE timeSlotId via lookup). */
-export type PickupSlotId = "SLOT_1" | "SLOT_2";
+/**
+ * dùng trong order payload / response
+ * Swagger đang để deliveryType là string
+ * FE hiện map về 2 mode chính này
+ */
+export type DeliveryMethodId = "DELIVERY" | "PICKUP"
 
-export type TimeSlotId = PickupSlotId;
+/**
+ * BE timeSlotId thực tế là uuid string
+ * dùng trong:
+ * - POST /api/Orders
+ * - POST /api/Orders/my-orders
+ * - GET /api/Orders/time-slots
+ */
+export type TimeSlotId = string
 
+/**
+ * bám theo enum-state-BE: OrderState
+ */
 export type OrderStatusValue =
   | "Pending"
   | "Paid"
@@ -45,251 +71,444 @@ export type OrderStatusValue =
   | "Completed"
   | "Canceled"
   | "Refunded"
-  | "Failed";
-
-export type PromotionStatusValue = "Draft" | "Active" | "Expired" | "Disabled";
-
-/* =========================
-   Customer Context
-   context này là context FE trước checkout
-========================= */
-export type SupermarketLite = {
-  supermarketId: string;
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  distanceKm?: number;
-};
-
-export type CustomerOrderContext = {
-  deliveryMethodId?: DeliveryMethodId;
-
-  locationSource?: "gps" | "search" | "map";
-  lat?: number;
-  lng?: number;
-  addressText?: string;
-
-  // FE local context cho pickup
-  pickupPointId?: string;
-  pickupPointName?: string;
-  pickupPointAddress?: string;
-  pickupLat?: number;
-  pickupLng?: number;
-
-  nearbySupermarkets?: SupermarketLite[];
-
-  // meta thật dùng cho checkout/order
-  collectionId?: string;
-  collectionPointId?: string;
-  collectionPointName?: string;
-  collectionPointAddress?: string;
-
-  timeSlotId?: string;
-  /** Khung giao hàng chọn trên checkout (map sang timeSlotId) */
-  pickupSlotId?: TimeSlotId | null;
-  addressId?: string;
-  promotionId?: string;
-  orderId?: string;
-};
-
-export type CartItem = {
-  lotId: string;
-  productId: string;
-  supermarketId: string;
-  name: string;
-  price: number;
-  qty: number;
-  imageUrl?: string;
-};
-
-/* =========================
-   Orders
-========================= */
-export type OrderItemPayload = {
-  lotId: string;
-  quantity: number;
-  unitPrice: number;
-};
-
-export type UpdateOrderItemPayload = {
-  orderItemId?: string;
-  lotId: string;
-  quantity: number;
-  unitPrice: number;
-};
+  | "Failed"
 
 /**
- * /api/Orders
- * admin/general create
+ * bám theo enum-state-BE: PromotionState
+ */
+export type PromotionStatusValue = "Draft" | "Active" | "Expired" | "Disabled"
+
+/* =========================
+   FE local checkout context
+   context trước khi tạo order
+========================= */
+
+/**
+ * FE lightweight supermarket info
+ * dùng local cho delivery gate / checkout
+ */
+export type SupermarketLite = {
+  supermarketId: string
+  name: string
+  address: string
+  latitude: number
+  longitude: number
+  distanceKm?: number
+}
+
+/**
+ * FE order context trước checkout
+ * map dần sang payload của:
+ * - POST /api/Orders/my-orders
+ */
+export type CustomerOrderContext = {
+  deliveryMethodId?: DeliveryMethodId
+
+  locationSource?: "gps" | "search" | "map"
+  lat?: number
+  lng?: number
+  addressText?: string
+
+  // FE local pickup info
+  pickupPointId?: string
+  pickupPointName?: string
+  pickupPointAddress?: string
+  pickupLat?: number
+  pickupLng?: number
+
+  nearbySupermarkets?: SupermarketLite[]
+
+  // meta thật dùng cho create order
+  collectionId?: string
+  collectionPointId?: string
+  collectionPointName?: string
+  collectionPointAddress?: string
+
+  /**
+   * BE timeSlotId thật (uuid)
+   * chọn trực tiếp từ GET /api/Orders/time-slots
+   */
+  timeSlotId?: TimeSlotId
+
+  addressId?: string
+  promotionId?: string
+  orderId?: string
+}
+
+/**
+ * FE local cart item
+ * không phải raw response của carts endpoint
+ */
+export type CartItem = {
+  lotId: string
+  productId: string
+  supermarketId: string
+  name: string
+  price: number
+  qty: number
+  imageUrl?: string
+}
+
+/* =========================
+   Query / filter helpers
+========================= */
+
+/**
+ * dùng cho:
+ * - GET /api/Orders
+ * - GET /api/Orders/my-orders
+ */
+export type OrderListQuery = {
+  pageNumber?: number
+  pageSize?: number
+}
+
+/**
+ * dùng cho:
+ * - POST /api/Orders/collection-points/nearby
+ */
+export type NearbyCollectionPointPayload = {
+  latitude: number
+  longitude: number
+  radiusKm: number
+}
+
+/* =========================
+   Order item payloads
+========================= */
+
+/**
+ * dùng trong:
+ * - POST /api/Orders
+ * - POST /api/Orders/my-orders
+ */
+export type CreateOrderItemPayload = {
+  lotId: string
+  quantity: number
+  unitPrice: number
+}
+
+/**
+ * dùng trong:
+ * - PUT /api/Orders/{id}
+ */
+export type UpdateOrderItemPayload = {
+  orderItemId?: string
+  lotId: string
+  quantity: number
+  unitPrice: number
+}
+
+/* =========================
+   Create / Update order payloads
+========================= */
+
+/**
+ * Admin/general create order
+ * endpoint:
+ * - POST /api/Orders
  */
 export type CreateOrderPayload = {
-  userId: string;
-  timeSlotId: string;
-  collectionId?: string | null;
-  deliveryType: string;
-  totalAmount: number;
-  status: string;
-  addressId?: string | null;
-  promotionId?: string | null;
-  deliveryGroupId?: string | null;
-  deliveryNote?: string;
-  discountAmount: number;
-  finalAmount: number;
-  deliveryFee: number;
-  cancelDeadline?: string;
-  orderItems: OrderItemPayload[];
-};
+  userId: string
+  timeSlotId: string
+  collectionId?: string | null
+  deliveryType: string
+  totalAmount: number
+  status: string
+  addressId?: string | null
+  promotionId?: string | null
+  deliveryGroupId?: string | null
+  deliveryNote?: string
+  discountAmount: number
+  finalAmount: number
+  deliveryFee: number
+  cancelDeadline?: string
+  orderItems: CreateOrderItemPayload[]
+}
 
 /**
- * /api/Orders/my-orders
- * current customer create
+ * Customer self-create order
+ * endpoint:
+ * - POST /api/Orders/my-orders
  */
 export type CreateMyOrderPayload = {
-  timeSlotId: string;
-  collectionId?: string | null;
-  deliveryType: DeliveryMethodId;
-  addressId?: string | null;
-  promotionId?: string | null;
-  deliveryNote?: string;
-  deliveryFee: number;
-  cancelDeadline?: string;
-  orderItems: OrderItemPayload[];
-};
+  timeSlotId: string
+  collectionId?: string | null
+  deliveryType: DeliveryMethodId
+  addressId?: string | null
+  promotionId?: string | null
+  deliveryNote?: string
+  deliveryFee: number
+  cancelDeadline?: string
+  orderItems: CreateOrderItemPayload[]
+}
 
+/**
+ * Update order
+ * endpoint:
+ * - PUT /api/Orders/{id}
+ */
 export type UpdateOrderPayload = {
-  timeSlotId?: string;
-  collectionId?: string | null;
-  deliveryType?: string;
-  totalAmount: number;
-  status: string;
-  addressId?: string | null;
-  promotionId?: string | null;
-  deliveryGroupId?: string | null;
-  deliveryNote?: string;
-  discountAmount: number;
-  finalAmount: number;
-  deliveryFee: number;
-  cancelDeadline?: string;
-  orderItems: UpdateOrderItemPayload[];
-};
+  timeSlotId?: string
+  collectionId?: string | null
+  deliveryType?: string
+  totalAmount: number
+  status: string
+  addressId?: string | null
+  promotionId?: string | null
+  deliveryGroupId?: string | null
+  deliveryNote?: string
+  discountAmount: number
+  finalAmount: number
+  deliveryFee: number
+  cancelDeadline?: string
+  orderItems: UpdateOrderItemPayload[]
+}
 
+/* =========================
+   Order payment
+========================= */
+
+/**
+ * tạo link thanh toán cho order
+ * endpoint:
+ * - POST /api/Orders/payment-link
+ *   hoặc endpoint payment tương ứng nếu BE tách riêng
+ */
+export type CreatePaymentLinkPayload = {
+  orderId: string
+  returnUrl: string
+  cancelUrl: string
+}
+
+/**
+ * response trả về link thanh toán
+ */
+export type PaymentLinkResponse = {
+  checkoutUrl: string
+}
+
+/**
+ * response sau khi xác nhận thanh toán
+ * dùng cho callback/verify/check payment status
+ */
+export type ConfirmPaymentResponse = {
+  success: boolean
+  message?: string
+  errorCode?: string
+  payOsStatus?: string
+  amountPaid?: number
+  amount?: number
+}
+
+/* =========================
+   Order response models
+========================= */
+
+/**
+ * line item response
+ * dùng trong:
+ * - GET /api/Orders
+ * - GET /api/Orders/{id}
+ * - GET /api/Orders/{id}/details
+ * - GET /api/Orders/my-orders
+ * - POST /api/Orders
+ * - POST /api/Orders/my-orders
+ */
 export type OrderItemResponse = {
-  orderItemId: string;
-  orderId: string;
-  lotId: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice?: number;
-  lineTotal?: number;
-  productName?: string;
-  expiryDate?: string;
-};
+  orderItemId: string
+  orderId: string
+  lotId: string
+  quantity: number
+  unitPrice: number
+  totalPrice?: number
+  lineTotal?: number
+  productName?: string
+  expiryDate?: string
+}
 
+/**
+ * shared order detail shape
+ * Swagger hiện cho:
+ * - GET /api/Orders
+ * - GET /api/Orders/{id}
+ * - GET /api/Orders/{id}/details
+ * - GET /api/Orders/my-orders
+ * - POST /api/Orders
+ * - POST /api/Orders/my-orders
+ */
 export type OrderDetails = {
-  orderId: string;
-  orderCode?: string;
-  userId?: string;
-  userName?: string;
-  timeSlotId?: string;
-  timeSlotDisplay?: string;
-  collectionId?: string;
-  collectionPointName?: string;
-  deliveryType?: string;
-  totalAmount: number;
-  discountAmount?: number;
-  finalAmount: number;
-  deliveryFee?: number;
-  status?: string;
-  orderDate?: string;
-  addressId?: string;
-  promotionId?: string;
-  deliveryGroupId?: string;
-  deliveryNote?: string;
-  cancelDeadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  orderItems?: OrderItemResponse[];
-};
+  orderId: string
+  orderCode?: string
+  userId?: string
+  userName?: string
+  timeSlotId?: string
+  timeSlotDisplay?: string
+  collectionId?: string | null
+  collectionPointName?: string | null
+  deliveryType?: string
+  totalAmount: number
+  discountAmount?: number
+  finalAmount: number
+  deliveryFee?: number
+  status?: string
+  orderDate?: string
+  addressId?: string | null
+  promotionId?: string | null
+  deliveryGroupId?: string | null
+  deliveryNote?: string
+  cancelDeadline?: string
+  createdAt?: string
+  updatedAt?: string
+  orderItems?: OrderItemResponse[]
+}
 
 /* =========================
-   Order Meta
+   Order meta endpoints
 ========================= */
+
+/**
+ * Customer-facing time slot
+ * endpoint:
+ * - GET /api/Orders/time-slots
+ *
+ * Lưu ý:
+ * - endpoint này có displayTimeRange
+ * - khác với admin system-config time-slots
+ */
 export type OrderTimeSlot = {
-  timeSlotId: string;
-  startTime: TimeSpanDto;
-  endTime: TimeSpanDto;
-  displayTimeRange: string;
-  relatedOrderCount?: number;
-};
+  timeSlotId: string
+  startTime: TimeSpanDto
+  endTime: TimeSpanDto
+  displayTimeRange: string
+  relatedOrderCount?: number
+}
 
+/**
+ * Customer-facing collection point
+ * endpoints:
+ * - GET /api/Orders/collection-points
+ * - POST /api/Orders/collection-points/nearby
+ *
+ * Lưu ý:
+ * - dùng collectionPointId / address
+ * - khác với admin collection point config
+ */
 export type OrderCollectionPoint = {
-  collectionPointId: string;
-  name: string;
-  address: string;
-  relatedOrderCount?: number;
-};
+  collectionPointId: string
+  name: string
+  address: string
+  relatedOrderCount?: number
+  distanceKm?: number
+  latitude?: number
+  longitude?: number
+}
 
 /* =========================
-   Order Items
+   Optional standalone order-item payloads
+   để dành nếu sau này tách riêng service/order-item
 ========================= */
+
 export type OrderItemCreatePayload = {
-  orderId: string;
-  lotId: string;
-  quantity: number;
-  unitPrice: number;
-};
+  orderId: string
+  lotId: string
+  quantity: number
+  unitPrice: number
+}
 
 export type OrderItemUpdatePayload = {
-  lotId: string;
-  quantity: number;
-  unitPrice: number;
-};
+  lotId: string
+  quantity: number
+  unitPrice: number
+}
 
 /* =========================
-   My Order Page
+   My Orders page
 ========================= */
+
+/**
+ * line item trong:
+ * - GET /api/Orders/my-orders
+ */
 export type MyOrderLineItem = {
-  orderItemId: string;
-  orderId: string;
-  lotId: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice?: number;
-  lineTotal?: number;
-  productName?: string;
-  expiryDate?: string;
-};
+  orderItemId: string
+  orderId: string
+  lotId: string
+  quantity: number
+  unitPrice: number
+  totalPrice?: number
+  lineTotal?: number
+  productName?: string
+  expiryDate?: string
+}
 
+/**
+ * item trong paged my-orders response
+ * endpoint:
+ * - GET /api/Orders/my-orders
+ */
 export type MyOrderItem = {
-  orderId: string;
-  orderCode: string;
-  userId: string;
-  userName?: string;
-  timeSlotId?: string;
-  timeSlotDisplay?: string;
-  collectionId?: string | null;
-  collectionPointName?: string | null;
-  deliveryType?: string;
-  totalAmount: number;
-  discountAmount: number;
-  finalAmount: number;
-  deliveryFee: number;
-  status: string;
-  orderDate?: string;
-  addressId?: string | null;
-  promotionId?: string | null;
-  deliveryGroupId?: string | null;
-  deliveryNote?: string;
-  cancelDeadline?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  orderItems: MyOrderLineItem[];
-};
+  orderId: string
+  orderCode: string
+  userId: string
+  userName?: string
+  timeSlotId?: string
+  timeSlotDisplay?: string
+  collectionId?: string | null
+  collectionPointName?: string | null
+  deliveryType?: string
+  totalAmount: number
+  discountAmount: number
+  finalAmount: number
+  deliveryFee: number
+  status: string
+  orderDate?: string
+  addressId?: string | null
+  promotionId?: string | null
+  deliveryGroupId?: string | null
+  deliveryNote?: string
+  cancelDeadline?: string
+  createdAt?: string
+  updatedAt?: string
+  orderItems: MyOrderLineItem[]
+}
 
+/**
+ * paged result riêng cho my-orders page
+ * endpoint:
+ * - GET /api/Orders/my-orders
+ *
+ * thực chất tương đương PaginationResult<MyOrderItem>
+ */
 export type MyOrdersPageResult = {
-  items: MyOrderItem[];
-  totalResult: number;
-  page: number;
-  pageSize: number;
-};
+  items: MyOrderItem[]
+  totalResult: number
+  page: number
+  pageSize: number
+}
+
+/* =========================
+   Order status action endpoints
+   helper type cho các endpoint đổi trạng thái
+========================= */
+
+/**
+ * dùng cho:
+ * - PUT /api/Orders/{id}/pending
+ * - PUT /api/Orders/{id}/paid-processing
+ * - PUT /api/Orders/{id}/ready-to-ship
+ * - PUT /api/Orders/{id}/delivered-wait-confirm
+ * - PUT /api/Orders/{id}/completed
+ * - PUT /api/Orders/{id}/canceled
+ * - PUT /api/Orders/{id}/refunded
+ * - PUT /api/Orders/{id}/failed
+ */
+export type OrderStatusAction =
+  | "pending"
+  | "paid-processing"
+  | "ready-to-ship"
+  | "delivered-wait-confirm"
+  | "completed"
+  | "canceled"
+  | "refunded"
+  | "failed"
