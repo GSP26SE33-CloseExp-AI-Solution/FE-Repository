@@ -17,13 +17,8 @@ import type {
   CustomerOrderContext,
   OrderTimeSlot,
 } from "@/types/order.type"
-import {
-  cartStorage,
-  money,
-  orderContextStorage,
-} from "@/utils/orderStorage"
+import { cartStorage, money, orderContextStorage } from "@/utils/orderStorage"
 import { orderService } from "@/services/order.service"
-import { createOrder, createPaymentLink } from "@/services/payment.service"
 import { useAuthContext } from "@/contexts/AuthContext"
 import toast from "react-hot-toast"
 
@@ -65,17 +60,6 @@ const CheckoutPage: React.FC = () => {
   useEffect(() => {
     const syncCart = () => setCart(cartStorage.get())
     const syncCtx = () => setCtx(orderContextStorage.get())
-    // const syncCtx = () => {
-    //   const stored = orderContextStorage.get()
-
-    //   const nextCtx: CustomerOrderContext = {
-    //     ...stored,
-    //     orderId: undefined,
-    //   }
-
-    //   setCtx(nextCtx)
-    //   orderContextStorage.set(nextCtx)
-    // }
 
     syncCart()
     syncCtx()
@@ -118,7 +102,7 @@ const CheckoutPage: React.FC = () => {
 
         setTimeSlots([])
         setSlotsError(
-          error?.response?.data?.message || "Không thể tải danh sách khung giờ."
+          error?.response?.data?.message || error?.message || "Không thể tải danh sách khung giờ.",
         )
       } finally {
         if (mounted) setLoadingSlots(false)
@@ -138,14 +122,14 @@ const CheckoutPage: React.FC = () => {
     const exists = timeSlots.some((slot) => slot.timeSlotId === ctx.timeSlotId)
     if (exists) return
 
-    const nextCtx = {
+    const nextCtx: CustomerOrderContext = {
       ...ctx,
       timeSlotId: undefined,
     }
 
     console.warn(
       "CheckoutPage -> current timeSlotId is no longer valid, clearing from context:",
-      ctx.timeSlotId
+      ctx.timeSlotId,
     )
 
     setCtx(nextCtx)
@@ -155,17 +139,17 @@ const CheckoutPage: React.FC = () => {
 
   const breadcrumbs = useMemo(
     () => getBreadcrumbsByPath(location.pathname),
-    [location.pathname]
+    [location.pathname],
   )
 
   const subtotal = useMemo(
     () => cart.reduce((sum, item) => sum + item.price * item.qty, 0),
-    [cart]
+    [cart],
   )
 
   const totalQty = useMemo(
     () => cart.reduce((sum, item) => sum + item.qty, 0),
-    [cart]
+    [cart],
   )
 
   const deliveryFee = useMemo(() => {
@@ -177,11 +161,12 @@ const CheckoutPage: React.FC = () => {
 
   const canCheckoutBase = cart.length > 0 && orderContextStorage.isReady(ctx)
   const hasTimeSlot = !!ctx.timeSlotId
-  const canSubmit = canCheckoutBase && hasTimeSlot && !loadingSlots && timeSlots.length > 0
+  const canSubmit =
+    canCheckoutBase && hasTimeSlot && !loadingSlots && timeSlots.length > 0 && !paying
 
   const selectedTimeSlot = useMemo(
     () => timeSlots.find((slot) => slot.timeSlotId === ctx.timeSlotId),
-    [ctx.timeSlotId, timeSlots]
+    [ctx.timeSlotId, timeSlots],
   )
 
   const deliverySummary = useMemo(() => {
@@ -231,6 +216,11 @@ const CheckoutPage: React.FC = () => {
       return
     }
 
+    if (!ctx.deliveryMethodId) {
+      setSubmitError("Bạn chưa chọn phương thức giao / nhận.")
+      return
+    }
+
     if (!user?.userId) {
       toast.error("Vui lòng đăng nhập lại để thanh toán.")
       return
@@ -254,14 +244,15 @@ const CheckoutPage: React.FC = () => {
     orderContextStorage.set(nextCtx)
 
     try {
-      const order = await createOrder({
+      const order = await orderService.createOrder({
         userId: user.userId,
         timeSlotId: ctx.timeSlotId,
-        deliveryType: ctx.deliveryMethodId!,
+        deliveryType: ctx.deliveryMethodId,
         totalAmount: subtotal,
         discountAmount: 0,
         finalAmount: total,
         deliveryFee,
+        status: "Pending",
         ...(ctx.deliveryMethodId === "PICKUP"
           ? { collectionId: resolvedCollectionId }
           : {}),
@@ -271,8 +262,8 @@ const CheckoutPage: React.FC = () => {
           ctx.deliveryMethodId === "DELIVERY"
             ? ctx.addressText || undefined
             : orderContextStorage.getResolvedCollectionAddress(ctx) ||
-              orderContextStorage.getResolvedCollectionName(ctx) ||
-              undefined,
+            orderContextStorage.getResolvedCollectionName(ctx) ||
+            undefined,
         orderItems: cart.map((item) => ({
           lotId: item.lotId,
           quantity: item.qty,
@@ -281,7 +272,7 @@ const CheckoutPage: React.FC = () => {
       })
 
       const origin = window.location.origin
-      const { checkoutUrl } = await createPaymentLink({
+      const { checkoutUrl } = await orderService.createPaymentLink({
         orderId: order.orderId,
         returnUrl: `${origin}/payment-return`,
         cancelUrl: `${origin}/payment-return`,
@@ -291,7 +282,9 @@ const CheckoutPage: React.FC = () => {
     } catch (err: unknown) {
       const message =
         err instanceof Error ? err.message : "Không thể tạo thanh toán"
+      console.error("CheckoutPage.handlePayAndRedirect -> error:", err)
       toast.error(message)
+      setSubmitError(message)
       setPaying(false)
     }
   }
@@ -396,10 +389,10 @@ const CheckoutPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handlePayAndRedirect}
-                    disabled={!canSubmit || paying}
+                    disabled={!canSubmit}
                     className={cn(
                       primaryBtn,
-                      (!canSubmit || paying) && "cursor-not-allowed opacity-60"
+                      !canSubmit && "cursor-not-allowed opacity-60",
                     )}
                   >
                     {paying ? "Đang chuyển sang cổng thanh toán..." : "Thanh toán & đặt đơn"}
@@ -483,14 +476,14 @@ const CheckoutPage: React.FC = () => {
                                 "rounded-[20px] p-3.5 text-left ring-1 transition",
                                 active
                                   ? "bg-sky-100/70 ring-sky-200"
-                                  : "bg-white/70 ring-slate-200 hover:bg-sky-50 hover:ring-sky-200"
+                                  : "bg-white/70 ring-slate-200 hover:bg-sky-50 hover:ring-sky-200",
                               )}
                             >
                               <div className="flex items-start gap-3">
                                 <div
                                   className={cn(
                                     "mt-0.5 grid h-9 w-9 place-items-center rounded-xl ring-1",
-                                    active ? "bg-white ring-sky-200" : "bg-white ring-slate-200"
+                                    active ? "bg-white ring-sky-200" : "bg-white ring-slate-200",
                                   )}
                                 >
                                   <Clock3
@@ -629,7 +622,6 @@ const CheckoutPage: React.FC = () => {
                           ? "Phí giao hàng"
                           : "Phí nhận tại điểm tập kết"}
                       </span>
-                      {/* không tính phí khi tự nhận tại điểm tập kết */}
                       <span className="font-semibold text-slate-900">{money(deliveryFee)}</span>
                     </div>
 
@@ -653,11 +645,11 @@ const CheckoutPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={handlePayAndRedirect}
-                    disabled={!canSubmit || paying}
+                    disabled={!canSubmit}
                     className={cn(
                       "mt-4 w-full",
                       primaryBtn,
-                      (!canSubmit || paying) && "cursor-not-allowed opacity-60"
+                      !canSubmit && "cursor-not-allowed opacity-60",
                     )}
                   >
                     {paying
