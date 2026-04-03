@@ -1,77 +1,13 @@
 import axios from "axios"
 import axiosClient from "@/utils/axiosClient"
 import type { ApiResponse } from "@/types/api.types"
-
-/* ─── Types matching BE DTOs ─── */
-
-export interface CreateOrderItemPayload {
-    lotId: string
-    quantity: number
-    unitPrice: number
-}
-
-export interface CreateOrderPayload {
-    userId: string
-    timeSlotId: string
-    collectionId?: string
-    deliveryType: string
-    totalAmount: number
-    discountAmount: number
-    finalAmount: number
-    deliveryFee: number
-    status?: string
-    addressId?: string
-    promotionId?: string
-    deliveryGroupId?: string
-    deliveryNote?: string
-    cancelDeadline?: string
-    orderItems: CreateOrderItemPayload[]
-}
-
-export interface OrderResponse {
-    orderId: string
-    orderCode: string
-    userId: string
-    timeSlotId: string
-    collectionId?: string
-    deliveryType: string
-    totalAmount: number
-    discountAmount: number
-    finalAmount: number
-    deliveryFee: number
-    status: string
-    orderDate: string
-    createdAt: string
-    updatedAt: string
-    orderItems: Array<{
-        orderItemId: string
-        orderId: string
-        lotId: string
-        quantity: number
-        unitPrice: number
-        totalPrice: number
-        productName?: string
-    }>
-}
-
-export interface CreatePaymentLinkPayload {
-    orderId: string
-    returnUrl: string
-    cancelUrl: string
-}
-
-export interface PaymentLinkResponse {
-    checkoutUrl: string
-}
-
-export interface ConfirmPaymentResponse {
-    success: boolean
-    message?: string
-    errorCode?: string
-    payOsStatus?: string
-    amountPaid?: number
-    amount?: number
-}
+import type {
+    ConfirmPaymentResponse,
+    CreateOrderForPaymentPayload,
+    CreatePaymentLinkPayload,
+    PaymentLinkResponse,
+    PaymentOrderResponse,
+} from "@/types/payment.types"
 
 /* ─── Helpers ─── */
 
@@ -88,10 +24,10 @@ const getAxiosErrorMessage = (error: unknown, fallback: string): string => {
 /* ─── API calls ─── */
 
 export const createOrder = async (
-    payload: CreateOrderPayload,
-): Promise<OrderResponse> => {
+    payload: CreateOrderForPaymentPayload,
+): Promise<PaymentOrderResponse> => {
     try {
-        const res = await axiosClient.post<ApiResponse<OrderResponse>>(
+        const res = await axiosClient.post<ApiResponse<PaymentOrderResponse>>(
             "/Orders",
             payload,
         )

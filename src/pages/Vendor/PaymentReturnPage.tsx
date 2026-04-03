@@ -8,10 +8,8 @@ import {
     XCircle,
 } from "lucide-react"
 
-import {
-    confirmPaymentWithRetry,
-    type ConfirmPaymentResponse,
-} from "@/services/payment.service"
+import { confirmPaymentWithRetry } from "@/services/payment.service"
+import type { ConfirmPaymentResponse } from "@/types/payment.types"
 import { cartStorage } from "@/utils/orderStorage"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 
