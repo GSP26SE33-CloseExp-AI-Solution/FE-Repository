@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react";
 import {
     Building2,
     Check,
@@ -9,67 +9,67 @@ import {
     Search,
     Truck,
     X,
-} from "lucide-react"
+} from "lucide-react";
 
-import MapboxLocationPicker from "./MapboxLocationPicker"
-import { supermarketService } from "@/services/supermarket.service"
-import type { PickupPoint, Supermarket } from "@/types/supermarket.type"
+import MapboxLocationPicker from "./MapboxLocationPicker";
+import { supermarketService } from "@/services/supermarket.service";
+import type { PickupPoint, Supermarket } from "@/types/supermarket.type";
 import {
     administrativeService,
     type AdministrativeDistrict,
     type AdministrativeWard,
-} from "@/services/administrative.service"
-import type { CustomerOrderContext } from "@/types/order.type"
+} from "@/services/administrative.service";
+import type { CustomerOrderContext } from "@/types/order.type";
 
-type DeliveryMethodId = "DELIVERY" | "PICKUP"
-type DeliveryContext = CustomerOrderContext
+type DeliveryMethodId = "DELIVERY" | "PICKUP";
+type DeliveryContext = CustomerOrderContext;
 
 type SearchResultItem = {
-    id: string
-    displayName: string
-    lat: number
-    lng: number
-}
+    id: string;
+    displayName: string;
+    lat: number;
+    lng: number;
+};
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
-    classes.filter(Boolean).join(" ")
+    classes.filter(Boolean).join(" ");
 
 const primaryBtn =
-    "rounded-2xl bg-sky-500 text-white font-semibold transition hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+    "rounded-2xl bg-sky-500 text-white font-semibold transition hover:bg-sky-600 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50";
 
 const secondaryBtn =
-    "rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50"
+    "rounded-2xl border border-sky-200 bg-sky-50 text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-50";
 
 const googleMapsUrl = (lat: number, lng: number) =>
-    `https://www.google.com/maps?q=${lat},${lng}`
+    `https://www.google.com/maps?q=${lat},${lng}`;
 
-const toRad = (value: number) => (value * Math.PI) / 180
+const toRad = (value: number) => (value * Math.PI) / 180;
 
 const haversineKm = (
     a: { lat: number; lng: number },
-    b: { lat: number; lng: number }
+    b: { lat: number; lng: number },
 ) => {
-    const R = 6371
-    const dLat = toRad(b.lat - a.lat)
-    const dLng = toRad(b.lng - a.lng)
+    const R = 6371;
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
 
     const x =
         Math.sin(dLat / 2) ** 2 +
         Math.cos(toRad(a.lat)) *
-        Math.cos(toRad(b.lat)) *
-        Math.sin(dLng / 2) ** 2
+            Math.cos(toRad(b.lat)) *
+            Math.sin(dLng / 2) ** 2;
 
-    return 2 * R * Math.asin(Math.sqrt(x))
-}
+    return 2 * R * Math.asin(Math.sqrt(x));
+};
 
 type Props = {
-    open: boolean
-    initialValue?: DeliveryContext
-    onDone: (value: DeliveryContext) => void
-    onClose: () => void
-}
+    open: boolean;
+    initialValue?: DeliveryContext;
+    onDone: (value: DeliveryContext) => void;
+    onClose: () => void;
+};
 
-const HCMC_NAME = "Thành phố Hồ Chí Minh"
+const HCMC_NAME = "Thành phố Hồ Chí Minh";
 
 const normalizeText = (value?: string) =>
     (value ?? "")
@@ -78,7 +78,7 @@ const normalizeText = (value?: string) =>
         .replace(/đ/g, "d")
         .replace(/Đ/g, "D")
         .toLowerCase()
-        .trim()
+        .trim();
 
 const locationSourceLabel: Record<
     NonNullable<DeliveryContext["locationSource"]>,
@@ -87,240 +87,256 @@ const locationSourceLabel: Record<
     gps: "Vị trí hiện tại",
     search: "Tìm theo địa chỉ",
     map: "Chỉnh trên bản đồ",
-}
+};
 
-const DeliveryGateModal = ({
-    open,
-    initialValue,
-    onDone,
-    onClose,
-}: Props) => {
-    const [step, setStep] = useState<1 | 2>(1)
+const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
+    const [step, setStep] = useState<1 | 2>(1);
 
-    const [deliveryMethodId, setDeliveryMethodId] = useState<DeliveryMethodId | "">(
-        initialValue?.deliveryMethodId ?? ""
-    )
+    const [deliveryMethodId, setDeliveryMethodId] = useState<
+        DeliveryMethodId | ""
+    >(initialValue?.deliveryMethodId ?? "");
 
-    const [lat, setLat] = useState<number | null>(initialValue?.lat ?? null)
-    const [lng, setLng] = useState<number | null>(initialValue?.lng ?? null)
-    const [addressText, setAddressText] = useState(initialValue?.addressText ?? "")
-    const [locationSource, setLocationSource] = useState<"gps" | "search" | "map">(
-        initialValue?.locationSource ?? "gps"
-    )
+    const [lat, setLat] = useState<number | null>(initialValue?.lat ?? null);
+    const [lng, setLng] = useState<number | null>(initialValue?.lng ?? null);
+    const [addressText, setAddressText] = useState(
+        initialValue?.addressText ?? "",
+    );
+    const [locationSource, setLocationSource] = useState<
+        "gps" | "search" | "map"
+    >(initialValue?.locationSource ?? "gps");
 
-    const [districts, setDistricts] = useState<AdministrativeDistrict[]>([])
-    const [wards, setWards] = useState<AdministrativeWard[]>([])
-    const [districtCode, setDistrictCode] = useState<number | "">("")
-    const [wardCode, setWardCode] = useState<number | "">("")
-    const [streetLine, setStreetLine] = useState("")
+    const [districts, setDistricts] = useState<AdministrativeDistrict[]>([]);
+    const [wards, setWards] = useState<AdministrativeWard[]>([]);
+    const [districtCode, setDistrictCode] = useState<number | "">("");
+    const [wardCode, setWardCode] = useState<number | "">("");
+    const [streetLine, setStreetLine] = useState("");
 
-    const [searching, setSearching] = useState(false)
-    const [searchResults, setSearchResults] = useState<SearchResultItem[]>([])
-    const [administrativeLoading, setAdministrativeLoading] = useState(false)
+    const [searching, setSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<SearchResultItem[]>([]);
+    const [administrativeLoading, setAdministrativeLoading] = useState(false);
 
-    const [pickupPointId, setPickupPointId] = useState(initialValue?.pickupPointId ?? "")
-    const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([])
-    const [pickupLoading, setPickupLoading] = useState(false)
-    const [pickupError, setPickupError] = useState("")
-    const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(
-        null
-    )
+    const [pickupPointId, setPickupPointId] = useState(
+        initialValue?.pickupPointId ?? "",
+    );
+    const [pickupPoints, setPickupPoints] = useState<PickupPoint[]>([]);
+    const [pickupLoading, setPickupLoading] = useState(false);
+    const [pickupError, setPickupError] = useState("");
+    const [currentLocation, setCurrentLocation] = useState<{
+        lat: number;
+        lng: number;
+    } | null>(null);
 
-    const [submitting, setSubmitting] = useState(false)
-    const [submitInfo, setSubmitInfo] = useState("")
-    const [error, setError] = useState("")
-    const [mapStatus, setMapStatus] = useState<"idle" | "loading" | "loaded" | "error">("idle")
+    const [submitting, setSubmitting] = useState(false);
+    const [submitInfo, setSubmitInfo] = useState("");
+    const [error, setError] = useState("");
+    const [mapStatus, setMapStatus] = useState<
+        "idle" | "loading" | "loaded" | "error"
+    >("idle");
 
     useEffect(() => {
-        if (!open) return
+        if (!open) return;
 
         if (initialValue?.deliveryMethodId) {
-            setDeliveryMethodId(initialValue.deliveryMethodId)
-            setStep(2)
+            setDeliveryMethodId(initialValue.deliveryMethodId);
+            setStep(2);
         } else {
-            setStep(1)
+            setStep(1);
         }
 
-        setLat(initialValue?.lat ?? null)
-        setLng(initialValue?.lng ?? null)
-        setAddressText(initialValue?.addressText ?? "")
-        setPickupPointId(initialValue?.pickupPointId ?? "")
-        setLocationSource(initialValue?.locationSource ?? "gps")
+        setLat(initialValue?.lat ?? null);
+        setLng(initialValue?.lng ?? null);
+        setAddressText(initialValue?.addressText ?? "");
+        setPickupPointId(initialValue?.pickupPointId ?? "");
+        setLocationSource(initialValue?.locationSource ?? "gps");
 
-        setDistrictCode("")
-        setWardCode("")
-        setStreetLine("")
-        setWards([])
-        setSearchResults([])
-        setError("")
-        setPickupError("")
-        setSubmitInfo("")
-        setMapStatus("idle")
-    }, [open, initialValue])
-
-    useEffect(() => {
-        if (!open) return
-        if (step !== 2 || deliveryMethodId !== "DELIVERY") return
-
-            ; (async () => {
-                try {
-                    setAdministrativeLoading(true)
-                    const items = await administrativeService.getHcmDistricts()
-                    setDistricts(items)
-                } catch (e: any) {
-                    setError(e?.message ?? "Không tải được danh sách quận/huyện.")
-                } finally {
-                    setAdministrativeLoading(false)
-                }
-            })()
-    }, [open, step, deliveryMethodId])
+        setDistrictCode("");
+        setWardCode("");
+        setStreetLine("");
+        setWards([]);
+        setSearchResults([]);
+        setError("");
+        setPickupError("");
+        setSubmitInfo("");
+        setMapStatus("idle");
+    }, [open, initialValue]);
 
     useEffect(() => {
-        if (!open) return
-        if (!districtCode) {
-            setWards([])
-            setWardCode("")
-            return
-        }
-
-        ; (async () => {
+        if (!open) return;
+        if (step !== 2 || deliveryMethodId !== "DELIVERY") return;
+        (async () => {
             try {
-                setAdministrativeLoading(true)
-                const items = await administrativeService.getWardsByDistrictCode(Number(districtCode))
-                setWards(items)
+                setAdministrativeLoading(true);
+                const items = await administrativeService.getHcmDistricts();
+                setDistricts(items);
             } catch (e: any) {
-                setError(e?.message ?? "Không tải được danh sách phường/xã.")
+                setError(e?.message ?? "Không tải được danh sách quận/huyện.");
             } finally {
-                setAdministrativeLoading(false)
+                setAdministrativeLoading(false);
             }
-        })()
-    }, [open, districtCode])
+        })();
+    }, [open, step, deliveryMethodId]);
 
     useEffect(() => {
-        if (!open) return
-        if (step !== 2 || deliveryMethodId !== "PICKUP") return
+        if (!open) return;
+        if (!districtCode) {
+            setWards([]);
+            setWardCode("");
+            return;
+        }
 
-            ; (async () => {
-                try {
-                    setPickupLoading(true)
-                    setPickupError("")
-                    const items = await supermarketService.getPickupPoints()
-                    setPickupPoints(items)
-                } catch (e: any) {
-                    setPickupError(
-                        e?.response?.data?.message ??
+        (async () => {
+            try {
+                setAdministrativeLoading(true);
+                const items =
+                    await administrativeService.getWardsByDistrictCode(
+                        Number(districtCode),
+                    );
+                setWards(items);
+            } catch (e: any) {
+                setError(e?.message ?? "Không tải được danh sách phường/xã.");
+            } finally {
+                setAdministrativeLoading(false);
+            }
+        })();
+    }, [open, districtCode]);
+
+    useEffect(() => {
+        if (!open) return;
+        if (step !== 2 || deliveryMethodId !== "PICKUP") return;
+        (async () => {
+            try {
+                setPickupLoading(true);
+                setPickupError("");
+                const items = await supermarketService.getPickupPoints();
+                setPickupPoints(items);
+            } catch (e: any) {
+                setPickupError(
+                    e?.response?.data?.message ??
                         e?.message ??
-                        "Không tải được điểm nhận hàng."
-                    )
-                } finally {
-                    setPickupLoading(false)
-                }
-            })()
-    }, [open, step, deliveryMethodId])
+                        "Không tải được điểm nhận hàng.",
+                );
+            } finally {
+                setPickupLoading(false);
+            }
+        })();
+    }, [open, step, deliveryMethodId]);
 
     const selectedDistrict = useMemo(
         () => districts.find((item) => item.code === Number(districtCode)),
-        [districts, districtCode]
-    )
+        [districts, districtCode],
+    );
 
     const selectedWard = useMemo(
         () => wards.find((item) => item.code === Number(wardCode)),
-        [wards, wardCode]
-    )
+        [wards, wardCode],
+    );
 
     const selectedPickupPoint = useMemo(
         () => pickupPoints.find((item) => item.pickupPointId === pickupPointId),
-        [pickupPoints, pickupPointId]
-    )
+        [pickupPoints, pickupPointId],
+    );
 
-    const hasResolvedLocation = lat != null && lng != null && !!addressText.trim()
+    const hasResolvedLocation =
+        lat != null && lng != null && !!addressText.trim();
 
     const pickupPointsSorted = useMemo(() => {
-        if (!currentLocation) return pickupPoints
+        if (!currentLocation) return pickupPoints;
 
         return [...pickupPoints]
             .map((item) => ({
                 ...item,
-                distanceKm: haversineKm(currentLocation, { lat: item.lat, lng: item.lng }),
+                distanceKm: haversineKm(currentLocation, {
+                    lat: item.lat,
+                    lng: item.lng,
+                }),
             }))
-            .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999))
-    }, [pickupPoints, currentLocation])
+            .sort((a, b) => (a.distanceKm ?? 999) - (b.distanceKm ?? 999));
+    }, [pickupPoints, currentLocation]);
 
     const syncAdministrativeFromReverse = async (params: {
-        district?: string
-        region?: string
+        district?: string;
+        region?: string;
     }) => {
         try {
-            const districtKeyword = normalizeText(params.district)
-            const regionKeyword = normalizeText(params.region)
+            const districtKeyword = normalizeText(params.district);
+            const regionKeyword = normalizeText(params.region);
 
             const districtList =
-                districts.length > 0 ? districts : await administrativeService.getHcmDistricts()
+                districts.length > 0
+                    ? districts
+                    : await administrativeService.getHcmDistricts();
 
             if (!districts.length) {
-                setDistricts(districtList)
+                setDistricts(districtList);
             }
 
             const matchedDistrict = districtList.find((d) => {
-                const name = normalizeText(d.name)
+                const name = normalizeText(d.name);
                 return (
                     (districtKeyword &&
-                        (name.includes(districtKeyword) || districtKeyword.includes(name))) ||
+                        (name.includes(districtKeyword) ||
+                            districtKeyword.includes(name))) ||
                     (regionKeyword &&
-                        (name.includes(regionKeyword) || regionKeyword.includes(name)))
-                )
-            })
+                        (name.includes(regionKeyword) ||
+                            regionKeyword.includes(name)))
+                );
+            });
 
-            if (!matchedDistrict) return
+            if (!matchedDistrict) return;
 
-            setDistrictCode(matchedDistrict.code)
+            setDistrictCode(matchedDistrict.code);
 
-            const wardList = await administrativeService.getWardsByDistrictCode(matchedDistrict.code)
-            setWards(wardList)
+            const wardList = await administrativeService.getWardsByDistrictCode(
+                matchedDistrict.code,
+            );
+            setWards(wardList);
         } catch {
             //
         }
-    }
+    };
 
     const applyReverseGeocodeToForm = async (
         nextLat: number,
         nextLng: number,
-        source: "gps" | "search" | "map"
+        source: "gps" | "search" | "map",
     ) => {
-        setLat(nextLat)
-        setLng(nextLng)
-        setLocationSource(source)
-        setError("")
-        setSubmitInfo("")
-        setSearchResults([])
+        setLat(nextLat);
+        setLng(nextLng);
+        setLocationSource(source);
+        setError("");
+        setSubmitInfo("");
+        setSearchResults([]);
 
         try {
-            const reverse = await supermarketService.reverseGeocode(nextLat, nextLng)
+            const reverse = await supermarketService.reverseGeocode(
+                nextLat,
+                nextLng,
+            );
 
             const prettyAddress =
                 reverse?.fullAddress?.trim() ||
                 reverse?.placeName?.trim() ||
-                `${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`
+                `${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`;
 
-            setAddressText(prettyAddress)
+            setAddressText(prettyAddress);
 
             await syncAdministrativeFromReverse({
                 district: reverse?.district,
                 region: reverse?.region,
-            })
+            });
         } catch {
-            setAddressText(`${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`)
+            setAddressText(`${nextLat.toFixed(6)}, ${nextLng.toFixed(6)}`);
         }
-    }
+    };
 
     const requestCurrentLocation = () => {
-        setError("")
-        setSubmitInfo("")
-        setSearchResults([])
+        setError("");
+        setSubmitInfo("");
+        setSearchResults([]);
 
         if (!navigator.geolocation) {
-            setError("Trình duyệt không hỗ trợ định vị.")
-            return
+            setError("Trình duyệt không hỗ trợ định vị.");
+            return;
         }
 
         navigator.geolocation.getCurrentPosition(
@@ -328,88 +344,103 @@ const DeliveryGateModal = ({
                 await applyReverseGeocodeToForm(
                     pos.coords.latitude,
                     pos.coords.longitude,
-                    "gps"
-                )
+                    "gps",
+                );
             },
             () => {
-                setError("Bạn chưa cấp quyền vị trí hoặc thiết bị không lấy được GPS.")
+                setError(
+                    "Bạn chưa cấp quyền vị trí hoặc thiết bị không lấy được GPS.",
+                );
             },
-            { enableHighAccuracy: true, timeout: 10000 }
-        )
-    }
+            { enableHighAccuracy: true, timeout: 10000 },
+        );
+    };
 
     const handleSearchAddress = async () => {
         try {
-            setError("")
-            setSubmitInfo("")
-            setSearching(true)
-            setSearchResults([])
+            setError("");
+            setSubmitInfo("");
+            setSearching(true);
+            setSearchResults([]);
 
-            const parts = [streetLine, selectedWard?.name, selectedDistrict?.name, HCMC_NAME]
+            const parts = [
+                streetLine,
+                selectedWard?.name,
+                selectedDistrict?.name,
+                HCMC_NAME,
+            ]
                 .map((item) => item?.trim())
-                .filter(Boolean)
+                .filter(Boolean);
 
             if (!parts.length) {
-                setError("Bạn hãy nhập ít nhất một phần địa chỉ để tìm kiếm.")
-                return
+                setError("Bạn hãy nhập ít nhất một phần địa chỉ để tìm kiếm.");
+                return;
             }
 
-            const query = parts.join(", ")
-            const suggestions = await supermarketService.suggestGeocode(query, 5)
+            const query = parts.join(", ");
+            const suggestions = await supermarketService.suggestGeocode(
+                query,
+                5,
+            );
 
-            const mappedResults: SearchResultItem[] = suggestions.map((item, index) => ({
-                id: `${item.latitude}-${item.longitude}-${index}`,
-                displayName: item.fullAddress || item.placeName || query,
-                lat: Number(item.latitude),
-                lng: Number(item.longitude),
-            }))
+            const mappedResults: SearchResultItem[] = suggestions.map(
+                (item, index) => ({
+                    id: `${item.latitude}-${item.longitude}-${index}`,
+                    displayName: item.fullAddress || item.placeName || query,
+                    lat: Number(item.latitude),
+                    lng: Number(item.longitude),
+                }),
+            );
 
             if (mappedResults.length) {
-                setSearchResults(mappedResults)
-                return
+                setSearchResults(mappedResults);
+                return;
             }
 
-            const forward = await supermarketService.forwardGeocode(query)
+            const forward = await supermarketService.forwardGeocode(query);
 
             if (forward) {
                 setSearchResults([
                     {
                         id: `${forward.latitude}-${forward.longitude}-0`,
-                        displayName: forward.fullAddress || forward.placeName || query,
+                        displayName:
+                            forward.fullAddress || forward.placeName || query,
                         lat: Number(forward.latitude),
                         lng: Number(forward.longitude),
                     },
-                ])
-                return
+                ]);
+                return;
             }
 
-            setError("Mình chưa tìm thấy địa chỉ phù hợp. Bạn thử nhập chi tiết hơn hoặc chỉnh trên bản đồ nhé.")
+            setError(
+                "Mình chưa tìm thấy địa chỉ phù hợp. Bạn thử nhập chi tiết hơn hoặc chỉnh trên bản đồ nhé.",
+            );
         } catch (e: any) {
             setError(
                 e?.response?.data?.message ??
-                e?.message ??
-                "Không tìm được địa chỉ."
-            )
+                    e?.message ??
+                    "Không tìm được địa chỉ.",
+            );
         } finally {
-            setSearching(false)
+            setSearching(false);
         }
-    }
+    };
 
     const handleSelectSearchResult = async (item: SearchResultItem) => {
-        await applyReverseGeocodeToForm(item.lat, item.lng, "search")
-        setSearchResults([])
-    }
+        await applyReverseGeocodeToForm(item.lat, item.lng, "search");
+        setSearchResults([]);
+    };
 
     const handlePickOnMap = async (value: { lat: number; lng: number }) => {
-        await applyReverseGeocodeToForm(value.lat, value.lng, "map")
-    }
+        await applyReverseGeocodeToForm(value.lat, value.lng, "map");
+    };
 
     const requestCurrentLocationForPickupSort = () => {
-        setPickupError("")
+        setPickupError("");
 
         if (!navigator.geolocation) {
-            setPickupError("Trình duyệt không hỗ trợ định vị.")
-            return
+            setPickupError("Trình duyệt không hỗ trợ định vị.");
+            return;
         }
 
         navigator.geolocation.getCurrentPosition(
@@ -417,64 +448,79 @@ const DeliveryGateModal = ({
                 setCurrentLocation({
                     lat: pos.coords.latitude,
                     lng: pos.coords.longitude,
-                })
+                });
             },
             () => {
-                setPickupError("Không lấy được vị trí hiện tại để sắp xếp khoảng cách.")
+                setPickupError(
+                    "Không lấy được vị trí hiện tại để sắp xếp khoảng cách.",
+                );
             },
-            { enableHighAccuracy: true, timeout: 10000 }
-        )
-    }
+            { enableHighAccuracy: true, timeout: 10000 },
+        );
+    };
 
     const handleContinueStep1 = () => {
-        if (!deliveryMethodId) return
-        setError("")
-        setSubmitInfo("")
-        setStep(2)
-    }
+        if (!deliveryMethodId) return;
+        setError("");
+        setSubmitInfo("");
+        setStep(2);
+    };
 
     const handleSubmit = async () => {
         try {
-            setError("")
-            setSubmitInfo("")
-            setSubmitting(true)
+            setError("");
+            setSubmitInfo("");
+            setSubmitting(true);
 
             if (!deliveryMethodId) {
-                setError("Bạn chưa chọn cách nhận hàng.")
-                return
+                setError("Bạn chưa chọn cách nhận hàng.");
+                return;
             }
 
             if (deliveryMethodId === "DELIVERY") {
                 if (lat == null || lng == null) {
-                    setError("Bạn chưa chọn được vị trí giao hàng.")
-                    return
+                    setError("Bạn chưa chọn được vị trí giao hàng.");
+                    return;
                 }
 
                 if (!addressText.trim()) {
-                    setError("Bạn chưa có địa chỉ giao hàng.")
-                    return
+                    setError("Bạn chưa có địa chỉ giao hàng.");
+                    return;
                 }
 
-                setSubmitInfo("Đang tìm các siêu thị phù hợp gần bạn...")
+                setSubmitInfo("Đang tìm các siêu thị phù hợp gần bạn...");
 
-                const supermarkets = await supermarketService.getNearbySupermarketsByClientFilter({
-                    lat,
-                    lng,
-                    radiusKm: 5,
-                })
+                const supermarkets =
+                    await supermarketService.getNearbySupermarketsByClientFilter(
+                        {
+                            lat,
+                            lng,
+                            radiusKm: 5,
+                        },
+                    );
 
-                console.log("[DeliveryGateModal][DELIVERY] selected location =", {
-                    lat,
-                    lng,
-                    addressText,
-                    locationSource,
-                })
-                console.log("[DeliveryGateModal][DELIVERY] nearby supermarkets =", supermarkets)
+                console.log(
+                    "[DeliveryGateModal][DELIVERY] selected location =",
+                    {
+                        lat,
+                        lng,
+                        addressText,
+                        locationSource,
+                    },
+                );
+                console.log(
+                    "[DeliveryGateModal][DELIVERY] nearby supermarkets =",
+                    supermarkets,
+                );
 
                 if (!supermarkets.length) {
-                    console.warn("[DeliveryGateModal][DELIVERY] no nearby supermarkets found")
-                    setError("Chưa tìm thấy siêu thị phù hợp gần khu vực này. Bạn thử vị trí khác nhé.")
-                    return
+                    console.warn(
+                        "[DeliveryGateModal][DELIVERY] no nearby supermarkets found",
+                    );
+                    setError(
+                        "Chưa tìm thấy siêu thị phù hợp gần khu vực này. Bạn thử vị trí khác nhé.",
+                    );
+                    return;
                 }
 
                 onDone({
@@ -489,30 +535,41 @@ const DeliveryGateModal = ({
                     pickupLat: undefined,
                     pickupLng: undefined,
                     nearbySupermarkets: supermarkets,
-                })
-                return
+                });
+                return;
             }
 
             if (!selectedPickupPoint) {
-                setError("Bạn chưa chọn điểm nhận hàng.")
-                return
+                setError("Bạn chưa chọn điểm nhận hàng.");
+                return;
             }
 
-            setSubmitInfo("Đang tìm các siêu thị phù hợp quanh điểm nhận...")
+            setSubmitInfo("Đang tìm các siêu thị phù hợp quanh điểm nhận...");
 
-            const supermarkets = await supermarketService.getNearbySupermarketsByClientFilter({
-                lat: selectedPickupPoint.lat,
-                lng: selectedPickupPoint.lng,
-                radiusKm: 5,
-            })
+            const supermarkets =
+                await supermarketService.getNearbySupermarketsByClientFilter({
+                    lat: selectedPickupPoint.lat,
+                    lng: selectedPickupPoint.lng,
+                    radiusKm: 5,
+                });
 
-            console.log("[DeliveryGateModal][PICKUP] selected pickup point =", selectedPickupPoint)
-            console.log("[DeliveryGateModal][PICKUP] nearby supermarkets =", supermarkets)
+            console.log(
+                "[DeliveryGateModal][PICKUP] selected pickup point =",
+                selectedPickupPoint,
+            );
+            console.log(
+                "[DeliveryGateModal][PICKUP] nearby supermarkets =",
+                supermarkets,
+            );
 
             if (!supermarkets.length) {
-                console.warn("[DeliveryGateModal][PICKUP] no nearby supermarkets found")
-                setError("Chưa tìm thấy siêu thị phù hợp quanh điểm nhận này. Bạn thử điểm khác nhé.")
-                return
+                console.warn(
+                    "[DeliveryGateModal][PICKUP] no nearby supermarkets found",
+                );
+                setError(
+                    "Chưa tìm thấy siêu thị phù hợp quanh điểm nhận này. Bạn thử điểm khác nhé.",
+                );
+                return;
             }
 
             onDone({
@@ -527,20 +584,20 @@ const DeliveryGateModal = ({
                 addressText: undefined,
                 locationSource: undefined,
                 nearbySupermarkets: supermarkets,
-            })
+            });
         } catch (e: any) {
             setError(
                 e?.response?.data?.message ??
-                e?.message ??
-                "Có lỗi xảy ra khi lưu lựa chọn."
-            )
+                    e?.message ??
+                    "Có lỗi xảy ra khi lưu lựa chọn.",
+            );
         } finally {
-            setSubmitting(false)
-            setSubmitInfo("")
+            setSubmitting(false);
+            setSubmitInfo("");
         }
-    }
+    };
 
-    if (!open) return null
+    if (!open) return null;
 
     return (
         <div className="fixed inset-0 z-[9999] bg-sky-950/20 backdrop-blur-sm">
@@ -559,7 +616,8 @@ const DeliveryGateModal = ({
                                 </h2>
 
                                 <p className="mt-1 text-[14px] font-medium leading-6 text-slate-500">
-                                    Chọn cách nhận phù hợp và xác nhận khu vực để xem những ưu đãi gần bạn.
+                                    Chọn cách nhận phù hợp và xác nhận khu vực
+                                    để xem những ưu đãi gần bạn.
                                 </p>
                             </div>
 
@@ -579,11 +637,20 @@ const DeliveryGateModal = ({
                                     "rounded-2xl border px-4 py-3",
                                     step === 1
                                         ? "border-sky-300 bg-sky-100 text-sky-900"
-                                        : "border-slate-200 bg-white"
+                                        : "border-slate-200 bg-white",
                                 )}
                             >
-                                <div className="text-[13px] font-semibold">Bước 1</div>
-                                <div className={cn("mt-1 text-[12px]", step === 1 ? "text-sky-700" : "text-slate-500")}>
+                                <div className="text-[13px] font-semibold">
+                                    Bước 1
+                                </div>
+                                <div
+                                    className={cn(
+                                        "mt-1 text-[12px]",
+                                        step === 1
+                                            ? "text-sky-700"
+                                            : "text-slate-500",
+                                    )}
+                                >
                                     Chọn cách nhận
                                 </div>
                             </div>
@@ -593,11 +660,20 @@ const DeliveryGateModal = ({
                                     "rounded-2xl border px-4 py-3",
                                     step === 2
                                         ? "border-sky-300 bg-sky-100 text-sky-900"
-                                        : "border-slate-200 bg-white"
+                                        : "border-slate-200 bg-white",
                                 )}
                             >
-                                <div className="text-[13px] font-semibold">Bước 2</div>
-                                <div className={cn("mt-1 text-[12px]", step === 2 ? "text-sky-700" : "text-slate-500")}>
+                                <div className="text-[13px] font-semibold">
+                                    Bước 2
+                                </div>
+                                <div
+                                    className={cn(
+                                        "mt-1 text-[12px]",
+                                        step === 2
+                                            ? "text-sky-700"
+                                            : "text-slate-500",
+                                    )}
+                                >
                                     Xác nhận khu vực
                                 </div>
                             </div>
@@ -609,12 +685,14 @@ const DeliveryGateModal = ({
                             <div className="grid gap-4">
                                 <button
                                     type="button"
-                                    onClick={() => setDeliveryMethodId("DELIVERY")}
+                                    onClick={() =>
+                                        setDeliveryMethodId("DELIVERY")
+                                    }
                                     className={cn(
                                         "rounded-[24px] border p-5 text-left transition",
                                         deliveryMethodId === "DELIVERY"
                                             ? "border-sky-300 bg-sky-100 text-sky-900 shadow-sm"
-                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60"
+                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60",
                                     )}
                                 >
                                     <div className="flex items-start gap-4">
@@ -623,22 +701,27 @@ const DeliveryGateModal = ({
                                                 "mt-1 rounded-2xl p-2.5",
                                                 deliveryMethodId === "DELIVERY"
                                                     ? "bg-white text-sky-700"
-                                                    : "bg-sky-50 text-sky-700"
+                                                    : "bg-sky-50 text-sky-700",
                                             )}
                                         >
                                             <Truck size={18} />
                                         </div>
                                         <div>
-                                            <div className="text-[16px] font-semibold">Giao tận nơi</div>
+                                            <div className="text-[16px] font-semibold">
+                                                Giao tận nơi
+                                            </div>
                                             <div
                                                 className={cn(
                                                     "mt-1 text-[13px] leading-6",
-                                                    deliveryMethodId === "DELIVERY"
+                                                    deliveryMethodId ===
+                                                        "DELIVERY"
                                                         ? "text-sky-700"
-                                                        : "text-slate-500"
+                                                        : "text-slate-500",
                                                 )}
                                             >
-                                                Dùng vị trí hiện tại, tìm theo địa chỉ hoặc chỉnh lại trên bản đồ.
+                                                Dùng vị trí hiện tại, tìm theo
+                                                địa chỉ hoặc chỉnh lại trên bản
+                                                đồ.
                                             </div>
                                         </div>
                                     </div>
@@ -646,12 +729,14 @@ const DeliveryGateModal = ({
 
                                 <button
                                     type="button"
-                                    onClick={() => setDeliveryMethodId("PICKUP")}
+                                    onClick={() =>
+                                        setDeliveryMethodId("PICKUP")
+                                    }
                                     className={cn(
                                         "rounded-[24px] border p-5 text-left transition",
                                         deliveryMethodId === "PICKUP"
                                             ? "border-sky-300 bg-sky-100 text-sky-900 shadow-sm"
-                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60"
+                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60",
                                     )}
                                 >
                                     <div className="flex items-start gap-4">
@@ -660,22 +745,26 @@ const DeliveryGateModal = ({
                                                 "mt-1 rounded-2xl p-2.5",
                                                 deliveryMethodId === "PICKUP"
                                                     ? "bg-white text-sky-700"
-                                                    : "bg-sky-50 text-sky-700"
+                                                    : "bg-sky-50 text-sky-700",
                                             )}
                                         >
                                             <PackageCheck size={18} />
                                         </div>
                                         <div>
-                                            <div className="text-[16px] font-semibold">Nhận tại điểm hẹn</div>
+                                            <div className="text-[16px] font-semibold">
+                                                Nhận tại điểm hẹn
+                                            </div>
                                             <div
                                                 className={cn(
                                                     "mt-1 text-[13px] leading-6",
-                                                    deliveryMethodId === "DELIVERY"
+                                                    deliveryMethodId ===
+                                                        "DELIVERY"
                                                         ? "text-sky-700"
-                                                        : "text-slate-500"
+                                                        : "text-slate-500",
                                                 )}
                                             >
-                                                Chọn một điểm nhận sẵn có để xem ưu đãi phù hợp khu vực đó.
+                                                Chọn một điểm nhận sẵn có để xem
+                                                ưu đãi phù hợp khu vực đó.
                                             </div>
                                         </div>
                                     </div>
@@ -686,7 +775,10 @@ const DeliveryGateModal = ({
                                         type="button"
                                         onClick={handleContinueStep1}
                                         disabled={!deliveryMethodId}
-                                        className={cn(primaryBtn, "inline-flex items-center gap-2 px-5 py-2.5 text-sm")}
+                                        className={cn(
+                                            primaryBtn,
+                                            "inline-flex items-center gap-2 px-5 py-2.5 text-sm",
+                                        )}
                                     >
                                         Tiếp tục
                                         <ChevronRight size={16} />
@@ -705,10 +797,15 @@ const DeliveryGateModal = ({
                                                     Chọn khu vực giao hàng
                                                 </div>
                                                 <div className="mt-1 text-[13px] font-medium leading-6 text-slate-500">
-                                                    Bạn có thể chọn nhanh bằng GPS, nhập địa chỉ hoặc tinh chỉnh lại trên bản đồ.
+                                                    Bạn có thể chọn nhanh bằng
+                                                    GPS, nhập địa chỉ hoặc tinh
+                                                    chỉnh lại trên bản đồ.
                                                 </div>
                                             </div>
-                                            <Truck size={18} className="text-slate-700" />
+                                            <Truck
+                                                size={18}
+                                                className="text-slate-700"
+                                            />
                                         </div>
 
                                         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
@@ -716,7 +813,8 @@ const DeliveryGateModal = ({
                                                 1. Dùng vị trí hiện tại
                                             </div>
                                             <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500">
-                                                Phù hợp khi bạn muốn chọn nhanh khu vực đang đứng.
+                                                Phù hợp khi bạn muốn chọn nhanh
+                                                khu vực đang đứng.
                                             </div>
 
                                             <button
@@ -724,7 +822,7 @@ const DeliveryGateModal = ({
                                                 onClick={requestCurrentLocation}
                                                 className={cn(
                                                     secondaryBtn,
-                                                    "mt-3 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold"
+                                                    "mt-3 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm font-semibold",
                                                 )}
                                             >
                                                 <LocateFixed size={16} />
@@ -737,12 +835,16 @@ const DeliveryGateModal = ({
                                                 2. Tìm theo địa chỉ
                                             </div>
                                             <div className="mt-1 text-[12px] font-medium leading-5 text-slate-500">
-                                                Nhập khu vực và số nhà, tên đường để tìm vị trí chính xác hơn.
+                                                Nhập khu vực và số nhà, tên
+                                                đường để tìm vị trí chính xác
+                                                hơn.
                                             </div>
 
                                             <div className="mt-4 grid gap-3">
                                                 <div>
-                                                    <div className="text-[12px] font-semibold text-slate-500">Thành phố</div>
+                                                    <div className="text-[12px] font-semibold text-slate-500">
+                                                        Thành phố
+                                                    </div>
                                                     <input
                                                         value={HCMC_NAME}
                                                         disabled
@@ -751,36 +853,74 @@ const DeliveryGateModal = ({
                                                 </div>
 
                                                 <div>
-                                                    <div className="text-[12px] font-semibold text-slate-500">Quận / Huyện</div>
+                                                    <div className="text-[12px] font-semibold text-slate-500">
+                                                        Quận / Huyện
+                                                    </div>
                                                     <select
                                                         value={districtCode}
                                                         onChange={(e) =>
-                                                            setDistrictCode(e.target.value ? Number(e.target.value) : "")
+                                                            setDistrictCode(
+                                                                e.target.value
+                                                                    ? Number(
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                      )
+                                                                    : "",
+                                                            )
                                                         }
                                                         className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
                                                     >
-                                                        <option value="">Chọn quận / huyện</option>
-                                                        {districts.map((item) => (
-                                                            <option key={item.code} value={item.code}>
-                                                                {item.name}
-                                                            </option>
-                                                        ))}
+                                                        <option value="">
+                                                            Chọn quận / huyện
+                                                        </option>
+                                                        {districts.map(
+                                                            (item) => (
+                                                                <option
+                                                                    key={
+                                                                        item.code
+                                                                    }
+                                                                    value={
+                                                                        item.code
+                                                                    }
+                                                                >
+                                                                    {item.name}
+                                                                </option>
+                                                            ),
+                                                        )}
                                                     </select>
                                                 </div>
 
                                                 <div>
-                                                    <div className="text-[12px] font-semibold text-slate-500">Phường / Xã</div>
+                                                    <div className="text-[12px] font-semibold text-slate-500">
+                                                        Phường / Xã
+                                                    </div>
                                                     <select
                                                         value={wardCode}
                                                         onChange={(e) =>
-                                                            setWardCode(e.target.value ? Number(e.target.value) : "")
+                                                            setWardCode(
+                                                                e.target.value
+                                                                    ? Number(
+                                                                          e
+                                                                              .target
+                                                                              .value,
+                                                                      )
+                                                                    : "",
+                                                            )
                                                         }
                                                         disabled={!districtCode}
                                                         className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400 disabled:bg-slate-100"
                                                     >
-                                                        <option value="">Chọn phường / xã</option>
+                                                        <option value="">
+                                                            Chọn phường / xã
+                                                        </option>
                                                         {wards.map((item) => (
-                                                            <option key={item.code} value={item.code}>
+                                                            <option
+                                                                key={item.code}
+                                                                value={
+                                                                    item.code
+                                                                }
+                                                            >
                                                                 {item.name}
                                                             </option>
                                                         ))}
@@ -788,10 +928,16 @@ const DeliveryGateModal = ({
                                                 </div>
 
                                                 <div>
-                                                    <div className="text-[12px] font-semibold text-slate-500">Số nhà, tên đường</div>
+                                                    <div className="text-[12px] font-semibold text-slate-500">
+                                                        Số nhà, tên đường
+                                                    </div>
                                                     <input
                                                         value={streetLine}
-                                                        onChange={(e) => setStreetLine(e.target.value)}
+                                                        onChange={(e) =>
+                                                            setStreetLine(
+                                                                e.target.value,
+                                                            )
+                                                        }
                                                         placeholder="Ví dụ: 7 Đường số 10"
                                                         className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-slate-400"
                                                     />
@@ -801,14 +947,19 @@ const DeliveryGateModal = ({
                                             <button
                                                 type="button"
                                                 onClick={handleSearchAddress}
-                                                disabled={searching || administrativeLoading}
+                                                disabled={
+                                                    searching ||
+                                                    administrativeLoading
+                                                }
                                                 className={cn(
                                                     primaryBtn,
-                                                    "mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm"
+                                                    "mt-4 inline-flex w-full items-center justify-center gap-2 px-4 py-2.5 text-sm",
                                                 )}
                                             >
                                                 <Search size={15} />
-                                                {searching ? "Đang tìm" : "Tìm địa chỉ"}
+                                                {searching
+                                                    ? "Đang tìm"
+                                                    : "Tìm địa chỉ"}
                                             </button>
 
                                             {!!searchResults.length && (
@@ -818,21 +969,37 @@ const DeliveryGateModal = ({
                                                     </div>
 
                                                     <div className="grid gap-2">
-                                                        {searchResults.map((item) => (
-                                                            <button
-                                                                key={item.id}
-                                                                type="button"
-                                                                onClick={() => void handleSelectSearchResult(item)}
-                                                                className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left transition hover:border-slate-200 hover:bg-slate-100"
-                                                            >
-                                                                <div className="text-[13px] font-semibold text-slate-900">
-                                                                    {item.displayName}
-                                                                </div>
-                                                                <div className="mt-1 text-[11px] font-medium text-slate-500">
-                                                                    {item.lat.toFixed(6)}, {item.lng.toFixed(6)}
-                                                                </div>
-                                                            </button>
-                                                        ))}
+                                                        {searchResults.map(
+                                                            (item) => (
+                                                                <button
+                                                                    key={
+                                                                        item.id
+                                                                    }
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        void handleSelectSearchResult(
+                                                                            item,
+                                                                        )
+                                                                    }
+                                                                    className="rounded-2xl border border-slate-100 bg-slate-50 p-3 text-left transition hover:border-slate-200 hover:bg-slate-100"
+                                                                >
+                                                                    <div className="text-[13px] font-semibold text-slate-900">
+                                                                        {
+                                                                            item.displayName
+                                                                        }
+                                                                    </div>
+                                                                    <div className="mt-1 text-[11px] font-medium text-slate-500">
+                                                                        {item.lat.toFixed(
+                                                                            6,
+                                                                        )}
+                                                                        ,{" "}
+                                                                        {item.lng.toFixed(
+                                                                            6,
+                                                                        )}
+                                                                    </div>
+                                                                </button>
+                                                            ),
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
@@ -840,10 +1007,14 @@ const DeliveryGateModal = ({
                                     </div>
 
                                     {submitInfo ? (
-                                        <div className="text-[13px] font-medium text-sky-700">{submitInfo}</div>
+                                        <div className="text-[13px] font-medium text-sky-700">
+                                            {submitInfo}
+                                        </div>
                                     ) : null}
                                     {error ? (
-                                        <div className="text-[13px] font-medium text-red-600">{error}</div>
+                                        <div className="text-[13px] font-medium text-red-600">
+                                            {error}
+                                        </div>
                                     ) : null}
                                 </div>
 
@@ -855,29 +1026,48 @@ const DeliveryGateModal = ({
                                                     Khu vực đã chọn
                                                 </div>
                                                 <div className="mt-1 text-[13px] font-medium leading-6 text-slate-500">
-                                                    Đây là khu vực sẽ được dùng để gợi ý các siêu thị phù hợp gần bạn.
+                                                    Đây là khu vực sẽ được dùng
+                                                    để gợi ý các siêu thị phù
+                                                    hợp gần bạn.
                                                 </div>
                                             </div>
 
                                             <div className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-slate-600">
-                                                {hasResolvedLocation ? locationSourceLabel[locationSource] : "Chưa chọn"}
+                                                {hasResolvedLocation
+                                                    ? locationSourceLabel[
+                                                          locationSource
+                                                      ]
+                                                    : "Chưa chọn"}
                                             </div>
                                         </div>
 
                                         <div className="mt-4 rounded-2xl bg-white p-4 shadow-sm">
                                             <div className="text-[14px] font-semibold leading-6 text-slate-900">
-                                                {addressText || "Chưa có khu vực nào được xác nhận"}
+                                                {addressText ||
+                                                    "Chưa có khu vực nào được xác nhận"}
                                             </div>
 
                                             <div className="mt-4 grid grid-cols-2 gap-3 text-[12px] text-slate-500">
                                                 <div className="rounded-2xl bg-slate-50 px-3 py-2.5">
-                                                    <div className="font-semibold">Lat</div>
-                                                    <div>{lat != null ? lat.toFixed(6) : "—"}</div>
+                                                    <div className="font-semibold">
+                                                        Lat
+                                                    </div>
+                                                    <div>
+                                                        {lat != null
+                                                            ? lat.toFixed(6)
+                                                            : "—"}
+                                                    </div>
                                                 </div>
 
                                                 <div className="rounded-2xl bg-slate-50 px-3 py-2.5">
-                                                    <div className="font-semibold">Lng</div>
-                                                    <div>{lng != null ? lng.toFixed(6) : "—"}</div>
+                                                    <div className="font-semibold">
+                                                        Lng
+                                                    </div>
+                                                    <div>
+                                                        {lng != null
+                                                            ? lng.toFixed(6)
+                                                            : "—"}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -890,10 +1080,15 @@ const DeliveryGateModal = ({
                                                     Chỉnh lại trên bản đồ
                                                 </div>
                                                 <div className="mt-1 text-[13px] font-medium leading-6 text-slate-500">
-                                                    Bạn có thể click vào bản đồ hoặc kéo ghim để chọn điểm chính xác hơn.
+                                                    Bạn có thể click vào bản đồ
+                                                    hoặc kéo ghim để chọn điểm
+                                                    chính xác hơn.
                                                 </div>
                                             </div>
-                                            <MapPin size={18} className="text-slate-700" />
+                                            <MapPin
+                                                size={18}
+                                                className="text-slate-700"
+                                            />
                                         </div>
 
                                         {lat != null && lng != null ? (
@@ -901,39 +1096,73 @@ const DeliveryGateModal = ({
                                                 <MapboxLocationPicker
                                                     lat={lat}
                                                     lng={lng}
-                                                    onPick={(value) => void handlePickOnMap(value)}
-                                                    onMapStatusChange={(status) => setMapStatus(status)}
+                                                    onPick={(value) =>
+                                                        void handlePickOnMap(
+                                                            value,
+                                                        )
+                                                    }
+                                                    onMapStatusChange={(
+                                                        status,
+                                                    ) => setMapStatus(status)}
                                                 />
 
-                                                <div className="mt-3 flex items-center justify-between gap-3 text-[12px] font-medium text-slate-500">
-                                                    <span>
-                                                        Bản đồ:{" "}
-                                                        <span className="font-semibold">
-                                                            {mapStatus === "idle" && "Chưa khởi tạo"}
-                                                            {mapStatus === "loading" && "Đang tải"}
-                                                            {mapStatus === "loaded" && "Sẵn sàng"}
-                                                            {mapStatus === "error" && "Kết nối lỗi"}
+                                                <div className="mt-3 space-y-1">
+                                                    <div className="flex items-center justify-between gap-3 text-[12px] font-medium text-slate-500">
+                                                        <span>
+                                                            Bản đồ:{" "}
+                                                            <span className="font-semibold">
+                                                                {mapStatus ===
+                                                                    "idle" &&
+                                                                    "Chưa khởi tạo"}
+                                                                {mapStatus ===
+                                                                    "loading" &&
+                                                                    "Đang tải"}
+                                                                {mapStatus ===
+                                                                    "loaded" &&
+                                                                    "Sẵn sàng"}
+                                                                {mapStatus ===
+                                                                    "error" &&
+                                                                    "Kết nối lỗi"}
+                                                            </span>
                                                         </span>
-                                                    </span>
 
-                                                    <a
-                                                        href={googleMapsUrl(lat, lng)}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="font-semibold text-slate-700 hover:underline"
-                                                    >
-                                                        Mở Google Maps
-                                                    </a>
+                                                        <a
+                                                            href={googleMapsUrl(
+                                                                lat,
+                                                                lng,
+                                                            )}
+                                                            target="_blank"
+                                                            rel="noreferrer"
+                                                            className="font-semibold text-slate-700 hover:underline"
+                                                        >
+                                                            Mở Google Maps
+                                                        </a>
+                                                    </div>
+                                                    {mapStatus === "error" ? (
+                                                        <p className="text-[11px] font-medium leading-4 text-slate-500">
+                                                            Nếu vừa thêm token
+                                                            Mapbox, hãy khởi
+                                                            động lại dev server.
+                                                            Xem thêm hướng dẫn
+                                                            ngay khối bản đồ
+                                                            phía trên (nếu thiếu
+                                                            token).
+                                                        </p>
+                                                    ) : null}
                                                 </div>
                                             </>
                                         ) : (
                                             <div className="grid h-[320px] place-items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-center">
                                                 <div>
                                                     <div className="font-semibold text-slate-900">
-                                                        Chưa có vị trí để hiển thị
+                                                        Chưa có vị trí để hiển
+                                                        thị
                                                     </div>
                                                     <div className="mt-1 text-[13px] font-medium text-slate-500">
-                                                        Hãy dùng GPS hoặc tìm địa chỉ trước, rồi bạn có thể tinh chỉnh tiếp trên bản đồ.
+                                                        Hãy dùng GPS hoặc tìm
+                                                        địa chỉ trước, rồi bạn
+                                                        có thể tinh chỉnh tiếp
+                                                        trên bản đồ.
                                                     </div>
                                                 </div>
                                             </div>
@@ -941,14 +1170,19 @@ const DeliveryGateModal = ({
                                     </div>
 
                                     <div className="rounded-2xl bg-slate-50 p-4 text-[13px] font-medium leading-6 text-slate-600">
-                                        Sau khi lưu lựa chọn, trang chủ sẽ hiển thị những ưu đãi phù hợp với khu vực bạn vừa chọn.
+                                        Sau khi lưu lựa chọn, trang chủ sẽ hiển
+                                        thị những ưu đãi phù hợp với khu vực bạn
+                                        vừa chọn.
                                     </div>
 
                                     <div className="flex flex-wrap items-center justify-between gap-3">
                                         <button
                                             type="button"
                                             onClick={() => setStep(1)}
-                                            className={cn(secondaryBtn, "px-4 py-2.5 text-sm font-semibold")}
+                                            className={cn(
+                                                secondaryBtn,
+                                                "px-4 py-2.5 text-sm font-semibold",
+                                            )}
                                         >
                                             Quay lại
                                         </button>
@@ -956,13 +1190,18 @@ const DeliveryGateModal = ({
                                         <button
                                             type="button"
                                             onClick={handleSubmit}
-                                            disabled={submitting || !hasResolvedLocation}
+                                            disabled={
+                                                submitting ||
+                                                !hasResolvedLocation
+                                            }
                                             className={cn(
                                                 primaryBtn,
-                                                "inline-flex min-w-[140px] items-center justify-center gap-2 px-5 py-2.5 text-sm"
+                                                "inline-flex min-w-[140px] items-center justify-center gap-2 px-5 py-2.5 text-sm",
                                             )}
                                         >
-                                            {submitting ? "Đang lưu..." : "Xác nhận"}
+                                            {submitting
+                                                ? "Đang lưu..."
+                                                : "Xác nhận"}
                                             <Check size={16} />
                                         </button>
                                     </div>
@@ -975,19 +1214,30 @@ const DeliveryGateModal = ({
                                 <div className="rounded-[28px] border border-slate-200 bg-white p-4">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <div className="text-[16px] font-semibold text-slate-900">Chọn điểm nhận hàng</div>
+                                            <div className="text-[16px] font-semibold text-slate-900">
+                                                Chọn điểm nhận hàng
+                                            </div>
                                             <div className="mt-1 text-[13px] font-medium leading-6 text-slate-500">
-                                                Chọn điểm nhận phù hợp để xem các ưu đãi quanh khu vực đó.
+                                                Chọn điểm nhận phù hợp để xem
+                                                các ưu đãi quanh khu vực đó.
                                             </div>
                                         </div>
-                                        <Building2 size={18} className="text-slate-700" />
+                                        <Building2
+                                            size={18}
+                                            className="text-slate-700"
+                                        />
                                     </div>
 
                                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
                                         <button
                                             type="button"
-                                            onClick={requestCurrentLocationForPickupSort}
-                                            className={cn(secondaryBtn, "px-4 py-2.5 text-sm font-semibold")}
+                                            onClick={
+                                                requestCurrentLocationForPickupSort
+                                            }
+                                            className={cn(
+                                                secondaryBtn,
+                                                "px-4 py-2.5 text-sm font-semibold",
+                                            )}
                                         >
                                             Sắp xếp gần tôi
                                         </button>
@@ -995,7 +1245,10 @@ const DeliveryGateModal = ({
                                         <button
                                             type="button"
                                             onClick={() => setStep(1)}
-                                            className={cn(secondaryBtn, "px-4 py-2.5 text-sm font-semibold")}
+                                            className={cn(
+                                                secondaryBtn,
+                                                "px-4 py-2.5 text-sm font-semibold",
+                                            )}
                                         >
                                             Quay lại
                                         </button>
@@ -1008,83 +1261,120 @@ const DeliveryGateModal = ({
                                     ) : null}
 
                                     {pickupError ? (
-                                        <div className="mt-4 text-[13px] font-medium text-red-600">{pickupError}</div>
+                                        <div className="mt-4 text-[13px] font-medium text-red-600">
+                                            {pickupError}
+                                        </div>
                                     ) : null}
 
                                     <div className="mt-4 grid gap-3">
-                                        {pickupPointsSorted.map((item: PickupPoint & { distanceKm?: number }) => {
-                                            const active = item.pickupPointId === pickupPointId
+                                        {pickupPointsSorted.map(
+                                            (
+                                                item: PickupPoint & {
+                                                    distanceKm?: number;
+                                                },
+                                            ) => {
+                                                const active =
+                                                    item.pickupPointId ===
+                                                    pickupPointId;
 
-                                            return (
-                                                <button
-                                                    key={item.pickupPointId}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setPickupPointId(item.pickupPointId)
-                                                        setError("")
-                                                        setSubmitInfo("")
-                                                    }}
-                                                    className={cn(
-                                                        "rounded-[24px] border p-4 text-left transition",
-                                                        active
-                                                            ? "border-sky-300 bg-sky-100 text-sky-900 shadow-sm"
-                                                            : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60"
-                                                    )}
-                                                >
-                                                    <div className="flex items-start justify-between gap-4">
-                                                        <div className="min-w-0">
-                                                            <div className="text-[15px] font-semibold">
-                                                                {item.name}
+                                                return (
+                                                    <button
+                                                        key={item.pickupPointId}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setPickupPointId(
+                                                                item.pickupPointId,
+                                                            );
+                                                            setError("");
+                                                            setSubmitInfo("");
+                                                        }}
+                                                        className={cn(
+                                                            "rounded-[24px] border p-4 text-left transition",
+                                                            active
+                                                                ? "border-sky-300 bg-sky-100 text-sky-900 shadow-sm"
+                                                                : "border-slate-200 bg-white hover:border-sky-200 hover:bg-sky-50/60",
+                                                        )}
+                                                    >
+                                                        <div className="flex items-start justify-between gap-4">
+                                                            <div className="min-w-0">
+                                                                <div className="text-[15px] font-semibold">
+                                                                    {item.name}
+                                                                </div>
+                                                                <div
+                                                                    className={cn(
+                                                                        "mt-1 text-[13px] font-medium leading-6",
+                                                                        active
+                                                                            ? "text-sky-700"
+                                                                            : "text-slate-500",
+                                                                    )}
+                                                                >
+                                                                    {
+                                                                        item.address
+                                                                    }
+                                                                </div>
+
+                                                                <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-medium">
+                                                                    <span
+                                                                        className={
+                                                                            active
+                                                                                ? "text-sky-700"
+                                                                                : "text-slate-500"
+                                                                        }
+                                                                    >
+                                                                        {item.lat.toFixed(
+                                                                            6,
+                                                                        )}
+                                                                        ,{" "}
+                                                                        {item.lng.toFixed(
+                                                                            6,
+                                                                        )}
+                                                                    </span>
+
+                                                                    {typeof item.distanceKm ===
+                                                                    "number" ? (
+                                                                        <span
+                                                                            className={cn(
+                                                                                "rounded-full px-2 py-1 text-[10px] font-semibold",
+                                                                                active
+                                                                                    ? "bg-white text-sky-700"
+                                                                                    : "bg-sky-50 text-sky-700",
+                                                                            )}
+                                                                        >
+                                                                            Cách
+                                                                            bạn{" "}
+                                                                            {item.distanceKm.toFixed(
+                                                                                1,
+                                                                            )}{" "}
+                                                                            km
+                                                                        </span>
+                                                                    ) : null}
+                                                                </div>
                                                             </div>
-                                                            <div
+
+                                                            <a
+                                                                href={googleMapsUrl(
+                                                                    item.lat,
+                                                                    item.lng,
+                                                                )}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                onClick={(e) =>
+                                                                    e.stopPropagation()
+                                                                }
                                                                 className={cn(
-                                                                    "mt-1 text-[13px] font-medium leading-6",
+                                                                    "shrink-0 rounded-2xl border px-3 py-2 text-[11px] font-semibold",
                                                                     active
-                                                                        ? "text-sky-700"
-                                                                        : "text-slate-500"
+                                                                        ? "border-sky-200 bg-white text-sky-700"
+                                                                        : "border-slate-200 bg-white text-slate-700 hover:bg-sky-50",
                                                                 )}
                                                             >
-                                                                {item.address}
-                                                            </div>
-
-                                                            <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-medium">
-                                                                <span className={active ? "text-sky-700" : "text-slate-500"}>
-                                                                    {item.lat.toFixed(6)}, {item.lng.toFixed(6)}
-                                                                </span>
-
-                                                                {typeof item.distanceKm === "number" ? (
-                                                                    <span
-                                                                        className={cn(
-                                                                            "rounded-full px-2 py-1 text-[10px] font-semibold",
-                                                                            active
-                                                                                ? "bg-white text-sky-700"
-                                                                                : "bg-sky-50 text-sky-700"
-                                                                        )}
-                                                                    >
-                                                                        Cách bạn {item.distanceKm.toFixed(1)} km
-                                                                    </span>
-                                                                ) : null}
-                                                            </div>
+                                                                Xem đường đi
+                                                            </a>
                                                         </div>
-
-                                                        <a
-                                                            href={googleMapsUrl(item.lat, item.lng)}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            onClick={(e) => e.stopPropagation()}
-                                                            className={cn(
-                                                                "shrink-0 rounded-2xl border px-3 py-2 text-[11px] font-semibold",
-                                                                active
-                                                                    ? "border-sky-200 bg-white text-sky-700"
-                                                                    : "border-slate-200 bg-white text-slate-700 hover:bg-sky-50"
-                                                            )}
-                                                        >
-                                                            Xem đường đi
-                                                        </a>
-                                                    </div>
-                                                </button>
-                                            )
-                                        })}
+                                                    </button>
+                                                );
+                                            },
+                                        )}
                                     </div>
                                 </div>
 
@@ -1092,19 +1382,30 @@ const DeliveryGateModal = ({
                                     <button
                                         type="button"
                                         onClick={handleSubmit}
-                                        disabled={submitting || !selectedPickupPoint}
-                                        className={cn(primaryBtn, "inline-flex items-center gap-2 px-5 py-2.5 text-sm")}
+                                        disabled={
+                                            submitting || !selectedPickupPoint
+                                        }
+                                        className={cn(
+                                            primaryBtn,
+                                            "inline-flex items-center gap-2 px-5 py-2.5 text-sm",
+                                        )}
                                     >
-                                        {submitting ? "Đang lưu..." : "Xác nhận"}
+                                        {submitting
+                                            ? "Đang lưu..."
+                                            : "Xác nhận"}
                                         <Check size={16} />
                                     </button>
                                 </div>
 
                                 {submitInfo ? (
-                                    <div className="text-[13px] font-medium text-sky-700">{submitInfo}</div>
+                                    <div className="text-[13px] font-medium text-sky-700">
+                                        {submitInfo}
+                                    </div>
                                 ) : null}
                                 {error ? (
-                                    <div className="text-[13px] font-medium text-red-600">{error}</div>
+                                    <div className="text-[13px] font-medium text-red-600">
+                                        {error}
+                                    </div>
                                 ) : null}
                             </div>
                         )}
@@ -1112,7 +1413,7 @@ const DeliveryGateModal = ({
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default DeliveryGateModal
+export default DeliveryGateModal;

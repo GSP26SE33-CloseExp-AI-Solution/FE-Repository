@@ -1,73 +1,77 @@
-import { useState, useEffect } from "react"
-import { useLocation, useNavigate, Link } from "react-router-dom"
-import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
-import { GoogleLogin, type CredentialResponse } from "@react-oauth/google"
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
+import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
 
-import { useAuth } from "@/hooks/useAuth"
-import { useAuthContext } from "@/contexts/AuthContext"
-import { showError, showSuccess } from "@/utils/toast"
-import Logo from "@/assets/logo.png"
+import { useAuth } from "@/hooks/useAuth";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { showError, showSuccess } from "@/utils/toast";
+import Logo from "@/assets/logo.png";
 
 const Login = () => {
-    const { login, googleLogin, loading } = useAuth()
-    const { user, initialized } = useAuthContext()
-    const navigate = useNavigate()
-    const location = useLocation()
-    const redirectTo = location.state?.redirectTo || "/redirect"
+    const { login, googleLogin, loading } = useAuth();
+    const { user, initialized } = useAuthContext();
+    const navigate = useNavigate();
+    const location = useLocation();
+    const redirectTo = location.state?.redirectTo || "/redirect";
 
-    const [email, setEmail] = useState("")
-    const [password, setPassword] = useState("")
-    const [showPassword, setShowPassword] = useState(false)
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
 
     useEffect(() => {
         if (initialized && user) {
-            navigate(redirectTo, { replace: true })
+            navigate(redirectTo, { replace: true });
         }
-    }, [initialized, user, navigate, redirectTo])
+    }, [initialized, user, navigate, redirectTo]);
 
     const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault()
-        if (loading) return
+        e.preventDefault();
+        if (loading) return;
 
         if (!email.trim() || !password.trim()) {
-            showError("Vui lòng nhập đầy đủ email và mật khẩu")
-            return
+            showError("Vui lòng nhập đầy đủ email và mật khẩu");
+            return;
         }
 
         try {
-            await login(email.trim(), password)
-            showSuccess("Đăng nhập thành công")
+            await login(email.trim(), password);
+            showSuccess("Đăng nhập thành công");
         } catch (error) {
             const message =
-                error instanceof Error ? error.message : "Đăng nhập thất bại"
-            showError(message)
+                error instanceof Error ? error.message : "Đăng nhập thất bại";
+            showError(message);
         }
-    }
+    };
 
-    const handleGoogleSuccess = async (credentialResponse: CredentialResponse) => {
-        if (loading) return
+    const handleGoogleSuccess = async (
+        credentialResponse: CredentialResponse,
+    ) => {
+        if (loading) return;
 
-        const idToken = credentialResponse.credential
+        const idToken = credentialResponse.credential;
 
         if (!idToken) {
-            showError("Không lấy được thông tin đăng nhập từ Google")
-            return
+            showError("Không lấy được thông tin đăng nhập từ Google");
+            return;
         }
 
         try {
-            await googleLogin({ idToken })
-            showSuccess("Đăng nhập Google thành công")
+            await googleLogin({ idToken });
+            showSuccess("Đăng nhập Google thành công");
         } catch (error) {
-            console.error("google login error", error)
+            console.error("google login error", error);
             const message =
-                error instanceof Error ? error.message : "Đăng nhập Google thất bại"
-            showError(message)
+                error instanceof Error
+                    ? error.message
+                    : "Đăng nhập Google thất bại";
+            showError(message);
         }
-    }
+    };
 
     const handleGoogleError = () => {
-        showError("Đăng nhập Google thất bại")
-    }
+        showError("Đăng nhập Google thất bại");
+    };
 
     return (
         <div className="eco-animated-bg min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
@@ -146,7 +150,11 @@ const Login = () => {
                                 onClick={() => setShowPassword(!showPassword)}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
                             >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                {showPassword ? (
+                                    <EyeOff size={18} />
+                                ) : (
+                                    <Eye size={18} />
+                                )}
                             </button>
                         </div>
                     </div>
@@ -209,7 +217,7 @@ const Login = () => {
                 </p>
             </div>
         </div>
-    )
-}
+    );
+};
 
-export default Login
+export default Login;

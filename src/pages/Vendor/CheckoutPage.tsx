@@ -23,6 +23,9 @@ import {
   orderContextStorage,
 } from "@/utils/orderStorage"
 import { orderService } from "@/services/order.service"
+import { createOrder, createPaymentLink } from "@/services/payment.service"
+import { useAuthContext } from "@/contexts/AuthContext"
+import toast from "react-hot-toast"
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 
@@ -47,6 +50,7 @@ const formatTimeSlotLabel = (slot: OrderTimeSlot) => {
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user } = useAuthContext()
 
   const [cart, setCart] = useState<CartItem[]>([])
   const [ctx, setCtx] = useState<CustomerOrderContext>({})
@@ -227,6 +231,17 @@ const CheckoutPage: React.FC = () => {
       return
     }
 
+    if (!user?.userId) {
+      toast.error("Vui lòng đăng nhập lại để thanh toán.")
+      return
+    }
+
+    const resolvedCollectionId = orderContextStorage.getResolvedCollectionId(ctx)
+    if (ctx.deliveryMethodId === "PICKUP" && !resolvedCollectionId) {
+      setSubmitError("Thiếu điểm nhận hàng. Vui lòng quay lại giỏ hoặc trang chủ để chọn lại.")
+      return
+    }
+
     setSubmitError("")
     setPaying(true)
 
@@ -238,24 +253,47 @@ const CheckoutPage: React.FC = () => {
     setCtx(nextCtx)
     orderContextStorage.set(nextCtx)
 
-    console.log("CheckoutPage.handlePayAndRedirect -> payload preview:", {
-      deliveryMethodId: nextCtx.deliveryMethodId,
-      timeSlotId: nextCtx.timeSlotId,
-      collectionId:
-        nextCtx.collectionId || nextCtx.collectionPointId || nextCtx.pickupPointId || null,
-      addressText: nextCtx.addressText,
-      deliveryFee,
-      orderItems: cart.map((item) => ({
-        lotId: item.lotId,
-        quantity: item.qty,
-        unitPrice: item.price,
-      })),
-    })
+    try {
+      const order = await createOrder({
+        userId: user.userId,
+        timeSlotId: ctx.timeSlotId,
+        deliveryType: ctx.deliveryMethodId!,
+        totalAmount: subtotal,
+        discountAmount: 0,
+        finalAmount: total,
+        deliveryFee,
+        ...(ctx.deliveryMethodId === "PICKUP"
+          ? { collectionId: resolvedCollectionId }
+          : {}),
+        ...(ctx.promotionId ? { promotionId: ctx.promotionId } : {}),
+        ...(ctx.addressId ? { addressId: ctx.addressId } : {}),
+        deliveryNote:
+          ctx.deliveryMethodId === "DELIVERY"
+            ? ctx.addressText || undefined
+            : orderContextStorage.getResolvedCollectionAddress(ctx) ||
+              orderContextStorage.getResolvedCollectionName(ctx) ||
+              undefined,
+        orderItems: cart.map((item) => ({
+          lotId: item.lotId,
+          quantity: item.qty,
+          unitPrice: item.price,
+        })),
+      })
 
-    await new Promise((resolve) => setTimeout(resolve, 900))
+      const origin = window.location.origin
+      const { checkoutUrl } = await createPaymentLink({
+        orderId: order.orderId,
+        returnUrl: `${origin}/payment-return`,
+        cancelUrl: `${origin}/payment-return`,
+      })
 
-    setPaying(false)
-    navigate("/payment-return?status=success")
+      window.location.href = checkoutUrl
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Không thể tạo thanh toán"
+      toast.error(message)
+      setPaying(false)
+    }
   }
 
   if (!canCheckoutBase) {

@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import React, { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
     AlertCircle,
     ArrowRight,
@@ -14,43 +14,47 @@ import {
     ShoppingCart,
     Trash2,
     Truck,
-} from "lucide-react"
+} from "lucide-react";
 
-import type { CartItem, CustomerOrderContext, DeliveryMethodId } from "@/types/order.type"
+import type {
+    CartItem,
+    CustomerOrderContext,
+    DeliveryMethodId,
+} from "@/types/order.type";
 import {
     cartStorage,
     googleMapsUrl,
     money,
     orderContextStorage,
-} from "@/utils/orderStorage"
-import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
+} from "@/utils/orderStorage";
+import { getBreadcrumbsByPath } from "@/constants/breadcrumbs";
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
-    classes.filter(Boolean).join(" ")
+    classes.filter(Boolean).join(" ");
 
 const panel =
-    "rounded-[24px] border border-slate-200/70 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
-const softPanel =
-    "rounded-[20px] border border-slate-200/70 bg-slate-50/70"
+    "rounded-[24px] border border-slate-200/70 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]";
+const softPanel = "rounded-[20px] border border-slate-200/70 bg-slate-50/70";
 const ghostBtn =
-    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]"
+    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]";
 const dangerBtn =
-    "inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-[13px] font-semibold text-rose-700 transition hover:bg-rose-100 active:scale-[0.99]"
+    "inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-[13px] font-semibold text-rose-700 transition hover:bg-rose-100 active:scale-[0.99]";
 const primaryBtn =
-    "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+    "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]";
 const qtyBtn =
-    "grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]"
+    "grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]";
 
-const DELIVERY_COPY: Record<DeliveryMethodId, { title: string; sub: string }> = {
-    DELIVERY: {
-        title: "Giao tận nơi",
-        sub: "Đơn sẽ được giao đến địa chỉ bạn đã chọn ở trang chủ",
-    },
-    PICKUP: {
-        title: "Nhận tại điểm tập kết",
-        sub: "Bạn sẽ đến điểm nhận hàng cố định bạn đã chọn ở trang chủ",
-    },
-}
+const DELIVERY_COPY: Record<DeliveryMethodId, { title: string; sub: string }> =
+    {
+        DELIVERY: {
+            title: "Giao tận nơi",
+            sub: "Đơn sẽ được giao đến địa chỉ bạn đã chọn ở trang chủ",
+        },
+        PICKUP: {
+            title: "Nhận tại điểm tập kết",
+            sub: "Bạn sẽ đến điểm nhận hàng cố định bạn đã chọn ở trang chủ",
+        },
+    };
 
 const ORDER_STATUS_META = {
     Pending: {
@@ -85,93 +89,112 @@ const ORDER_STATUS_META = {
         label: "Thất bại",
         className: "border-rose-200 bg-rose-50 text-rose-700",
     },
-} as const
+} as const;
 
 const CartPage: React.FC = () => {
-    const navigate = useNavigate()
-    const location = useLocation()
+    const navigate = useNavigate();
+    const location = useLocation();
 
-    const [items, setItems] = useState<CartItem[]>(() => cartStorage.get())
-    const [ctx, setCtx] = useState<CustomerOrderContext>(() => orderContextStorage.get())
+    const [items, setItems] = useState<CartItem[]>(() => cartStorage.get());
+    const [ctx, setCtx] = useState<CustomerOrderContext>(() =>
+        orderContextStorage.get(),
+    );
 
     useEffect(() => {
-        const syncCart = () => setItems(cartStorage.get())
-        const syncCtx = () => setCtx(orderContextStorage.get())
+        const syncCart = () => setItems(cartStorage.get());
+        const syncCtx = () => setCtx(orderContextStorage.get());
 
-        window.addEventListener("cart:updated", syncCart as EventListener)
-        window.addEventListener("order-context:updated", syncCtx as EventListener)
-        window.addEventListener("focus", syncCart)
-        window.addEventListener("focus", syncCtx)
+        window.addEventListener("cart:updated", syncCart as EventListener);
+        window.addEventListener(
+            "order-context:updated",
+            syncCtx as EventListener,
+        );
+        window.addEventListener("focus", syncCart);
+        window.addEventListener("focus", syncCtx);
 
         return () => {
-            window.removeEventListener("cart:updated", syncCart as EventListener)
-            window.removeEventListener("order-context:updated", syncCtx as EventListener)
-            window.removeEventListener("focus", syncCart)
-            window.removeEventListener("focus", syncCtx)
-        }
-    }, [])
+            window.removeEventListener(
+                "cart:updated",
+                syncCart as EventListener,
+            );
+            window.removeEventListener(
+                "order-context:updated",
+                syncCtx as EventListener,
+            );
+            window.removeEventListener("focus", syncCart);
+            window.removeEventListener("focus", syncCtx);
+        };
+    }, []);
 
     const subtotal = useMemo(
         () => items.reduce((sum, item) => sum + item.price * item.qty, 0),
-        [items]
-    )
+        [items],
+    );
 
     const totalQty = useMemo(
         () => items.reduce((sum, item) => sum + item.qty, 0),
-        [items]
-    )
+        [items],
+    );
 
     const deliveryFee = useMemo(() => {
-        if (!ctx.deliveryMethodId) return 0
-        return ctx.deliveryMethodId === "DELIVERY" ? 15000 : 0
-    }, [ctx.deliveryMethodId])
+        if (!ctx.deliveryMethodId) return 0;
+        return ctx.deliveryMethodId === "DELIVERY" ? 15000 : 0;
+    }, [ctx.deliveryMethodId]);
 
-    const total = subtotal + deliveryFee
+    const total = subtotal + deliveryFee;
 
-    const isContextReady = useMemo(() => orderContextStorage.isReady(ctx), [ctx])
+    const isContextReady = useMemo(
+        () => orderContextStorage.isReady(ctx),
+        [ctx],
+    );
 
-    const resolvedCollectionId = orderContextStorage.getResolvedCollectionId(ctx)
-    const resolvedCollectionName = orderContextStorage.getResolvedCollectionName(ctx)
-    const resolvedCollectionAddress = orderContextStorage.getResolvedCollectionAddress(ctx)
+    const resolvedCollectionId =
+        orderContextStorage.getResolvedCollectionId(ctx);
+    const resolvedCollectionName =
+        orderContextStorage.getResolvedCollectionName(ctx);
+    const resolvedCollectionAddress =
+        orderContextStorage.getResolvedCollectionAddress(ctx);
 
     const updateQty = (lotId: string, nextQty: number) => {
-        const target = items.find((item) => item.lotId === lotId)
-        if (!target) return
+        const target = items.find((item) => item.lotId === lotId);
+        if (!target) return;
 
         if (nextQty <= 0) {
-            const next = items.filter((item) => item.lotId !== lotId)
-            setItems(next)
-            cartStorage.set(next)
-            return
+            const next = items.filter((item) => item.lotId !== lotId);
+            setItems(next);
+            cartStorage.set(next);
+            return;
         }
 
-        const qty = Math.max(1, Math.min(99, nextQty))
-        const next = items.map((item) => (item.lotId === lotId ? { ...item, qty } : item))
-        setItems(next)
-        cartStorage.set(next)
-    }
+        const qty = Math.max(1, Math.min(99, nextQty));
+        const next = items.map((item) =>
+            item.lotId === lotId ? { ...item, qty } : item,
+        );
+        setItems(next);
+        cartStorage.set(next);
+    };
 
     const removeItem = (lotId: string) => {
-        const next = items.filter((item) => item.lotId !== lotId)
-        setItems(next)
-        cartStorage.set(next)
-    }
+        const next = items.filter((item) => item.lotId !== lotId);
+        setItems(next);
+        cartStorage.set(next);
+    };
 
     const clearCart = () => {
-        setItems([])
-        cartStorage.clear()
-    }
+        setItems([]);
+        cartStorage.clear();
+    };
 
     const handleCheckout = () => {
-        if (items.length === 0) return
+        if (items.length === 0) return;
 
         if (!isContextReady) {
-            navigate("/")
-            return
+            navigate("/");
+            return;
         }
 
-        navigate("/checkout")
-    }
+        navigate("/checkout");
+    };
 
     const deliverySummary = useMemo(() => {
         if (ctx.deliveryMethodId === "DELIVERY") {
@@ -193,7 +216,7 @@ const CartPage: React.FC = () => {
                     !!ctx.addressText &&
                     typeof ctx.lat === "number" &&
                     typeof ctx.lng === "number",
-            }
+            };
         }
 
         if (ctx.deliveryMethodId === "PICKUP") {
@@ -204,32 +227,42 @@ const CartPage: React.FC = () => {
                 lines: [
                     resolvedCollectionName || "Chưa chọn điểm nhận",
                     resolvedCollectionAddress || "",
-                    resolvedCollectionId ? `Mã điểm nhận: ${resolvedCollectionId}` : "",
+                    resolvedCollectionId
+                        ? `Mã điểm nhận: ${resolvedCollectionId}`
+                        : "",
                 ].filter(Boolean),
                 map:
-                    typeof ctx.pickupLat === "number" && typeof ctx.pickupLng === "number"
+                    typeof ctx.pickupLat === "number" &&
+                    typeof ctx.pickupLng === "number"
                         ? googleMapsUrl(ctx.pickupLat, ctx.pickupLng)
                         : "",
                 isReady: !!resolvedCollectionId,
-            }
+            };
         }
 
         return {
             icon: <MapPin size={16} className="text-slate-900" />,
             title: "Chưa thiết lập giao nhận",
             subtitle: "Bạn cần chọn phương thức nhận hàng trước khi checkout",
-            lines: ["Quay về trang chủ để chọn giao tận nơi hoặc nhận tại điểm hẹn."],
+            lines: [
+                "Quay về trang chủ để chọn giao tận nơi hoặc nhận tại điểm hẹn.",
+            ],
             map: "",
             isReady: false,
-        }
-    }, [ctx, resolvedCollectionAddress, resolvedCollectionId, resolvedCollectionName])
+        };
+    }, [
+        ctx,
+        resolvedCollectionAddress,
+        resolvedCollectionId,
+        resolvedCollectionName,
+    ]);
 
-    const previewOrderStatus = ORDER_STATUS_META.Pending
+    const previewOrderStatus = ORDER_STATUS_META.Pending;
 
     const breadcrumbs = useMemo(
         () => getBreadcrumbsByPath(location.pathname),
-        [location.pathname]
-    )
+        [location.pathname],
+    );
 
     return (
         <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
@@ -251,7 +284,7 @@ const CartPage: React.FC = () => {
                                     "transition",
                                     index === breadcrumbs.length - 1
                                         ? "font-medium text-slate-800"
-                                        : "text-slate-500"
+                                        : "text-slate-500",
                                 )}
                             >
                                 {crumb}
@@ -277,7 +310,7 @@ const CartPage: React.FC = () => {
                                         <span
                                             className={cn(
                                                 "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                                                previewOrderStatus.className
+                                                previewOrderStatus.className,
                                             )}
                                         >
                                             {previewOrderStatus.label}
@@ -285,8 +318,9 @@ const CartPage: React.FC = () => {
                                     </div>
 
                                     <p className="mt-1 max-w-2xl text-[13px] leading-5 text-slate-600">
-                                        Kiểm tra lại sản phẩm, phương thức nhận hàng và tổng tiền trước khi
-                                        chuyển sang checkout.
+                                        Kiểm tra lại sản phẩm, phương thức nhận
+                                        hàng và tổng tiền trước khi chuyển sang
+                                        checkout.
                                     </p>
 
                                     <div className="mt-3 flex flex-wrap gap-2">
@@ -299,7 +333,11 @@ const CartPage: React.FC = () => {
                             </div>
 
                             <div className="flex flex-wrap items-center gap-3">
-                                <button type="button" onClick={() => navigate("/")} className={ghostBtn}>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/")}
+                                    className={ghostBtn}
+                                >
                                     Tiếp tục mua sắm
                                 </button>
 
@@ -309,7 +347,8 @@ const CartPage: React.FC = () => {
                                     disabled={items.length === 0}
                                     className={cn(
                                         dangerBtn,
-                                        items.length === 0 && "cursor-not-allowed opacity-50"
+                                        items.length === 0 &&
+                                            "cursor-not-allowed opacity-50",
                                     )}
                                 >
                                     Xóa toàn bộ
@@ -332,8 +371,9 @@ const CartPage: React.FC = () => {
                                         Giỏ hàng đang trống
                                     </h2>
                                     <p className="mt-2 text-[13px] leading-5 text-slate-500">
-                                        Bạn chưa có sản phẩm nào trong giỏ. Quay về trang chủ để chọn các
-                                        mặt hàng phù hợp nhé.
+                                        Bạn chưa có sản phẩm nào trong giỏ. Quay
+                                        về trang chủ để chọn các mặt hàng phù
+                                        hợp nhé.
                                     </p>
 
                                     <button
@@ -349,25 +389,32 @@ const CartPage: React.FC = () => {
                         ) : (
                             <div className="space-y-3">
                                 {items.map((item) => {
-                                    const lineTotal = item.price * item.qty
+                                    const lineTotal = item.price * item.qty;
 
                                     return (
                                         <article
                                             key={item.lotId}
-                                            className={cn(panel, "overflow-hidden p-3.5 sm:p-4")}
+                                            className={cn(
+                                                panel,
+                                                "overflow-hidden p-3.5 sm:p-4",
+                                            )}
                                         >
                                             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                                                 <div className="flex min-w-0 gap-4">
                                                     <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100">
                                                         {item.imageUrl ? (
                                                             <img
-                                                                src={item.imageUrl}
+                                                                src={
+                                                                    item.imageUrl
+                                                                }
                                                                 alt={item.name}
                                                                 className="h-full w-full object-cover"
                                                             />
                                                         ) : (
                                                             <div className="grid h-full w-full place-items-center text-slate-400">
-                                                                <ShoppingBag size={20} />
+                                                                <ShoppingBag
+                                                                    size={20}
+                                                                />
                                                             </div>
                                                         )}
                                                     </div>
@@ -399,10 +446,13 @@ const CartPage: React.FC = () => {
 
                                                         <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
                                                             <div className="text-lg font-black tracking-tight text-rose-600">
-                                                                {money(item.price)}
+                                                                {money(
+                                                                    item.price,
+                                                                )}
                                                             </div>
                                                             <div className="text-[11px] font-medium text-slate-500">
-                                                                / đơn vị đặt hàng
+                                                                / đơn vị đặt
+                                                                hàng
                                                             </div>
                                                         </div>
                                                     </div>
@@ -411,7 +461,11 @@ const CartPage: React.FC = () => {
                                                 <div className="flex flex-col items-stretch gap-3 sm:items-end">
                                                     <button
                                                         type="button"
-                                                        onClick={() => removeItem(item.lotId)}
+                                                        onClick={() =>
+                                                            removeItem(
+                                                                item.lotId,
+                                                            )
+                                                        }
                                                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-[13px] font-semibold text-rose-700 transition hover:bg-rose-100"
                                                     >
                                                         <Trash2 size={14} />
@@ -421,7 +475,13 @@ const CartPage: React.FC = () => {
                                                     <div className="inline-flex items-center gap-2 rounded-[18px] border border-slate-200 bg-slate-50 p-1.5">
                                                         <button
                                                             type="button"
-                                                            onClick={() => updateQty(item.lotId, item.qty - 1)}
+                                                            onClick={() =>
+                                                                updateQty(
+                                                                    item.lotId,
+                                                                    item.qty -
+                                                                        1,
+                                                                )
+                                                            }
                                                             className={qtyBtn}
                                                             aria-label="Giảm số lượng"
                                                         >
@@ -434,7 +494,13 @@ const CartPage: React.FC = () => {
 
                                                         <button
                                                             type="button"
-                                                            onClick={() => updateQty(item.lotId, item.qty + 1)}
+                                                            onClick={() =>
+                                                                updateQty(
+                                                                    item.lotId,
+                                                                    item.qty +
+                                                                        1,
+                                                                )
+                                                            }
                                                             className={qtyBtn}
                                                             aria-label="Tăng số lượng"
                                                         >
@@ -453,7 +519,7 @@ const CartPage: React.FC = () => {
                                                 </div>
                                             </div>
                                         </article>
-                                    )
+                                    );
                                 })}
                             </div>
                         )}
@@ -498,7 +564,9 @@ const CartPage: React.FC = () => {
 
                                                 {deliverySummary.map ? (
                                                     <a
-                                                        href={deliverySummary.map}
+                                                        href={
+                                                            deliverySummary.map
+                                                        }
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
@@ -510,15 +578,22 @@ const CartPage: React.FC = () => {
                                             </div>
 
                                             <div className="mt-3 space-y-1.5 text-[11px] leading-5 text-slate-600">
-                                                {deliverySummary.lines.map((line, index) => (
-                                                    <div key={index}>{line}</div>
-                                                ))}
+                                                {deliverySummary.lines.map(
+                                                    (line, index) => (
+                                                        <div key={index}>
+                                                            {line}
+                                                        </div>
+                                                    ),
+                                                )}
                                             </div>
 
                                             <button
                                                 type="button"
                                                 onClick={() => navigate("/")}
-                                                className={cn(ghostBtn, "mt-4 w-full")}
+                                                className={cn(
+                                                    ghostBtn,
+                                                    "mt-4 w-full",
+                                                )}
                                             >
                                                 Đổi phương thức / vị trí
                                             </button>
@@ -528,15 +603,20 @@ const CartPage: React.FC = () => {
 
                                 {!isContextReady ? (
                                     <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                                        <AlertCircle size={16} className="mt-0.5 shrink-0 text-amber-600" />
+                                        <AlertCircle
+                                            size={16}
+                                            className="mt-0.5 shrink-0 text-amber-600"
+                                        />
                                         <div>
                                             <div className="text-[13px] font-semibold text-amber-800">
                                                 Thiếu thông tin giao nhận
                                             </div>
                                             <p className="mt-1 text-[11px] leading-5 text-amber-700">
-                                                Cart hiện chỉ kiểm tra context giao/nhận cơ bản. Time slot,
-                                                addressId hoặc thông tin checkout chi tiết sẽ hoàn tất ở bước
-                                                checkout.
+                                                Cart hiện chỉ kiểm tra context
+                                                giao/nhận cơ bản. Time slot,
+                                                addressId hoặc thông tin
+                                                checkout chi tiết sẽ hoàn tất ở
+                                                bước checkout.
                                             </p>
                                         </div>
                                     </div>
@@ -544,8 +624,12 @@ const CartPage: React.FC = () => {
 
                                 <div className="mt-4 space-y-3">
                                     <div className="flex items-center justify-between text-[13px]">
-                                        <span className="text-slate-500">Tạm tính</span>
-                                        <span className="font-semibold text-slate-900">{money(subtotal)}</span>
+                                        <span className="text-slate-500">
+                                            Tạm tính
+                                        </span>
+                                        <span className="font-semibold text-slate-900">
+                                            {money(subtotal)}
+                                        </span>
                                     </div>
 
                                     <div className="flex items-center justify-between text-[13px]">
@@ -582,12 +666,14 @@ const CartPage: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={handleCheckout}
-                                    disabled={items.length === 0 || !isContextReady}
+                                    disabled={
+                                        items.length === 0 || !isContextReady
+                                    }
                                     className={cn(
                                         "mt-4 w-full gap-2",
                                         items.length > 0 && isContextReady
                                             ? primaryBtn
-                                            : "inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-slate-200 px-4 py-2.5 text-[13px] font-semibold text-slate-500"
+                                            : "inline-flex cursor-not-allowed items-center justify-center rounded-xl bg-slate-200 px-4 py-2.5 text-[13px] font-semibold text-slate-500",
                                     )}
                                 >
                                     Tiếp tục đến checkout
@@ -599,7 +685,7 @@ const CartPage: React.FC = () => {
                 </div>
             </main>
         </div>
-    )
-}
+    );
+};
 
-export default CartPage
+export default CartPage;
