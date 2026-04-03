@@ -65,7 +65,7 @@ export type TimeSlotId = string
  */
 export type OrderStatusValue =
   | "Pending"
-  | "PaidProcessing"
+  | "Paid"
   | "ReadyToShip"
   | "DeliveredWaitConfirm"
   | "Completed"

@@ -399,7 +399,7 @@ const CustomerHeader = () => {
                             alt="CloseExp AI"
                             className="h-20 w-20 shrink-0 object-contain translate-y-1.5"
                         />
-                        <div className="-ml-2 leading-tight">
+                        <div className="-ml-2 text-left leading-tight">
                             <p className="text-base font-bold text-gray-800">CloseExp AI</p>
                             <p className="text-sm text-gray-500">Mua sắm thông minh, giảm lãng phí</p>
                         </div>
