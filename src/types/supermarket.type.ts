@@ -21,7 +21,7 @@ export type Supermarket = {
 }
 
 // Dùng cho:
-// - GET /api/admin/system-config/collection-points
+// - GET /api/Orders/collection-points (public)
 // - chọn điểm nhận hàng phía client
 export type PickupPoint = {
     pickupPointId: string
@@ -84,7 +84,7 @@ export type SupermarketApiItem = {
 }
 
 // Raw item dùng cho:
-// - GET /api/admin/system-config/collection-points
+// - GET /api/Orders/collection-points
 export type PickupPointApiItem = {
     collectionPointId?: string
     collectionId?: string
@@ -129,7 +129,7 @@ export type SupermarketsPageResponse = {
 }
 
 // Response wrapper dùng cho:
-// - GET /api/admin/system-config/collection-points
+// - GET /api/Orders/collection-points
 export type PickupPointsResponse = {
     success?: boolean
     message?: string

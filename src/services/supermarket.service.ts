@@ -260,14 +260,14 @@ export const supermarketService = {
   },
 
   // ======================================================
-  // Pickup point APIs
+  // Pickup point APIs (public — dùng cho khách chọn điểm nhận, không cần Admin)
   // ======================================================
 
-  // GET /api/admin/system-config/collection-points
+  // GET /api/Orders/collection-points
   async getPickupPoints(): Promise<PickupPoint[]> {
     try {
       const res = await axiosClient.get<PickupPointsResponse>(
-        "/admin/system-config/collection-points",
+        "/Orders/collection-points",
       );
 
       console.log(
