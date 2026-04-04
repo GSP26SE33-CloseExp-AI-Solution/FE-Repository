@@ -10,6 +10,8 @@
 
 # production
 /build
+.vscode/
+.cursor/
 
 # misc
 .DS_Store
