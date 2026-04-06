@@ -1,4 +1,4 @@
-const SDashboard: React.FC = () => {
+const SupermarketDashboard: React.FC = () => {
     return (
         <div className="p-6">
             <h1 className="text-2xl font-bold mb-4">Supermarket Dashboard</h1>
@@ -7,4 +7,4 @@ const SDashboard: React.FC = () => {
     );
 };
 
-export default SDashboard;
+export default SupermarketDashboard;

@@ -20,7 +20,7 @@ import VendorProfile from "@/pages/Vendor/vProfile";
 import MyOrdersPage from "@/pages/Vendor/MyOrdersPage";
 import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage";
 
-import SDashboard from "@/pages/SupermarketStaff/SDashboard";
+import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard";
 import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductsLotsPage";
 import AddProduct from "@/pages/SupermarketStaff/sProducts/step1_AddProduct";
 import ConfirmProduct from "@/pages/SupermarketStaff/sProducts/step2_ConfirmProduct";
@@ -136,7 +136,7 @@ const AppRouter: React.FC = () => {
                             />
                             <Route
                                 path="/supermarketStaff/dashboard"
-                                element={<SDashboard />}
+                                element={<SupermarketDashboard />}
                             />
                             <Route
                                 path="/supermarketStaff/products"
