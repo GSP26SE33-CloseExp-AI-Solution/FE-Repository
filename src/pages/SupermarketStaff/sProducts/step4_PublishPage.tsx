@@ -139,7 +139,7 @@ const PublishPage: React.FC = () => {
             navigate("/supermarketStaff/products")
         } catch (error) {
             console.error("❌ PublishPage.handlePublish -> error:", error)
-            toast.error("Đăng bán thất bại")
+            toast.error("Đăng bán không thành công")
         } finally {
             setPublishing(false)
         }

@@ -317,7 +317,7 @@ const PricingPage: React.FC = () => {
             )
         } catch (error) {
             console.error("❌ PricingPage.handleConfirmPrice -> error:", error)
-            toast.error("Chốt giá thất bại")
+            toast.error("Chốt giá không thành công")
         } finally {
             setLoadingStage(null)
         }

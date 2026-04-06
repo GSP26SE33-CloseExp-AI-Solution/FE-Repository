@@ -456,7 +456,7 @@ const AdminOperations = () => {
             await loadPendingOrders(true)
         } catch (err) {
             setError(
-                getErrorMessage(err, "Cập nhật trạng thái đóng gói thất bại.")
+                getErrorMessage(err, "Cập nhật trạng thái đóng gói không thành công.")
             )
         } finally {
             setActingAction("")

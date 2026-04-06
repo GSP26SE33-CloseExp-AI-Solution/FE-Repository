@@ -81,7 +81,7 @@ const ORDER_STATUS_META: Record<
         group: "CANCELED",
     },
     Failed: {
-        label: "Thất bại",
+        label: "Không thành công",
         className: "border-rose-200 bg-rose-50 text-rose-700",
         group: "CANCELED",
     },

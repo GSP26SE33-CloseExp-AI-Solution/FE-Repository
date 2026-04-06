@@ -63,7 +63,7 @@ export const googleLoginApi = async (
         return unwrap(res.data);
     } catch (error) {
         throw new Error(
-            getAxiosErrorMessage(error, "Đăng nhập Google thất bại"),
+            getAxiosErrorMessage(error, "Đăng nhập Google không thành công"),
         );
     }
 };

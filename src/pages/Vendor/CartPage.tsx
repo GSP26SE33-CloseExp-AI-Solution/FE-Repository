@@ -86,7 +86,7 @@ const ORDER_STATUS_META = {
         className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
     },
     Failed: {
-        label: "Thất bại",
+        label: "Đơn giao không thành công",
         className: "border-rose-200 bg-rose-50 text-rose-700",
     },
 } as const;

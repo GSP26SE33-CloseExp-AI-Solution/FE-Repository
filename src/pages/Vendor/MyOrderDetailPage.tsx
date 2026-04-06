@@ -104,7 +104,7 @@ const getOrderStatusMeta = (status?: string) => {
 
         case "failed":
             return {
-                label: "Thất bại",
+                label: "Không thành công",
                 className: "border-rose-200 bg-rose-50 text-rose-700",
                 note: "Đã có lỗi xảy ra khi xử lý đơn hàng.",
             }

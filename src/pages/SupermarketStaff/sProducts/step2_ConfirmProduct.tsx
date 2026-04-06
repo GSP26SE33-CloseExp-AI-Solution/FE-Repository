@@ -275,7 +275,7 @@ const ConfirmProduct: React.FC = () => {
             )
         } catch (error) {
             console.error("❌ ConfirmProduct.handleSubmit -> error:", error)
-            toast.error("Xác nhận sản phẩm thất bại")
+            toast.error("Xác nhận sản phẩm không thành công")
         } finally {
             setIsSubmitting(false)
         }

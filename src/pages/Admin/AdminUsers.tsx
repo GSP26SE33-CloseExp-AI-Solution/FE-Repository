@@ -701,7 +701,7 @@ const AdminUsers = () => {
             }
         } catch (error) {
             const message =
-                error instanceof Error ? error.message : "Cập nhật trạng thái thất bại"
+                error instanceof Error ? error.message : "Cập nhật trạng thái không thành công"
             showError(message)
         } finally {
             setActionUserId(null)

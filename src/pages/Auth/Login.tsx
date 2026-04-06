@@ -39,7 +39,7 @@ const Login = () => {
             showSuccess("Đăng nhập thành công");
         } catch (error) {
             const message =
-                error instanceof Error ? error.message : "Đăng nhập thất bại";
+                error instanceof Error ? error.message : "Đăng nhập không thành công";
             showError(message);
         }
     };
@@ -64,13 +64,13 @@ const Login = () => {
             const message =
                 error instanceof Error
                     ? error.message
-                    : "Đăng nhập Google thất bại";
+                    : "Đăng nhập Google không thành công";
             showError(message);
         }
     };
 
     const handleGoogleError = () => {
-        showError("Đăng nhập Google thất bại");
+        showError("Đăng nhập Google không thành công");
     };
 
     return (

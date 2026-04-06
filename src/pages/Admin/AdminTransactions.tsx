@@ -61,7 +61,7 @@ const getStatusLabel = (status?: string) => {
         case "refunded":
             return "Đã hoàn tiền"
         case "failed":
-            return "Thất bại"
+            return "Đơn giao không thành công"
         default:
             return status || "--"
     }
@@ -293,7 +293,7 @@ const AdminTransactions = () => {
             }
         } catch (error: unknown) {
             showError(
-                getErrorMessage(error, "Cập nhật trạng thái đơn hàng thất bại")
+                getErrorMessage(error, "Cập nhật trạng thái đơn hàng không thành công")
             )
         } finally {
             setActionLoading(null)

@@ -351,7 +351,7 @@ const AdminApprovals = () => {
             await adminService.approveUser(userId)
             await loadApprovals(true)
         } catch (err: any) {
-            setError(err?.response?.data?.message || "Duyệt tài khoản thất bại.")
+            setError(err?.response?.data?.message || "Duyệt tài khoản không thành công.")
         } finally {
             setActingId("")
         }
@@ -363,7 +363,7 @@ const AdminApprovals = () => {
             await adminService.rejectUser(userId)
             await loadApprovals(true)
         } catch (err: any) {
-            setError(err?.response?.data?.message || "Từ chối tài khoản thất bại.")
+            setError(err?.response?.data?.message || "Từ chối tài khoản không thành công.")
         } finally {
             setActingId("")
         }

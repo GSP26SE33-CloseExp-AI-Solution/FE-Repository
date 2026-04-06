@@ -828,7 +828,7 @@ const AdminInternalStaff = () => {
             await loadInternalStaff(true)
         } catch (err: any) {
             showError(
-                err?.response?.data?.message || "Tạo tài khoản nội bộ thất bại."
+                err?.response?.data?.message || "Tạo tài khoản nội bộ không thành công."
             )
         } finally {
             setSubmitting(false)

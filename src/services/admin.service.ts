@@ -92,7 +92,7 @@ const unwrap = <T,>(payload: unknown): T => {
         throw new Error(
             normalized.errors?.filter(Boolean).join(", ") ||
             normalized.message ||
-            "Yêu cầu thất bại"
+            "Yêu cầu không thành công"
         )
     }
 

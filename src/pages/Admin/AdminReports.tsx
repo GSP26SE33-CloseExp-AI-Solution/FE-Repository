@@ -64,7 +64,7 @@ type ExportHistoryItem = {
   type: string
   createdAt: string
   format: "Excel" | "CSV"
-  status: "Thành công" | "Đang xử lý" | "Thất bại"
+  status: "Thành công" | "Đang xử lý" | "Không thành công"
   receiver?: string
   fileSize?: string
 }
@@ -131,7 +131,7 @@ const sheetDefinitions: SheetDefinition[] = [
       "Tổng nhóm giao",
       "Tổng đơn",
       "Đơn hoàn tất",
-      "Đơn thất bại",
+      "Đơn không hoàn tất",
       "Đơn đang giao",
       "Tỷ lệ hoàn tất",
     ],
@@ -268,7 +268,7 @@ const mockHistory: ExportHistoryItem[] = [
     type: "Báo cáo SLA",
     createdAt: "24/03/2026 10:05",
     format: "CSV",
-    status: "Thất bại",
+    status: "Không thành công",
   },
 ]
 

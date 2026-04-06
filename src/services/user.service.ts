@@ -40,6 +40,6 @@ export const updateUserStatusApi = async (
         const res = await axiosClient.patch<ApiResponse<User>>(`/Users/${userId}/status`, payload)
         return unwrap(res.data)
     } catch (error) {
-        throw new Error(getAxiosErrorMessage(error, "Cập nhật trạng thái tài khoản thất bại"))
+        throw new Error(getAxiosErrorMessage(error, "Cập nhật trạng thái tài khoản không thành công"))
     }
 }

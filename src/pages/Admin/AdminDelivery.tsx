@@ -105,7 +105,7 @@ const mapGroupStatusLabel = (value?: string) => {
         case "completed":
             return "Hoàn tất"
         case "failed":
-            return "Thất bại"
+            return "Đơn giao không thành công"
         default:
             return value || "--"
     }
@@ -130,7 +130,7 @@ const mapHistoryStatusLabel = (value?: string) => {
         case "completed":
             return "Hoàn tất"
         case "failed":
-            return "Thất bại"
+            return "Đơn giao không thành công"
         default:
             return value || "--"
     }
@@ -508,7 +508,7 @@ const GroupDetailPanel = ({
 
                 <div className="rounded-2xl bg-slate-50 px-4 py-3">
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                        Thất bại
+                        Đơn giao không thành công
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-900">
                         {formatNumber(detail.failedOrders)}
@@ -689,7 +689,7 @@ const GroupDetailPanel = ({
                                 className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <XCircle className="h-4 w-4" />
-                                {isCancelling ? "Đang cập nhật..." : "Đánh dấu thất bại / hủy"}
+                                {isCancelling ? "Đang cập nhật..." : "Đánh dấu không thành công / hủy"}
                             </button>
                         </div>
 
@@ -1164,7 +1164,7 @@ const AdminDelivery = () => {
             await loadGroups(true)
             await loadStats(true)
         } catch (err: any) {
-            setError(err?.response?.data?.message || "Không thể cập nhật trạng thái thất bại.")
+            setError(err?.response?.data?.message || "Không thể cập nhật trạng thái.")
         } finally {
             setActingAction("")
         }
@@ -1302,7 +1302,7 @@ const AdminDelivery = () => {
                         <option value="Assigned">Đã phân công</option>
                         <option value="InTransit">Đang giao</option>
                         <option value="Completed">Hoàn tất</option>
-                        <option value="Failed">Thất bại</option>
+                        <option value="Failed">Đơn giao không thành công</option>
                     </select>
 
                     <div className="flex gap-3">

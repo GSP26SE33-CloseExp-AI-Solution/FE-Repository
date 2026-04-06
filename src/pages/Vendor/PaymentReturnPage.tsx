@@ -58,7 +58,7 @@ const PaymentReturnPage: React.FC = () => {
             }
         } catch (err: unknown) {
             const message =
-                err instanceof Error ? err.message : "Xác nhận thanh toán thất bại"
+                err instanceof Error ? err.message : "Xác nhận thanh toán không thành công"
             setState({ kind: "failed", reason: message })
         }
     }, [])

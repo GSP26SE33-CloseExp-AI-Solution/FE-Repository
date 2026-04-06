@@ -356,7 +356,7 @@ const AdminFeedbacks = () => {
 
       setNotice("Đã xoá phản hồi thành công.")
     } catch (err: any) {
-      setError(err?.response?.data?.message || "Xoá phản hồi thất bại.")
+      setError(err?.response?.data?.message || "Xoá phản hồi không thành công.")
     } finally {
       setDeletingId("")
     }

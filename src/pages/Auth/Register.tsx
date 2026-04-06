@@ -167,7 +167,7 @@ const Register = () => {
                 err?.response?.data?.message ||
                 err?.response?.data?.errors?.[0] ||
                 err?.message ||
-                "Đăng ký thất bại"
+                "Đăng ký không thành công"
             )
         }
     }
@@ -195,7 +195,7 @@ const Register = () => {
                 err?.response?.data?.message ||
                 err?.response?.data?.errors?.[0] ||
                 err?.message ||
-                "Xác minh OTP thất bại"
+                "Xác minh OTP không thành công"
             )
         }
     }
@@ -214,7 +214,7 @@ const Register = () => {
                 err?.response?.data?.message ||
                 err?.response?.data?.errors?.[0] ||
                 err?.message ||
-                "Gửi lại OTP thất bại"
+                "Gửi lại OTP không thành công"
             )
         }
     }

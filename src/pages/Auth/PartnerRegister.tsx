@@ -379,7 +379,7 @@ const PartnerRegister = () => {
                 return
             }
 
-            showError("Gửi đơn đăng ký thất bại. Vui lòng thử lại.")
+            showError("Gửi đơn đăng ký không thành công. Vui lòng thử lại.")
         } finally {
             setSubmitting(false)
         }

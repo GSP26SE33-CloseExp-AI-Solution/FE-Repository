@@ -138,7 +138,7 @@ const mapOrderStatusLabel = (status?: string) => {
         case "cancelled":
             return "Đã hủy"
         case "failed":
-            return "Thất bại"
+            return "Đơn giao không thành công"
         default:
             return status || "Không xác định"
     }
