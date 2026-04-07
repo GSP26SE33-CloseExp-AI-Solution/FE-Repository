@@ -323,7 +323,7 @@ const Home = () => {
 
       if (!stillHasSearch) {
         next.delete("view")
-              } else {
+      } else {
         next.set("view", "shop")
       }
     })
@@ -431,17 +431,17 @@ const Home = () => {
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
                       {resultSummaryText} Hiện có {displayedProducts.length} kết quả phù hợp.
-                    </p>
-          </div>
+                </p>
+              </div>
 
-          <button
-            type="button"
+                <button
+                  type="button"
                     onClick={clearSearchQuery}
                     className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-          >
+                    >
                     Xóa bộ lọc tìm kiếm
-          </button>
-        </div>
+                </button>
+              </div>
 
                 {appliedCriteria.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -454,8 +454,8 @@ const Home = () => {
                           {item.label}: <span className="font-semibold">{item.value}</span>
               </span>
 
-              <button
-                type="button"
+                      <button
+                        type="button"
                           onClick={() =>
                             removeSingleCriteria(
                               item.key as "keyword" | "category" | "lot"
@@ -464,10 +464,10 @@ const Home = () => {
                           className="text-xs font-semibold text-emerald-700 transition hover:text-emerald-900"
                         >
                           ×
-              </button>
-              </div>
-            ))}
-                </div>
+                      </button>
+                        </div>
+                      ))}
+                  </div>
                 )}
               </div>
             </section>

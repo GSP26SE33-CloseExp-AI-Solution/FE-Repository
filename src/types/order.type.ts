@@ -104,7 +104,8 @@ export type SupermarketLite = {
 export type CustomerOrderContext = {
   deliveryMethodId?: DeliveryMethodId
 
-  locationSource?: "gps" | "search" | "map"
+  /** saved = địa chỉ đã lưu / mặc định từ tài khoản */
+  locationSource?: "gps" | "search" | "map" | "saved"
   lat?: number
   lng?: number
   addressText?: string
@@ -212,7 +213,7 @@ export type CreateOrderPayload = {
   userId: string
   timeSlotId: string
   collectionId?: string | null
-  deliveryType: string
+  deliveryType: DeliveryMethodId
   totalAmount: number
   status: string
   addressId?: string | null
@@ -241,6 +242,50 @@ export type CreateMyOrderPayload = {
   deliveryFee: number
   cancelDeadline?: string
   orderItems: CreateOrderItemPayload[]
+}
+
+/**
+ * customer address response
+ * endpoint:
+ * - GET /api/CustomerAddresses/default
+ * - POST /api/CustomerAddresses
+ */
+export type CustomerAddress = {
+  customerAddressId: string
+  userId: string
+  phone: string
+  recipientName: string
+  addressLine: string
+  latitude: number
+  longitude: number
+  isDefault: boolean
+}
+
+/**
+ * create customer address payload
+ * endpoint:
+ * - POST /api/CustomerAddresses
+ */
+export type CreateCustomerAddressPayload = {
+  phone: string
+  recipientName: string
+  addressLine: string
+  latitude: number
+  longitude: number
+  isDefault: boolean
+}
+
+/**
+ * update customer address
+ * endpoint:
+ * - PUT /api/CustomerAddresses/{id}
+ */
+export type UpdateCustomerAddressPayload = {
+  phone?: string
+  recipientName?: string
+  addressLine?: string
+  latitude?: number
+  longitude?: number
 }
 
 /**

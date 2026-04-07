@@ -5,7 +5,6 @@ import {
     Heart,
     LogOut,
     Mail,
-    MapPin,
     Phone,
     Save,
     ShieldAlert,
@@ -15,6 +14,7 @@ import {
 
 import { useAuthContext } from "@/contexts/AuthContext"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
+import CustomerAddressesPanel from "./CustomerAddressesPanel"
 import { showError, showSuccess } from "@/utils/toast"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 
@@ -384,6 +384,11 @@ const VendorProfile: React.FC = () => {
                                 </button>
                             </div>
                         </div>
+
+                        <CustomerAddressesPanel
+                            defaultRecipientName={fullName}
+                            defaultPhone={phone}
+                        />
 
                         <div className="rounded-[24px] border border-emerald-200 bg-white p-5 shadow-sm">
                             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">

@@ -19,6 +19,7 @@ import type {
 } from "@/types/order.type"
 import { cartStorage, money, orderContextStorage } from "@/utils/orderStorage"
 import { orderService } from "@/services/order.service"
+import { customerAddressService } from "@/services/customer-address.service"
 import { useAuthContext } from "@/contexts/AuthContext"
 import toast from "react-hot-toast"
 
@@ -208,6 +209,47 @@ const CheckoutPage: React.FC = () => {
     orderContextStorage.set(nextCtx)
   }
 
+  const resolveDeliveryAddressContext = async (
+    currentCtx: CustomerOrderContext,
+  ): Promise<CustomerOrderContext> => {
+    if (currentCtx.deliveryMethodId !== "DELIVERY") return currentCtx
+    if (currentCtx.addressId) return currentCtx
+
+    if (
+      !currentCtx.addressText?.trim() ||
+      typeof currentCtx.lat !== "number" ||
+      typeof currentCtx.lng !== "number"
+    ) {
+      throw new Error("Thiếu địa chỉ giao hàng. Vui lòng quay lại chọn vị trí giao.")
+    }
+
+    const defaultAddress = await customerAddressService.getDefaultAddress()
+    if (defaultAddress?.customerAddressId) {
+      return {
+        ...currentCtx,
+        addressId: defaultAddress.customerAddressId,
+      }
+    }
+
+    if (!user?.fullName?.trim() || !user?.phone?.trim()) {
+      throw new Error("Thiếu thông tin người nhận (họ tên/số điện thoại). Vui lòng cập nhật hồ sơ.")
+    }
+
+    const createdAddress = await customerAddressService.createAddress({
+      recipientName: user.fullName.trim(),
+      phone: user.phone.trim(),
+      addressLine: currentCtx.addressText.trim(),
+      latitude: currentCtx.lat,
+      longitude: currentCtx.lng,
+      isDefault: true,
+    })
+
+    return {
+      ...currentCtx,
+      addressId: createdAddress.customerAddressId,
+    }
+  }
+
   const handlePayAndRedirect = async () => {
     if (!canSubmit) return
 
@@ -244,25 +286,29 @@ const CheckoutPage: React.FC = () => {
     orderContextStorage.set(nextCtx)
 
     try {
-      const order = await orderService.createOrder({
-        userId: user.userId,
-        timeSlotId: ctx.timeSlotId,
-        deliveryType: ctx.deliveryMethodId,
-        totalAmount: subtotal,
-        discountAmount: 0,
-        finalAmount: total,
+      let submitCtx = nextCtx
+      if (nextCtx.deliveryMethodId === "DELIVERY") {
+        submitCtx = await resolveDeliveryAddressContext(nextCtx)
+        setCtx(submitCtx)
+        orderContextStorage.set(submitCtx)
+      }
+
+      const submitCollectionId = orderContextStorage.getResolvedCollectionId(submitCtx)
+
+      const order = await orderService.createMyOrder({
+        timeSlotId: submitCtx.timeSlotId ?? ctx.timeSlotId,
+        deliveryType: submitCtx.deliveryMethodId ?? ctx.deliveryMethodId,
         deliveryFee,
-        status: "Pending",
-        ...(ctx.deliveryMethodId === "PICKUP"
-          ? { collectionId: resolvedCollectionId }
+        ...(submitCtx.deliveryMethodId === "PICKUP"
+          ? { collectionId: submitCollectionId }
           : {}),
-        ...(ctx.promotionId ? { promotionId: ctx.promotionId } : {}),
-        ...(ctx.addressId ? { addressId: ctx.addressId } : {}),
+        ...(submitCtx.promotionId ? { promotionId: submitCtx.promotionId } : {}),
+        ...(submitCtx.addressId ? { addressId: submitCtx.addressId } : {}),
         deliveryNote:
-          ctx.deliveryMethodId === "DELIVERY"
-            ? ctx.addressText || undefined
-            : orderContextStorage.getResolvedCollectionAddress(ctx) ||
-            orderContextStorage.getResolvedCollectionName(ctx) ||
+          submitCtx.deliveryMethodId === "DELIVERY"
+            ? submitCtx.addressText || undefined
+            : orderContextStorage.getResolvedCollectionAddress(submitCtx) ||
+            orderContextStorage.getResolvedCollectionName(submitCtx) ||
             undefined,
         orderItems: cart.map((item) => ({
           lotId: item.lotId,

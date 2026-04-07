@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
     Building2,
     Check,
@@ -12,8 +12,10 @@ import {
 } from "lucide-react";
 
 import MapboxLocationPicker from "./MapboxLocationPicker";
+import { useAuthContext } from "@/contexts/AuthContext";
+import { customerAddressService } from "@/services/customer-address.service";
 import { supermarketService } from "@/services/supermarket.service";
-import type { PickupPoint, Supermarket } from "@/types/supermarket.type";
+import type { PickupPoint } from "@/types/supermarket.type";
 import {
     administrativeService,
     type AdministrativeDistrict,
@@ -87,9 +89,12 @@ const locationSourceLabel: Record<
     gps: "Vị trí hiện tại",
     search: "Tìm theo địa chỉ",
     map: "Chỉnh trên bản đồ",
+    saved: "Địa chỉ đã lưu",
 };
 
 const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
+    const { user } = useAuthContext();
+
     const [step, setStep] = useState<1 | 2>(1);
 
     const [deliveryMethodId, setDeliveryMethodId] = useState<
@@ -102,7 +107,7 @@ const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
         initialValue?.addressText ?? "",
     );
     const [locationSource, setLocationSource] = useState<
-        "gps" | "search" | "map"
+        NonNullable<DeliveryContext["locationSource"]>
     >(initialValue?.locationSource ?? "gps");
 
     const [districts, setDistricts] = useState<AdministrativeDistrict[]>([]);
@@ -133,6 +138,12 @@ const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
         "idle" | "loading" | "loaded" | "error"
     >("idle");
 
+    /** customerAddressId gắn với vị trí hiện tại; xóa khi user đổi vị trí thủ công */
+    const [linkedAddressId, setLinkedAddressId] = useState<string | null>(null);
+
+    /** User đã chỉnh vị trí (GPS/tìm/bản đồ) — không ghi đè bằng defaultAddress trễ */
+    const skipAutoDefaultHydrationRef = useRef(false);
+
     useEffect(() => {
         if (!open) return;
 
@@ -148,6 +159,7 @@ const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
         setAddressText(initialValue?.addressText ?? "");
         setPickupPointId(initialValue?.pickupPointId ?? "");
         setLocationSource(initialValue?.locationSource ?? "gps");
+        setLinkedAddressId(initialValue?.addressId ?? null);
 
         setDistrictCode("");
         setWardCode("");
@@ -158,7 +170,55 @@ const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
         setPickupError("");
         setSubmitInfo("");
         setMapStatus("idle");
+        skipAutoDefaultHydrationRef.current = false;
     }, [open, initialValue]);
+
+    /**
+     * Khi đã đăng nhập và chưa có snapshot vị trí trong context,
+     * lấy địa chỉ mặc định từ BE để điền sẵn (user vẫn chỉnh tay như cũ).
+     */
+    useEffect(() => {
+        if (!open || step !== 2 || deliveryMethodId !== "DELIVERY") return;
+        if (!user?.userId) return;
+
+        const hasSnapshot =
+            initialValue?.lat != null &&
+            initialValue?.lng != null &&
+            !!(initialValue.addressText ?? "").trim();
+
+        if (hasSnapshot) return;
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const def = await customerAddressService.getDefaultAddress();
+                if (cancelled || !def || skipAutoDefaultHydrationRef.current) return;
+
+                setLat(Number(def.latitude));
+                setLng(Number(def.longitude));
+                setAddressText(def.addressLine);
+                setLocationSource("saved");
+                setLinkedAddressId(def.customerAddressId);
+                setError("");
+                setMapStatus("idle");
+            } catch {
+                // Không chặn luồng: guest / lỗi mạng — user chọn vị trí như trước
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        open,
+        step,
+        deliveryMethodId,
+        user?.userId,
+        initialValue?.lat,
+        initialValue?.lng,
+        initialValue?.addressText,
+    ]);
 
     useEffect(() => {
         if (!open) return;
@@ -300,6 +360,8 @@ const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
         nextLng: number,
         source: "gps" | "search" | "map",
     ) => {
+        skipAutoDefaultHydrationRef.current = true;
+        setLinkedAddressId(null);
         setLat(nextLat);
         setLng(nextLng);
         setLocationSource(source);
@@ -529,6 +591,7 @@ const DeliveryGateModal = ({ open, initialValue, onDone, onClose }: Props) => {
                     lat,
                     lng,
                     addressText,
+                    addressId: linkedAddressId ?? undefined,
                     pickupPointId: "",
                     pickupPointName: "",
                     pickupPointAddress: "",
