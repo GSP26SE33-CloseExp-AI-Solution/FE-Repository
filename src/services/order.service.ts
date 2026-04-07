@@ -80,7 +80,7 @@ export const orderService = {
 
     async getOrderDetails(orderId: string) {
         const response = await axiosClient.get<ApiEnvelope<OrderDetails>>(
-            `/Orders/${orderId}`
+            `/Orders/${orderId}/details`
         )
         return unwrap(response)
     },

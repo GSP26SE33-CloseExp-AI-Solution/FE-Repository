@@ -15,7 +15,9 @@ import {
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
+import { supermarketService } from "@/services/supermarket.service"
 import type { OrderDetails, PaginationResult } from "@/types/order.type"
+import type { PickupPoint } from "@/types/supermarket.type"
 import { lastOrderStorage, money } from "@/utils/orderStorage"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
@@ -125,6 +127,8 @@ const MyOrdersPage: React.FC = () => {
     const [error, setError] = useState("")
     const [keyword, setKeyword] = useState("")
     const [filter, setFilter] = useState<OrderFilterKey>("ALL")
+    /** Catalog điểm nhận từ GET /api/Orders/collection-points (public) */
+    const [pickupCatalog, setPickupCatalog] = useState<PickupPoint[]>([])
 
     const breadcrumbs = useMemo(
         () => getBreadcrumbsByPath(location.pathname),
@@ -185,6 +189,29 @@ const MyOrdersPage: React.FC = () => {
         }
     }, [page, pageSize])
 
+    useEffect(() => {
+        let cancelled = false
+        void (async () => {
+            try {
+                const pts = await supermarketService.getPickupPoints()
+                if (!cancelled) setPickupCatalog(pts)
+            } catch {
+                if (!cancelled) setPickupCatalog([])
+            }
+        })()
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
+    const pickupById = useMemo(() => {
+        const m = new Map<string, PickupPoint>()
+        for (const p of pickupCatalog) {
+            m.set(p.pickupPointId.toLowerCase(), p)
+        }
+        return m
+    }, [pickupCatalog])
+
     const filteredOrders = useMemo(() => {
         const kw = keyword.trim().toLowerCase()
 
@@ -194,18 +221,25 @@ const MyOrdersPage: React.FC = () => {
             const matchFilter =
                 filter === "ALL" ? true : meta.group === filter
 
+            const catalogPickup =
+                order.deliveryType === "PICKUP" && order.collectionId
+                    ? pickupById.get(String(order.collectionId).toLowerCase())
+                    : undefined
+
             const matchKeyword =
                 !kw ||
                 order.orderCode?.toLowerCase().includes(kw) ||
                 order.collectionPointName?.toLowerCase().includes(kw) ||
                 order.deliveryNote?.toLowerCase().includes(kw) ||
+                catalogPickup?.name?.toLowerCase().includes(kw) ||
+                catalogPickup?.address?.toLowerCase().includes(kw) ||
                 order.orderItems?.some((item) =>
                     item.productName?.toLowerCase().includes(kw)
                 )
 
             return matchFilter && matchKeyword
         })
-    }, [orders, keyword, filter])
+    }, [orders, keyword, filter, pickupById])
 
     const stats = useMemo(() => {
         return {
@@ -382,6 +416,12 @@ const MyOrdersPage: React.FC = () => {
                             {filteredOrders.map((order) => {
                                 const meta = getOrderMeta(order.status)
                                 const isDelivery = order.deliveryType === "DELIVERY"
+                                const catalogPickup =
+                                    !isDelivery && order.collectionId
+                                        ? pickupById.get(
+                                              String(order.collectionId).toLowerCase()
+                                          )
+                                        : undefined
 
                                 return (
                                     <article key={order.orderId} className={cn(panel, "p-4 sm:p-5")}>
@@ -417,9 +457,25 @@ const MyOrdersPage: React.FC = () => {
                                                                 {isDelivery ? "Giao tận nơi" : "Nhận tại điểm tập kết"}
                                                             </div>
                                                             <div className="mt-1 text-[12px] leading-5 text-slate-600">
-                                                                {isDelivery
-                                                                    ? order.deliveryNote || "Chưa có địa chỉ giao hàng"
-                                                                    : order.collectionPointName || "Chưa có điểm nhận"}
+                                                                {isDelivery ? (
+                                                                    order.deliveryNote ||
+                                                                    "Chưa có địa chỉ giao hàng"
+                                                                ) : (
+                                                                    <>
+                                                                        <div className="font-medium text-slate-800">
+                                                                            {catalogPickup?.name ||
+                                                                                order.collectionPointName ||
+                                                                                "Chưa có điểm nhận"}
+                                                                        </div>
+                                                                        {catalogPickup?.address ||
+                                                                        order.deliveryNote ? (
+                                                                            <div className="mt-0.5 text-slate-600">
+                                                                                {catalogPickup?.address ||
+                                                                                    order.deliveryNote}
+                                                                            </div>
+                                                                        ) : null}
+                                                                    </>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     </div>

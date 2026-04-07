@@ -16,7 +16,9 @@ import {
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
+import { supermarketService } from "@/services/supermarket.service"
 import type { OrderDetails } from "@/types/order.type"
+import type { PickupPoint } from "@/types/supermarket.type"
 import { googleMapsUrl, lastOrderStorage, money } from "@/utils/orderStorage"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
@@ -126,6 +128,10 @@ const MyOrderDetailPage: React.FC = () => {
     const [order, setOrder] = useState<OrderDetails | null>(null)
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
+    /** Địa chỉ điểm nhận từ GET /api/Orders/collection-points (public), khớp collectionId trên đơn */
+    const [pickupCatalogPoint, setPickupCatalogPoint] = useState<PickupPoint | null>(
+        null
+    )
 
     useEffect(() => {
         let mounted = true
@@ -189,6 +195,34 @@ const MyOrderDetailPage: React.FC = () => {
         }
     }, [orderId])
 
+    // Lấy tên + địa chỉ chuẩn từ catalog public (không dùng API admin)
+    useEffect(() => {
+        if (!order || order.deliveryType !== "PICKUP" || !order.collectionId) {
+            setPickupCatalogPoint(null)
+            return
+        }
+
+        let cancelled = false
+
+        void (async () => {
+            try {
+                const points = await supermarketService.getPickupPoints()
+                if (cancelled) return
+                const target = String(order.collectionId).toLowerCase()
+                const hit = points.find(
+                    (p) => p.pickupPointId.toLowerCase() === target
+                )
+                setPickupCatalogPoint(hit ?? null)
+            } catch {
+                if (!cancelled) setPickupCatalogPoint(null)
+            }
+        })()
+
+        return () => {
+            cancelled = true
+        }
+    }, [order])
+
     const breadcrumbs = useMemo(
         () =>
             getBreadcrumbsByPath(location.pathname, {
@@ -223,6 +257,21 @@ const MyOrderDetailPage: React.FC = () => {
     }, [order?.deliveryType])
 
     const mapUrl = useMemo(() => {
+        if (order?.deliveryType === "PICKUP" && pickupCatalogPoint) {
+            const lat = pickupCatalogPoint.lat
+            const lng = pickupCatalogPoint.lng
+            if (
+                Number.isFinite(lat) &&
+                Number.isFinite(lng) &&
+                lat >= -90 &&
+                lat <= 90 &&
+                lng >= -180 &&
+                lng <= 180
+            ) {
+                return googleMapsUrl(lat, lng)
+            }
+        }
+
         if (!order?.deliveryNote) return ""
 
         const latLngMatch = order.deliveryNote.match(
@@ -236,7 +285,7 @@ const MyOrderDetailPage: React.FC = () => {
 
         if (Number.isNaN(lat) || Number.isNaN(lng)) return ""
         return googleMapsUrl(lat, lng)
-    }, [order?.deliveryNote])
+    }, [order?.deliveryNote, order?.deliveryType, pickupCatalogPoint])
 
     if (loading) {
         return (
@@ -487,13 +536,19 @@ const MyOrderDetailPage: React.FC = () => {
 
                                         <div className="mt-1 text-[13px] font-semibold text-slate-900">
                                             {order.deliveryType === "DELIVERY"
-                                                ? order.deliveryNote || "Chưa có địa chỉ giao hàng"
-                                                : order.collectionPointName || "Chưa có điểm nhận"}
+                                                ? order.deliveryNote ||
+                                                  "Chưa có địa chỉ giao hàng"
+                                                : pickupCatalogPoint?.name ||
+                                                  order.collectionPointName ||
+                                                  "Chưa có điểm nhận"}
                                         </div>
 
-                                        {order.deliveryType === "PICKUP" && order.deliveryNote ? (
+                                        {order.deliveryType === "PICKUP" &&
+                                        (pickupCatalogPoint?.address ||
+                                            order.deliveryNote) ? (
                                             <div className="mt-2 text-[12px] text-slate-500">
-                                                {order.deliveryNote}
+                                                {pickupCatalogPoint?.address ||
+                                                    order.deliveryNote}
                                             </div>
                                         ) : null}
 
