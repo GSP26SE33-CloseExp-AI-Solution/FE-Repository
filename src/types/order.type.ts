@@ -9,11 +9,11 @@
  * - GET /api/Orders/my-orders
  */
 export type PaginationResult<T> = {
-  items: T[]
-  totalResult: number
-  page: number
-  pageSize: number
-}
+	items: T[];
+	totalResult: number;
+	page: number;
+	pageSize: number;
+};
 
 /**
  * .NET TimeSpan DTO
@@ -22,22 +22,22 @@ export type PaginationResult<T> = {
  * - GET /api/admin/system-config/time-slots
  */
 export type TimeSpanDto = {
-  ticks: number
-  days: number
-  hours: number
-  milliseconds: number
-  microseconds: number
-  nanoseconds: number
-  minutes: number
-  seconds: number
-  totalDays: number
-  totalHours: number
-  totalMilliseconds: number
-  totalMicroseconds: number
-  totalNanoseconds: number
-  totalMinutes: number
-  totalSeconds: number
-}
+	ticks: number;
+	days: number;
+	hours: number;
+	milliseconds: number;
+	microseconds: number;
+	nanoseconds: number;
+	minutes: number;
+	seconds: number;
+	totalDays: number;
+	totalHours: number;
+	totalMilliseconds: number;
+	totalMicroseconds: number;
+	totalNanoseconds: number;
+	totalMinutes: number;
+	totalSeconds: number;
+};
 
 /* =========================
    Order / Delivery enums
@@ -49,7 +49,7 @@ export type TimeSpanDto = {
  * Swagger đang để deliveryType là string
  * FE hiện map về 2 mode chính này
  */
-export type DeliveryMethodId = "DELIVERY" | "PICKUP"
+export type DeliveryMethodId = "DELIVERY" | "PICKUP";
 
 /**
  * BE timeSlotId thực tế là uuid string
@@ -58,25 +58,25 @@ export type DeliveryMethodId = "DELIVERY" | "PICKUP"
  * - POST /api/Orders/my-orders
  * - GET /api/Orders/time-slots
  */
-export type TimeSlotId = string
+export type TimeSlotId = string;
 
 /**
  * bám theo enum-state-BE: OrderState
  */
 export type OrderStatusValue =
-  | "Pending"
-  | "Paid"
-  | "ReadyToShip"
-  | "DeliveredWaitConfirm"
-  | "Completed"
-  | "Canceled"
-  | "Refunded"
-  | "Failed"
+	| "Pending"
+	| "Paid"
+	| "ReadyToShip"
+	| "DeliveredWaitConfirm"
+	| "Completed"
+	| "Canceled"
+	| "Refunded"
+	| "Failed";
 
 /**
  * bám theo enum-state-BE: PromotionState
  */
-export type PromotionStatusValue = "Draft" | "Active" | "Expired" | "Disabled"
+export type PromotionStatusValue = "Draft" | "Active" | "Expired" | "Disabled";
 
 /* =========================
    FE local checkout context
@@ -88,13 +88,13 @@ export type PromotionStatusValue = "Draft" | "Active" | "Expired" | "Disabled"
  * dùng local cho delivery gate / checkout
  */
 export type SupermarketLite = {
-  supermarketId: string
-  name: string
-  address: string
-  latitude: number
-  longitude: number
-  distanceKm?: number
-}
+	supermarketId: string;
+	name: string;
+	address: string;
+	latitude: number;
+	longitude: number;
+	distanceKm?: number;
+};
 
 /**
  * FE order context trước checkout
@@ -102,53 +102,53 @@ export type SupermarketLite = {
  * - POST /api/Orders/my-orders
  */
 export type CustomerOrderContext = {
-  deliveryMethodId?: DeliveryMethodId
+	deliveryMethodId?: DeliveryMethodId;
 
-  /** saved = địa chỉ đã lưu / mặc định từ tài khoản */
-  locationSource?: "gps" | "search" | "map" | "saved"
-  lat?: number
-  lng?: number
-  addressText?: string
+	/** saved = địa chỉ đã lưu / mặc định từ tài khoản */
+	locationSource?: "gps" | "search" | "map" | "saved";
+	lat?: number;
+	lng?: number;
+	addressText?: string;
 
-  // FE local pickup info
-  pickupPointId?: string
-  pickupPointName?: string
-  pickupPointAddress?: string
-  pickupLat?: number
-  pickupLng?: number
+	// FE local pickup info
+	pickupPointId?: string;
+	pickupPointName?: string;
+	pickupPointAddress?: string;
+	pickupLat?: number;
+	pickupLng?: number;
 
-  nearbySupermarkets?: SupermarketLite[]
+	nearbySupermarkets?: SupermarketLite[];
 
-  // meta thật dùng cho create order
-  collectionId?: string
-  collectionPointId?: string
-  collectionPointName?: string
-  collectionPointAddress?: string
+	// meta thật dùng cho create order
+	collectionId?: string;
+	collectionPointId?: string;
+	collectionPointName?: string;
+	collectionPointAddress?: string;
 
-  /**
-   * BE timeSlotId thật (uuid)
-   * chọn trực tiếp từ GET /api/Orders/time-slots
-   */
-  timeSlotId?: TimeSlotId
+	/**
+	 * BE timeSlotId thật (uuid)
+	 * chọn trực tiếp từ GET /api/Orders/time-slots
+	 */
+	timeSlotId?: TimeSlotId;
 
-  addressId?: string
-  promotionId?: string
-  orderId?: string
-}
+	addressId?: string;
+	promotionId?: string;
+	orderId?: string;
+};
 
 /**
  * FE local cart item
  * không phải raw response của carts endpoint
  */
 export type CartItem = {
-  lotId: string
-  productId: string
-  supermarketId: string
-  name: string
-  price: number
-  qty: number
-  imageUrl?: string
-}
+	lotId: string;
+	productId: string;
+	supermarketId: string;
+	name: string;
+	price: number;
+	qty: number;
+	imageUrl?: string;
+};
 
 /* =========================
    Query / filter helpers
@@ -160,19 +160,19 @@ export type CartItem = {
  * - GET /api/Orders/my-orders
  */
 export type OrderListQuery = {
-  pageNumber?: number
-  pageSize?: number
-}
+	pageNumber?: number;
+	pageSize?: number;
+};
 
 /**
  * dùng cho:
  * - POST /api/Orders/collection-points/nearby
  */
 export type NearbyCollectionPointPayload = {
-  latitude: number
-  longitude: number
-  radiusKm: number
-}
+	latitude: number;
+	longitude: number;
+	radiusKm: number;
+};
 
 /* =========================
    Order item payloads
@@ -184,21 +184,21 @@ export type NearbyCollectionPointPayload = {
  * - POST /api/Orders/my-orders
  */
 export type CreateOrderItemPayload = {
-  lotId: string
-  quantity: number
-  unitPrice: number
-}
+	lotId: string;
+	quantity: number;
+	unitPrice: number;
+};
 
 /**
  * dùng trong:
  * - PUT /api/Orders/{id}
  */
 export type UpdateOrderItemPayload = {
-  orderItemId?: string
-  lotId: string
-  quantity: number
-  unitPrice: number
-}
+	orderItemId?: string;
+	lotId: string;
+	quantity: number;
+	unitPrice: number;
+};
 
 /* =========================
    Create / Update order payloads
@@ -210,22 +210,22 @@ export type UpdateOrderItemPayload = {
  * - POST /api/Orders
  */
 export type CreateOrderPayload = {
-  userId: string
-  timeSlotId: string
-  collectionId?: string | null
-  deliveryType: DeliveryMethodId
-  totalAmount: number
-  status: string
-  addressId?: string | null
-  promotionId?: string | null
-  deliveryGroupId?: string | null
-  deliveryNote?: string
-  discountAmount: number
-  finalAmount: number
-  deliveryFee: number
-  cancelDeadline?: string
-  orderItems: CreateOrderItemPayload[]
-}
+	userId: string;
+	timeSlotId: string;
+	collectionId?: string | null;
+	deliveryType: DeliveryMethodId;
+	totalAmount: number;
+	status: string;
+	addressId?: string | null;
+	promotionId?: string | null;
+	deliveryGroupId?: string | null;
+	deliveryNote?: string;
+	discountAmount: number;
+	finalAmount: number;
+	deliveryFee: number;
+	cancelDeadline?: string;
+	orderItems: CreateOrderItemPayload[];
+};
 
 /**
  * Customer self-create order
@@ -233,16 +233,16 @@ export type CreateOrderPayload = {
  * - POST /api/Orders/my-orders
  */
 export type CreateMyOrderPayload = {
-  timeSlotId: string
-  collectionId?: string | null
-  deliveryType: DeliveryMethodId
-  addressId?: string | null
-  promotionId?: string | null
-  deliveryNote?: string
-  deliveryFee: number
-  cancelDeadline?: string
-  orderItems: CreateOrderItemPayload[]
-}
+	timeSlotId: string;
+	collectionId?: string | null;
+	deliveryType: DeliveryMethodId;
+	addressId?: string | null;
+	promotionId?: string | null;
+	deliveryNote?: string;
+	deliveryFee: number;
+	cancelDeadline?: string;
+	orderItems: CreateOrderItemPayload[];
+};
 
 /**
  * customer address response
@@ -251,15 +251,15 @@ export type CreateMyOrderPayload = {
  * - POST /api/CustomerAddresses
  */
 export type CustomerAddress = {
-  customerAddressId: string
-  userId: string
-  phone: string
-  recipientName: string
-  addressLine: string
-  latitude: number
-  longitude: number
-  isDefault: boolean
-}
+	customerAddressId: string;
+	userId: string;
+	phone: string;
+	recipientName: string;
+	addressLine: string;
+	latitude: number;
+	longitude: number;
+	isDefault: boolean;
+};
 
 /**
  * create customer address payload
@@ -267,13 +267,13 @@ export type CustomerAddress = {
  * - POST /api/CustomerAddresses
  */
 export type CreateCustomerAddressPayload = {
-  phone: string
-  recipientName: string
-  addressLine: string
-  latitude: number
-  longitude: number
-  isDefault: boolean
-}
+	phone: string;
+	recipientName: string;
+	addressLine: string;
+	latitude: number;
+	longitude: number;
+	isDefault: boolean;
+};
 
 /**
  * update customer address
@@ -281,12 +281,12 @@ export type CreateCustomerAddressPayload = {
  * - PUT /api/CustomerAddresses/{id}
  */
 export type UpdateCustomerAddressPayload = {
-  phone?: string
-  recipientName?: string
-  addressLine?: string
-  latitude?: number
-  longitude?: number
-}
+	phone?: string;
+	recipientName?: string;
+	addressLine?: string;
+	latitude?: number;
+	longitude?: number;
+};
 
 /**
  * Update order
@@ -294,21 +294,21 @@ export type UpdateCustomerAddressPayload = {
  * - PUT /api/Orders/{id}
  */
 export type UpdateOrderPayload = {
-  timeSlotId?: string
-  collectionId?: string | null
-  deliveryType?: string
-  totalAmount: number
-  status: string
-  addressId?: string | null
-  promotionId?: string | null
-  deliveryGroupId?: string | null
-  deliveryNote?: string
-  discountAmount: number
-  finalAmount: number
-  deliveryFee: number
-  cancelDeadline?: string
-  orderItems: UpdateOrderItemPayload[]
-}
+	timeSlotId?: string;
+	collectionId?: string | null;
+	deliveryType?: string;
+	totalAmount: number;
+	status: string;
+	addressId?: string | null;
+	promotionId?: string | null;
+	deliveryGroupId?: string | null;
+	deliveryNote?: string;
+	discountAmount: number;
+	finalAmount: number;
+	deliveryFee: number;
+	cancelDeadline?: string;
+	orderItems: UpdateOrderItemPayload[];
+};
 
 /* =========================
    Order payment
@@ -321,30 +321,30 @@ export type UpdateOrderPayload = {
  *   hoặc endpoint payment tương ứng nếu BE tách riêng
  */
 export type CreatePaymentLinkPayload = {
-  orderId: string
-  returnUrl: string
-  cancelUrl: string
-}
+	orderId: string;
+	returnUrl: string;
+	cancelUrl: string;
+};
 
 /**
  * response trả về link thanh toán
  */
 export type PaymentLinkResponse = {
-  checkoutUrl: string
-}
+	checkoutUrl: string;
+};
 
 /**
  * response sau khi xác nhận thanh toán
  * dùng cho callback/verify/check payment status
  */
 export type ConfirmPaymentResponse = {
-  success: boolean
-  message?: string
-  errorCode?: string
-  payOsStatus?: string
-  amountPaid?: number
-  amount?: number
-}
+	success: boolean;
+	message?: string;
+	errorCode?: string;
+	payOsStatus?: string;
+	amountPaid?: number;
+	amount?: number;
+};
 
 /* =========================
    Order response models
@@ -361,16 +361,16 @@ export type ConfirmPaymentResponse = {
  * - POST /api/Orders/my-orders
  */
 export type OrderItemResponse = {
-  orderItemId: string
-  orderId: string
-  lotId: string
-  quantity: number
-  unitPrice: number
-  totalPrice?: number
-  lineTotal?: number
-  productName?: string
-  expiryDate?: string
-}
+	orderItemId: string;
+	orderId: string;
+	lotId: string;
+	quantity: number;
+	unitPrice: number;
+	totalPrice?: number;
+	lineTotal?: number;
+	productName?: string;
+	expiryDate?: string;
+};
 
 /**
  * shared order detail shape
@@ -383,30 +383,30 @@ export type OrderItemResponse = {
  * - POST /api/Orders/my-orders
  */
 export type OrderDetails = {
-  orderId: string
-  orderCode?: string
-  userId?: string
-  userName?: string
-  timeSlotId?: string
-  timeSlotDisplay?: string
-  collectionId?: string | null
-  collectionPointName?: string | null
-  deliveryType?: string
-  totalAmount: number
-  discountAmount?: number
-  finalAmount: number
-  deliveryFee?: number
-  status?: string
-  orderDate?: string
-  addressId?: string | null
-  promotionId?: string | null
-  deliveryGroupId?: string | null
-  deliveryNote?: string
-  cancelDeadline?: string
-  createdAt?: string
-  updatedAt?: string
-  orderItems?: OrderItemResponse[]
-}
+	orderId: string;
+	orderCode?: string;
+	userId?: string;
+	userName?: string;
+	timeSlotId?: string;
+	timeSlotDisplay?: string;
+	collectionId?: string | null;
+	collectionPointName?: string | null;
+	deliveryType?: string;
+	totalAmount: number;
+	discountAmount?: number;
+	finalAmount: number;
+	deliveryFee?: number;
+	status?: string;
+	orderDate?: string;
+	addressId?: string | null;
+	promotionId?: string | null;
+	deliveryGroupId?: string | null;
+	deliveryNote?: string;
+	cancelDeadline?: string;
+	createdAt?: string;
+	updatedAt?: string;
+	orderItems?: OrderItemResponse[];
+};
 
 /* =========================
    Order meta endpoints
@@ -422,12 +422,12 @@ export type OrderDetails = {
  * - khác với admin system-config time-slots
  */
 export type OrderTimeSlot = {
-  timeSlotId: string
-  startTime: TimeSpanDto
-  endTime: TimeSpanDto
-  displayTimeRange: string
-  relatedOrderCount?: number
-}
+	timeSlotId: string;
+	startTime: TimeSpanDto;
+	endTime: TimeSpanDto;
+	displayTimeRange: string;
+	relatedOrderCount?: number;
+};
 
 /**
  * Customer-facing collection point
@@ -440,14 +440,14 @@ export type OrderTimeSlot = {
  * - khác với admin collection point config
  */
 export type OrderCollectionPoint = {
-  collectionPointId: string
-  name: string
-  address: string
-  relatedOrderCount?: number
-  distanceKm?: number
-  latitude?: number
-  longitude?: number
-}
+	collectionPointId: string;
+	name: string;
+	address: string;
+	relatedOrderCount?: number;
+	distanceKm?: number;
+	latitude?: number;
+	longitude?: number;
+};
 
 /* =========================
    Optional standalone order-item payloads
@@ -455,17 +455,17 @@ export type OrderCollectionPoint = {
 ========================= */
 
 export type OrderItemCreatePayload = {
-  orderId: string
-  lotId: string
-  quantity: number
-  unitPrice: number
-}
+	orderId: string;
+	lotId: string;
+	quantity: number;
+	unitPrice: number;
+};
 
 export type OrderItemUpdatePayload = {
-  lotId: string
-  quantity: number
-  unitPrice: number
-}
+	lotId: string;
+	quantity: number;
+	unitPrice: number;
+};
 
 /* =========================
    My Orders page
@@ -476,16 +476,16 @@ export type OrderItemUpdatePayload = {
  * - GET /api/Orders/my-orders
  */
 export type MyOrderLineItem = {
-  orderItemId: string
-  orderId: string
-  lotId: string
-  quantity: number
-  unitPrice: number
-  totalPrice?: number
-  lineTotal?: number
-  productName?: string
-  expiryDate?: string
-}
+	orderItemId: string;
+	orderId: string;
+	lotId: string;
+	quantity: number;
+	unitPrice: number;
+	totalPrice?: number;
+	lineTotal?: number;
+	productName?: string;
+	expiryDate?: string;
+};
 
 /**
  * item trong paged my-orders response
@@ -493,30 +493,30 @@ export type MyOrderLineItem = {
  * - GET /api/Orders/my-orders
  */
 export type MyOrderItem = {
-  orderId: string
-  orderCode: string
-  userId: string
-  userName?: string
-  timeSlotId?: string
-  timeSlotDisplay?: string
-  collectionId?: string | null
-  collectionPointName?: string | null
-  deliveryType?: string
-  totalAmount: number
-  discountAmount: number
-  finalAmount: number
-  deliveryFee: number
-  status: string
-  orderDate?: string
-  addressId?: string | null
-  promotionId?: string | null
-  deliveryGroupId?: string | null
-  deliveryNote?: string
-  cancelDeadline?: string
-  createdAt?: string
-  updatedAt?: string
-  orderItems: MyOrderLineItem[]
-}
+	orderId: string;
+	orderCode: string;
+	userId: string;
+	userName?: string;
+	timeSlotId?: string;
+	timeSlotDisplay?: string;
+	collectionId?: string | null;
+	collectionPointName?: string | null;
+	deliveryType?: string;
+	totalAmount: number;
+	discountAmount: number;
+	finalAmount: number;
+	deliveryFee: number;
+	status: string;
+	orderDate?: string;
+	addressId?: string | null;
+	promotionId?: string | null;
+	deliveryGroupId?: string | null;
+	deliveryNote?: string;
+	cancelDeadline?: string;
+	createdAt?: string;
+	updatedAt?: string;
+	orderItems: MyOrderLineItem[];
+};
 
 /**
  * paged result riêng cho my-orders page
@@ -526,11 +526,11 @@ export type MyOrderItem = {
  * thực chất tương đương PaginationResult<MyOrderItem>
  */
 export type MyOrdersPageResult = {
-  items: MyOrderItem[]
-  totalResult: number
-  page: number
-  pageSize: number
-}
+	items: MyOrderItem[];
+	totalResult: number;
+	page: number;
+	pageSize: number;
+};
 
 /* =========================
    Order status action endpoints
@@ -544,16 +544,28 @@ export type MyOrdersPageResult = {
  * - PUT /api/Orders/{id}/ready-to-ship
  * - PUT /api/Orders/{id}/delivered-wait-confirm
  * - PUT /api/Orders/{id}/completed
- * - PUT /api/Orders/{id}/canceled
+ * - PUT /api/Orders/{id}/canceled (JSON body { reason: string } bắt buộc)
  * - PUT /api/Orders/{id}/refunded
  * - PUT /api/Orders/{id}/failed
  */
 export type OrderStatusAction =
-  | "pending"
-  | "paid"
-  | "ready-to-ship"
-  | "delivered-wait-confirm"
-  | "completed"
-  | "canceled"
-  | "refunded"
-  | "failed"
+	| "pending"
+	| "paid"
+	| "ready-to-ship"
+	| "delivered-wait-confirm"
+	| "completed"
+	| "canceled"
+	| "refunded"
+	| "failed";
+
+export type RefundDetails = {
+	refundId: string;
+	orderId: string;
+	transactionId: string;
+	amount: number;
+	reason: string;
+	status: string;
+	processedBy?: string | null;
+	processedAt?: string | null;
+	createdAt: string;
+};

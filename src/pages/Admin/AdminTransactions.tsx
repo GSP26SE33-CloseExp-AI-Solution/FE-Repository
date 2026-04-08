@@ -274,9 +274,20 @@ const AdminTransactions = () => {
                 case "completed":
                     await orderService.markCompleted(orderId)
                     break
-                case "canceled":
-                    await orderService.markCanceled(orderId)
-                    break
+				case "canceled": {
+					const reasonRaw = window.prompt("Nhập lý do hủy đơn hàng (bắt buộc):");
+					if (reasonRaw === null) {
+						showError("Đã hủy thao tác — cần nhập lý do để chuyển sang Canceled.");
+						return;
+					}
+					const reason = reasonRaw.trim();
+					if (!reason) {
+						showError("Chưa cập nhật — cần nhập lý do hủy đơn.");
+						return;
+					}
+					await orderService.markCanceled(orderId, reason);
+					break;
+				}
                 case "refunded":
                     await orderService.markRefunded(orderId)
                     break

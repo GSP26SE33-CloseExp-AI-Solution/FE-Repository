@@ -17,9 +17,10 @@ import {
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
 import { supermarketService } from "@/services/supermarket.service"
-import type { OrderDetails } from "@/types/order.type"
+import type { OrderDetails, RefundDetails } from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
 import { googleMapsUrl, lastOrderStorage, money } from "@/utils/orderStorage"
+import toast from "react-hot-toast"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -126,7 +127,9 @@ const MyOrderDetailPage: React.FC = () => {
     const { orderId = "" } = useParams()
 
     const [order, setOrder] = useState<OrderDetails | null>(null)
+    const [refunds, setRefunds] = useState<RefundDetails[]>([])
     const [loading, setLoading] = useState(true)
+    const [canceling, setCanceling] = useState(false)
     const [error, setError] = useState("")
     /** Địa chỉ điểm nhận từ GET /api/Orders/collection-points (public), khớp collectionId trên đơn */
     const [pickupCatalogPoint, setPickupCatalogPoint] = useState<PickupPoint | null>(
@@ -144,6 +147,11 @@ const MyOrderDetailPage: React.FC = () => {
                 console.log("OrderDetailPage.fetchOrderDetails -> orderId:", orderId)
 
                 const res = await orderService.getOrderDetails(orderId)
+                const refundsRes = await orderService.getMyRefunds({
+                    orderId,
+                    pageNumber: 1,
+                    pageSize: 20,
+                })
 
                 const fallbackLastOrder = lastOrderStorage.get?.() as OrderDetails | null | undefined
                 console.log("OrderDetailPage.fetchOrderDetails -> fallbackLastOrder:", fallbackLastOrder)
@@ -169,11 +177,13 @@ const MyOrderDetailPage: React.FC = () => {
 
                 if (!mounted) return
                 setOrder(resolvedOrder)
+                setRefunds(refundsRes.items || [])
             } catch (e: any) {
                 console.error("OrderDetailPage.fetchOrderDetails -> error:", e)
                 if (!mounted) return
 
                 setOrder(null)
+                setRefunds([])
                 setError(
                     e?.response?.data?.message || "Không thể tải chi tiết đơn hàng."
                 )
@@ -235,6 +245,20 @@ const MyOrderDetailPage: React.FC = () => {
         () => getOrderStatusMeta(order?.status),
         [order?.status]
     )
+
+    const latestRefund = useMemo(() => {
+        if (!refunds.length) return null
+        return [...refunds].sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0]
+    }, [refunds])
+
+    const canCancelOrder = useMemo(() => {
+        if (!order) return false
+        if (order.status !== "Paid") return false
+        if (!order.cancelDeadline) return false
+        return new Date(order.cancelDeadline).getTime() >= Date.now()
+    }, [order])
 
     const subtotal = useMemo(() => {
         if (!order?.orderItems?.length) return order?.totalAmount || 0
@@ -342,6 +366,38 @@ const MyOrderDetailPage: React.FC = () => {
         )
     }
 
+    const handleCancelOrder = async () => {
+        if (!order || !canCancelOrder || canceling) return
+        const ok = window.confirm("Bạn chắc chắn muốn hủy đơn hàng này?")
+        if (!ok) return
+
+        const reasonRaw = window.prompt("Nhập lý do hủy đơn hàng (bắt buộc):")
+        if (reasonRaw === null) return
+        const reason = reasonRaw.trim()
+        if (!reason) {
+            toast.error("Chưa hủy đơn — cần nhập lý do.")
+            return
+        }
+
+        try {
+            setCanceling(true)
+            await orderService.markCanceled(order.orderId, reason)
+
+            const [nextOrder, nextRefunds] = await Promise.all([
+                orderService.getOrderDetails(order.orderId),
+                orderService.getMyRefunds({ orderId: order.orderId, pageNumber: 1, pageSize: 20 }),
+            ])
+
+            setOrder(nextOrder)
+            setRefunds(nextRefunds.items || [])
+            toast.success("Đã hủy đơn hàng.")
+        } catch (e: any) {
+            toast.error(e?.message || "Không thể hủy đơn hàng.")
+        } finally {
+            setCanceling(false)
+        }
+    }
+
     return (
         <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
             <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-5 lg:px-6">
@@ -409,6 +465,17 @@ const MyOrderDetailPage: React.FC = () => {
                             </div>
 
                             <div className="flex flex-wrap gap-3">
+                                {canCancelOrder ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelOrder}
+                                        disabled={canceling}
+                                        className={secondaryBtn}
+                                    >
+                                        {canceling ? <Loader2 size={14} className="animate-spin" /> : null}
+                                        Hủy đơn
+                                    </button>
+                                ) : null}
                                 <button
                                     type="button"
                                     onClick={() => navigate("/orders")}
@@ -698,6 +765,40 @@ const MyOrderDetailPage: React.FC = () => {
                                             </div>
                                         </div>
                                     ) : null}
+                                </div>
+                            </section>
+
+                            <section className={cn(panel, "p-4 sm:p-5")}>
+                                <div className="flex items-center gap-3">
+                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700">
+                                        <CreditCard size={18} />
+                                    </div>
+                                    <div>
+                                        <h2 className="mt-1 text-lg font-black text-slate-900">
+                                            Tiến trình hoàn tiền
+                                        </h2>
+                                    </div>
+                                </div>
+
+                                <div className="mt-5">
+                                    {latestRefund ? (
+                                        <div className={cn(softPanel, "p-4")}>
+                                            <div className="text-[11px] text-slate-500">Trạng thái mới nhất</div>
+                                            <div className="mt-1 text-[13px] font-semibold text-slate-900">
+                                                {latestRefund.status}
+                                            </div>
+                                            <div className="mt-2 text-[12px] text-slate-600">
+                                                Số tiền: {money(latestRefund.amount)} - {latestRefund.reason}
+                                            </div>
+                                            <div className="mt-2 text-[11px] text-slate-500">
+                                                Tạo lúc: {formatDateTime(latestRefund.createdAt)}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className={cn(softPanel, "p-4 text-[13px] text-slate-500")}>
+                                            Chưa có yêu cầu hoàn tiền cho đơn hàng này.
+                                        </div>
+                                    )}
                                 </div>
                             </section>
                         </div>

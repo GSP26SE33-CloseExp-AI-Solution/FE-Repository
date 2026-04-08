@@ -16,7 +16,7 @@ import {
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
 import { supermarketService } from "@/services/supermarket.service"
-import type { OrderDetails, PaginationResult } from "@/types/order.type"
+import type { OrderDetails, PaginationResult, RefundDetails } from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
 import { lastOrderStorage, money } from "@/utils/orderStorage"
 
@@ -129,6 +129,7 @@ const MyOrdersPage: React.FC = () => {
     const [filter, setFilter] = useState<OrderFilterKey>("ALL")
     /** Catalog điểm nhận từ GET /api/Orders/collection-points (public) */
     const [pickupCatalog, setPickupCatalog] = useState<PickupPoint[]>([])
+    const [refundByOrderId, setRefundByOrderId] = useState<Record<string, RefundDetails>>({})
 
     const breadcrumbs = useMemo(
         () => getBreadcrumbsByPath(location.pathname),
@@ -167,6 +168,18 @@ const MyOrdersPage: React.FC = () => {
                 setOrders(pagedRes.items || [])
                 setTotalResult(pagedRes.totalResult || 0)
                 setAllOrders(allRes.items || [])
+
+                const refundsRes = await orderService.getMyRefunds({
+                    pageNumber: 1,
+                    pageSize: 1000,
+                })
+                const next: Record<string, RefundDetails> = {}
+                for (const r of refundsRes.items || []) {
+                    const cur = next[r.orderId]
+                    if (!cur || new Date(r.createdAt).getTime() > new Date(cur.createdAt).getTime())
+                        next[r.orderId] = r
+                }
+                setRefundByOrderId(next)
             } catch (e: any) {
                 console.error("OrdersPage.fetchMyOrders -> error:", e)
                 if (!mounted) return
@@ -174,6 +187,7 @@ const MyOrdersPage: React.FC = () => {
                 setOrders([])
                 setAllOrders([])
                 setTotalResult(0)
+                setRefundByOrderId({})
                 setError(
                     e?.response?.data?.message || "Không thể tải danh sách đơn hàng."
                 )
@@ -439,6 +453,11 @@ const MyOrdersPage: React.FC = () => {
                                                     >
                                                         {meta.label}
                                                     </span>
+                                                    {refundByOrderId[order.orderId] ? (
+                                                        <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+                                                            Refund: {refundByOrderId[order.orderId].status}
+                                                        </span>
+                                                    ) : null}
                                                 </div>
 
                                                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-slate-500">
