@@ -37,7 +37,7 @@ export const useHomeDerived = ({
   showEmptyCategories,
 }: Params) => {
   const noMatchedSupermarket =
-    orderContextStorage.isReady(deliveryCtx) &&
+    orderContextStorage.isContextSufficientForShopping(deliveryCtx) &&
     Array.isArray(deliveryCtx.nearbySupermarkets) &&
     deliveryCtx.nearbySupermarkets.length === 0
 
@@ -98,7 +98,7 @@ export const useHomeDerived = ({
   }, [deliveryCtx.nearbySupermarkets])
 
   const visibleProducts = useMemo(() => {
-    if (!orderContextStorage.isReady(deliveryCtx)) return []
+    if (!orderContextStorage.isContextSufficientForShopping(deliveryCtx)) return []
     if (noMatchedSupermarket) return []
 
     if (matchedSupermarketIds.size > 0) {

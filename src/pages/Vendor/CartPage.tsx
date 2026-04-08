@@ -144,7 +144,7 @@ const CartPage: React.FC = () => {
     const total = subtotal + deliveryFee;
 
     const isContextReady = useMemo(
-        () => orderContextStorage.isReady(ctx),
+        () => orderContextStorage.isContextSufficientForShopping(ctx),
         [ctx],
     );
 

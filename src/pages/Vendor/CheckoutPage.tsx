@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useMemo, useState } from "react"
+import React, { Fragment, useCallback, useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import {
   AlertCircle,
@@ -209,46 +209,86 @@ const CheckoutPage: React.FC = () => {
     orderContextStorage.set(nextCtx)
   }
 
-  const resolveDeliveryAddressContext = async (
-    currentCtx: CustomerOrderContext,
-  ): Promise<CustomerOrderContext> => {
-    if (currentCtx.deliveryMethodId !== "DELIVERY") return currentCtx
-    if (currentCtx.addressId) return currentCtx
+  const resolveDeliveryAddressContext = useCallback(
+    async (currentCtx: CustomerOrderContext): Promise<CustomerOrderContext> => {
+      if (currentCtx.deliveryMethodId !== "DELIVERY") return currentCtx
+      if (currentCtx.addressId) return currentCtx
 
-    if (
-      !currentCtx.addressText?.trim() ||
-      typeof currentCtx.lat !== "number" ||
-      typeof currentCtx.lng !== "number"
-    ) {
-      throw new Error("Thiếu địa chỉ giao hàng. Vui lòng quay lại chọn vị trí giao.")
-    }
+      if (
+        !currentCtx.addressText?.trim() ||
+        typeof currentCtx.lat !== "number" ||
+        typeof currentCtx.lng !== "number"
+      ) {
+        throw new Error("Thiếu địa chỉ giao hàng. Vui lòng quay lại chọn vị trí giao.")
+      }
 
-    const defaultAddress = await customerAddressService.getDefaultAddress()
-    if (defaultAddress?.customerAddressId) {
+      const defaultAddress = await customerAddressService.getDefaultAddress()
+      if (defaultAddress?.customerAddressId) {
+        return {
+          ...currentCtx,
+          addressId: defaultAddress.customerAddressId,
+        }
+      }
+
+      if (!user?.fullName?.trim() || !user?.phone?.trim()) {
+        throw new Error("Thiếu thông tin người nhận (họ tên/số điện thoại). Vui lòng cập nhật hồ sơ.")
+      }
+
+      const createdAddress = await customerAddressService.createAddress({
+        recipientName: user.fullName.trim(),
+        phone: user.phone.trim(),
+        addressLine: currentCtx.addressText.trim(),
+        latitude: currentCtx.lat,
+        longitude: currentCtx.lng,
+        isDefault: true,
+      })
+
       return {
         ...currentCtx,
-        addressId: defaultAddress.customerAddressId,
+        addressId: createdAddress.customerAddressId,
       }
-    }
+    },
+    [user],
+  )
 
-    if (!user?.fullName?.trim() || !user?.phone?.trim()) {
-      throw new Error("Thiếu thông tin người nhận (họ tên/số điện thoại). Vui lòng cập nhật hồ sơ.")
-    }
+  // Đồng bộ addressId sớm (khớp isReady + BE): tránh khóa nút thanh toán khi đã có map/text nhưng chưa gắn bản ghi địa chỉ
+  useEffect(() => {
+    if (ctx.deliveryMethodId !== "DELIVERY") return
+    if (ctx.addressId) return
+    if (
+      !ctx.addressText?.trim() ||
+      typeof ctx.lat !== "number" ||
+      typeof ctx.lng !== "number"
+    )
+      return
+    if (!user?.userId) return
 
-    const createdAddress = await customerAddressService.createAddress({
-      recipientName: user.fullName.trim(),
-      phone: user.phone.trim(),
-      addressLine: currentCtx.addressText.trim(),
-      latitude: currentCtx.lat,
-      longitude: currentCtx.lng,
-      isDefault: true,
-    })
+    let cancelled = false
+    void (async () => {
+      try {
+        const next = await resolveDeliveryAddressContext(ctx)
+        if (!cancelled && next.addressId) {
+          setCtx(next)
+          orderContextStorage.set(next)
+        }
+      } catch {
+        // handlePayAndRedirect sẽ thử lại; thiếu profile vẫn có thể báo lỗi lúc bấm thanh toán
+      }
+    })()
 
-    return {
-      ...currentCtx,
-      addressId: createdAddress.customerAddressId,
+    return () => {
+      cancelled = true
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- chỉ re-run khi field giao hàng đổi; không deps cả ctx để tránh vòng lặp
+  }, [
+    ctx.deliveryMethodId,
+    ctx.addressId,
+    ctx.addressText,
+    ctx.lat,
+    ctx.lng,
+    resolveDeliveryAddressContext,
+    user?.userId,
+  ])
 
   const handlePayAndRedirect = async () => {
     if (!canSubmit) return
