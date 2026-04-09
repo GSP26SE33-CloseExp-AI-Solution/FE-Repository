@@ -26,7 +26,10 @@ const PackagePacking = () => {
     const [order, setOrder] = useState<PackagingOrderDetail | null>(null)
     const [loading, setLoading] = useState(true)
     const [submitting, setSubmitting] = useState(false)
+    const [failing, setFailing] = useState(false)
     const [notes, setNotes] = useState("")
+    const [failureReason, setFailureReason] = useState("")
+    const [failNotes, setFailNotes] = useState("")
 
     const fetchDetail = async () => {
         if (!orderId) {
@@ -63,6 +66,32 @@ const PackagePacking = () => {
             showError(error?.response?.data?.message || "Không thể hoàn tất đóng gói.")
         } finally {
             setSubmitting(false)
+        }
+    }
+
+    const handleFailPackaging = async () => {
+        if (!orderId) return
+
+        const reason = failureReason.trim()
+        if (!reason) {
+            showError("Vui lòng nhập lý do đóng gói thất bại.")
+            return
+        }
+
+        try {
+            setFailing(true)
+            const response = await packagingService.failPackaging(orderId, {
+                failureReason: reason,
+                notes: failNotes.trim() || undefined,
+            })
+            setOrder(response.data)
+            showSuccess(response.message || "Đã ghi nhận đóng gói thất bại.")
+            setFailureReason("")
+            setFailNotes("")
+        } catch (error: any) {
+            showError(error?.response?.data?.message || "Không thể ghi nhận thất bại.")
+        } finally {
+            setFailing(false)
         }
     }
 
@@ -234,7 +263,7 @@ const PackagePacking = () => {
 
                         <button
                             onClick={handlePackage}
-                            disabled={submitting}
+                            disabled={submitting || failing}
                             className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {submitting ? (
@@ -247,6 +276,45 @@ const PackagePacking = () => {
                                     <CheckCheck className="h-4 w-4" />
                                     Hoàn tất đóng gói
                                 </>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="rounded-3xl border border-rose-100 bg-rose-50/60 p-6 shadow-sm ring-1 ring-rose-100">
+                        <h2 className="text-lg font-semibold text-rose-900">
+                            Ghi nhận đóng gói thất bại
+                        </h2>
+                        <p className="mt-2 text-sm text-rose-800/90">
+                            Dùng khi không thể hoàn tất đóng gói theo yêu cầu. Lý do được gửi lên server
+                            theo API <span className="font-mono text-xs">POST .../fail</span>.
+                        </p>
+                        <textarea
+                            value={failureReason}
+                            onChange={(e) => setFailureReason(e.target.value)}
+                            rows={3}
+                            placeholder="Lý do thất bại (bắt buộc)"
+                            className="mt-4 w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm outline-none focus:border-rose-400"
+                        />
+                        <textarea
+                            value={failNotes}
+                            onChange={(e) => setFailNotes(e.target.value)}
+                            rows={3}
+                            placeholder="Ghi chú thêm (không bắt buộc)"
+                            className="mt-3 w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm outline-none focus:border-rose-400"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => void handleFailPackaging()}
+                            disabled={failing || submitting || !failureReason.trim()}
+                            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm font-semibold text-rose-900 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {failing ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Đang gửi...
+                                </>
+                            ) : (
+                                "Ghi nhận thất bại"
                             )}
                         </button>
                     </div>

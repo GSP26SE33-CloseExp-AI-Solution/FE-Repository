@@ -258,9 +258,9 @@ const PackageCollect = () => {
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs text-slate-500">Đóng gói lúc</p>
+                                <p className="text-xs text-slate-500">Cập nhật đóng gói gần nhất</p>
                                 <p className="mt-1 font-semibold text-slate-900">
-                                    {formatDateTime(order.packagedAt)}
+                                    {formatDateTime(order.lastPackagedAt ?? undefined)}
                                 </p>
                             </div>
                         </div>
@@ -353,7 +353,7 @@ const PackageCollect = () => {
                             value={collectNotes}
                             onChange={(e) => setCollectNotes(e.target.value)}
                             rows={5}
-                            placeholder="Ví dụ: Đã thu gom đủ sản phẩm, kiểm tra bao bì nguyên vẹn..."
+                            placeholder="Bắt buộc: ghi chú thu gom (ví dụ: Đã thu gom đủ sản phẩm, kiểm tra bao bì...)"
                             className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-sky-400"
                         />
 
@@ -397,9 +397,9 @@ const PackageCollect = () => {
                                 </span>
                             </div>
                             <div>
-                                <span className="text-slate-400">Packaging Record:</span>{" "}
+                                <span className="text-slate-400">Mã đơn:</span>{" "}
                                 <span className="break-all font-medium text-white">
-                                    {order.packagingRecordId || "--"}
+                                    {order.orderId || "--"}
                                 </span>
                             </div>
                         </div>

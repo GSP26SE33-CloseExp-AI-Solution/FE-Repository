@@ -1,5 +1,19 @@
 export type PackagingActionPayload = {
+    orderItemIds?: string[]
     notes?: string
+}
+
+export type CollectPackagingOrderPayload = {
+    orderItemIds?: string[]
+    notes: string
+}
+
+/**
+ * Payload khớp BE FailPackagingOrderRequestDto
+ * POST /api/Packaging/orders/{orderId}/fail
+ */
+export type FailPackagingOrderPayload = PackagingActionPayload & {
+    failureReason: string
 }
 
 export type PackagingOrderItem = {
@@ -8,6 +22,10 @@ export type PackagingOrderItem = {
     quantity: number
     unitPrice: number
     subTotal: number
+    packagingStatus?: string
+    deliveryStatus?: string | null
+    packagedAt?: string | null
+    packagingFailedReason?: string | null
 }
 
 export type PackagingOrderSummary = {
@@ -24,10 +42,9 @@ export type PackagingOrderSummary = {
 }
 
 export type PackagingOrderDetail = PackagingOrderSummary & {
-    packagingRecordId: string
-    packagingStaffId: string
-    packagingStaffName: string
-    packagedAt: string
+    packagingStaffId?: string | null
+    packagingStaffName?: string | null
+    lastPackagedAt?: string | null
     items: PackagingOrderItem[]
 }
 
