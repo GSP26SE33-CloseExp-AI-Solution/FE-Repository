@@ -1,6 +1,7 @@
 import axiosClient from "@/utils/axiosClient"
 import type {
     PackagingActionPayload,
+    FailPackagingOrderPayload,
     PackagingOrderDetail,
     PackagingOrderSummary,
     PaginationResult,
@@ -49,6 +50,14 @@ export const packagingService = {
     async packageOrder(orderId: string, payload: PackagingActionPayload) {
         const response = await axiosClient.post<ApiResponse<PackagingOrderDetail>>(
             `${BASE_URL}/${orderId}/package`,
+            payload
+        )
+        return response.data
+    },
+
+    async failPackaging(orderId: string, payload: FailPackagingOrderPayload) {
+        const response = await axiosClient.post<ApiResponse<PackagingOrderDetail>>(
+            `${BASE_URL}/${orderId}/fail`,
             payload
         )
 

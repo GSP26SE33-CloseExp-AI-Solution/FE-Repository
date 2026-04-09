@@ -216,7 +216,7 @@ const Home = () => {
   }, [filteredProducts, visibleCategories.displayedCategories])
 
   useEffect(() => {
-    if (!orderContextStorage.isReady(deliveryCtx)) {
+    if (!orderContextStorage.isContextSufficientForShopping(deliveryCtx)) {
       setGateOpen(true)
     }
   }, [deliveryCtx])

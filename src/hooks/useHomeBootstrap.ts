@@ -23,7 +23,7 @@ export const useHomeBootstrap = (deliveryCtx: CustomerOrderContext) => {
 
     useEffect(() => {
         const fetchBootstrapData = async () => {
-            if (!orderContextStorage.isReady(deliveryCtx)) {
+            if (!orderContextStorage.isContextSufficientForShopping(deliveryCtx)) {
                 setProductsRaw([])
                 setAvailableSupermarkets([])
                 setCategoriesMaster([])
