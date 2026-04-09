@@ -22,10 +22,6 @@ import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage";
 
 import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard";
 import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductsLotsPage";
-import AddProduct from "@/pages/SupermarketStaff/sProducts/step1_AddProduct";
-import ConfirmProduct from "@/pages/SupermarketStaff/sProducts/step2_ConfirmProduct";
-import PricingProduct from "@/pages/SupermarketStaff/sProducts/step3_PricingPage";
-import PublishProduct from "@/pages/SupermarketStaff/sProducts/step4_PublishPage";
 import ProfilePage from "@/pages/SupermarketStaff/sProfile";
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard";
@@ -141,26 +137,6 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/supermarketStaff/products"
                                 element={<ProductsLotsPage />}
-                            />
-                            <Route
-                                path="/supermarketStaff/products/add"
-                                element={<AddProduct />}
-                            />
-                            <Route
-                                path="/supermarketStaff/products/confirm"
-                                element={<ConfirmProduct />}
-                            />
-                            <Route
-                                path="/supermarketStaff/products/:productId/confirm"
-                                element={<ConfirmProduct />}
-                            />
-                            <Route
-                                path="/supermarketStaff/products/:productId/pricing"
-                                element={<PricingProduct />}
-                            />
-                            <Route
-                                path="/supermarketStaff/products/:productId/publish"
-                                element={<PublishProduct />}
                             />
                             <Route
                                 path="/supermarketStaff/profile"
