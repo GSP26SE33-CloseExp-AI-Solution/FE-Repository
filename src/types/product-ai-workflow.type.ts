@@ -1,416 +1,374 @@
-export type ProductStateValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+// src/types/product-ai-workflow.type.ts
 
-export type ProductStateLabel =
-    | "Draft"
-    | "Verified"
-    | "Priced"
-    | "Published"
-    | "Expired"
-    | "SoldOut"
-    | "Hidden"
-    | "Deleted"
+export type NutritionFactsMap = Record<string, string>
 
-export type ProductAiStep =
-    | "SCAN_BARCODE"
-    | "ANALYZE_IMAGE"
-    | "CREATE_DRAFT_PRODUCT"
+export type WorkflowNextAction =
+    | "CREATE_STOCKLOT"
     | "VERIFY_PRODUCT"
-    | "CREATE_PRODUCT_LOT"
-    | "GET_PRICING_SUGGESTION"
-    | "CONFIRM_LOT_PRICE"
-    | "PUBLISH_PRODUCT_LOT"
-
-export type NutritionFactsMap = Record<string, string | number | null>
-
-export type JsonLike =
+    | "CHOOSE_OR_CREATE_PRIVATE_PRODUCT"
+    | "CREATE_PRODUCT"
     | string
-    | number
-    | boolean
+
+export type ProductWorkflowStep =
+    | "SCAN"
+    | "PRODUCT"
+    | "LOT"
+    | "DONE"
+    | "ERROR"
+
+export type ProductWorkflowMode =
+    | "CREATE_STOCKLOT"
+    | "VERIFY_OWN_PRODUCT"
+    | "CREATE_PRIVATE_PRODUCT"
+    | "CREATE_NEW_PRODUCT"
     | null
-    | JsonLike[]
-    | { [key: string]: JsonLike }
 
-export type BarcodeLookupInfo = {
-    barcode: string
-    productName?: string
-    brand?: string
-    category?: string
-    description?: string
-    imageUrl?: string
-    manufacturer?: string
-    weight?: string
-    ingredients?: string
-    nutritionFacts?: NutritionFactsMap | string | null
-    country?: string
-    source?: string
-    confidence?: number
-    isVietnameseProduct?: boolean
-    gs1Prefix?: string
-    scanCount?: number
-    isVerified?: boolean
+export type ProductStateValue =
+    | 0
+    | 1
+    | 2
+    | 3
+    | 4
+    | 5
+    | 6
+    | 7
+
+export type WorkflowTimeoutInfoDto = {
+    timeoutSeconds?: number | null
+    isAiStep?: boolean | null
+    supportsManualFallback?: boolean | null
 }
 
-export type ProductImageItem = {
-    productImageId?: string
-    imageUrl: string
-    isPrimary?: boolean
-    createdAt?: string
-}
-
-export type MarketPriceSource = {
-    storeName: string
-    price: number
-    source?: string
-}
-
-export type ExistingProductSummary = {
+export type ExistingProductSummaryDto = {
     productId: string
-    name: string
-    brand?: string
-    category?: string
-    barcode: string
-    mainImageUrl?: string
-    isFreshFood?: boolean
-    manufacturer?: string
-    ingredients?: string
-    lastPrice?: number
-    totalLotsSold?: number
+    supermarketId?: string | null
+    supermarketName?: string | null
+    name?: string | null
+    brand?: string | null
+    category?: string | null
+    barcode?: string | null
+    mainImageUrl?: string | null
+    manufacturer?: string | null
+    ingredients?: string[] | null
+    lastPrice?: number | null
+    totalLotsSold?: number | null
+    status?: ProductStateValue | string | null
+    isCurrentSupermarket?: boolean | null
 }
 
-export type OcrExtractedInfo = {
-    name?: string
-    brand?: string
-    barcode?: string
-    category?: string
-    expiryDate?: string
-    manufactureDate?: string
-    weight?: string
-    ingredients?: string
-    manufacturer?: string
-    origin?: string
-    nutritionFacts?: NutritionFactsMap | string | null
+export type BarcodeLookupInfoDto = {
+    barcode?: string | null
+    productName?: string | null
+    brand?: string | null
+    category?: string | null
+    description?: string | null
+    imageUrl?: string | null
+    manufacturer?: string | null
+    weight?: string | null
+    ingredients?: string[] | null
+    nutritionFacts?: NutritionFactsMap | null
+    country?: string | null
+    source?: string | null
+    confidence?: number | null
+    isVietnameseProduct?: boolean | null
+    gs1Prefix?: string | null
+    scanCount?: number | null
+    isVerified?: boolean | null
 }
 
-export type ProductScanResult = {
+export type OcrExtractedInfoDto = {
+    name?: string | null
+    brand?: string | null
+    barcode?: string | null
+    category?: string | null
+    expiryDate?: string | null
+    manufactureDate?: string | null
+    weight?: string | null
+    ingredients?: string[] | null
+    manufacturer?: string | null
+    origin?: string | null
+    nutritionFacts?: NutritionFactsMap | null
+}
+
+export type WorkflowIdentifyResultDto = {
     barcode: string
     productExists: boolean
-    existingProduct?: ExistingProductSummary
-    barcodeLookupInfo?: BarcodeLookupInfo
-    nextAction?: string
-    requiresOcrUpload?: boolean
+    phase?: string | null
+    nextAction: WorkflowNextAction
+    existingProduct?: ExistingProductSummaryDto | null
+    matchedProducts?: ExistingProductSummaryDto[] | null
+    barcodeLookupInfo?: BarcodeLookupInfoDto | null
+    canCreatePrivateProductForCurrentSupermarket?: boolean | null
+    requiresVerification?: boolean | null
+    verificationProductId?: string | null
+    canCreateLotDirectly?: boolean | null
+    timeoutInfo?: WorkflowTimeoutInfoDto | null
 }
 
-export type AnalyzeImageResult = {
-    imageUrl?: string
-    extractedInfo?: OcrExtractedInfo
-    barcodeLookupInfo?: BarcodeLookupInfo
-    confidence?: number
-    rawOcrData?: JsonLike
+export type WorkflowAnalyzeImageResultDto = {
+    imageUrl?: string | null
+    extractedInfo?: OcrExtractedInfoDto | null
+    barcodeLookupInfo?: BarcodeLookupInfoDto | null
+    confidence?: number | null
+    rawOcrData?: string | null
+    aiSkipped?: boolean | null
 }
 
-export type CreateDraftProductResult = {
-    productId: string
-    supermarketId: string
-    name: string
+export type WorkflowCreateProductDetailRequestDto = {
     brand?: string
-    category?: string
-    barcode: string
-    isFreshFood?: boolean
-    manufacturer?: string
     ingredients?: string
-    origin?: string
-    mainImageUrl?: string
-    status: ProductStateLabel | ProductStateValue | string
-    ocrConfidence?: number
-    createdBy: string
-    createdAt?: string
-    nextAction?: string
-    nextActionDescription?: string
-}
-
-export type VerifyProductResult = {
-    productId: string
-    supermarketId: string
-    name: string
-    brand?: string
-    category?: string
-    barcode?: string
-    isFreshFood?: boolean
-    type?: string
-    sku?: string
-    status: ProductStateLabel | ProductStateValue | string
-    weightType?: string | number
-    weightTypeName?: string
-    originalPrice?: number
-    suggestedPrice?: number
-    finalPrice?: number
-    expiryDate?: string
-    manufactureDate?: string
-    daysToExpiry?: number
-    ocrConfidence?: number
-    pricingConfidence?: number
-    pricingReasons?: string[]
-    createdBy?: string
-    createdAt?: string
-    verifiedBy?: string
-    verifiedAt?: string
-    mainImageUrl?: string
-    totalImages?: number
-    productImages?: ProductImageItem[]
-    ingredients?: string
-    nutritionFacts?: NutritionFactsMap | string | null
-    barcodeLookupInfo?: BarcodeLookupInfo
-}
-
-export type CreateLotFromExistingResult = {
-    lotId: string
-    productId: string
-    productName: string
-    productBarcode?: string
-    productBrand?: string
-    productImageUrl?: string
-    expiryDate: string
-    manufactureDate?: string
-    daysToExpiry?: number
-    quantity?: number
-    weight?: number
-    status: ProductStateLabel | ProductStateValue | string
-    createdAt?: string
-    publishedBy?: string
-    publishedAt?: string
-    originalPrice?: number
-    suggestedPrice?: number
-    finalPrice?: number
-    pricingConfidence?: number
-}
-
-export type LotPricingSuggestionResult = {
-    productId: string
-    productName: string
-    originalPrice: number
-    suggestedPrice: number
-    confidence?: number
-    discountPercent?: number
-    expiryDate?: string
-    daysToExpiry?: number
-    reasons?: string[]
-    minMarketPrice?: number
-    avgMarketPrice?: number
-    maxMarketPrice?: number
-    marketPriceSources?: MarketPriceSource[]
-}
-
-export type ConfirmLotPriceResult = {
-    lotId: string
-    productId: string
-    productName: string
-    productBarcode?: string
-    expiryDate?: string
-    daysToExpiry?: number
-    quantity?: number
-    weight?: number
-    status: ProductStateLabel | ProductStateValue | string
-    originalPrice?: number
-    suggestedPrice?: number
-    finalPrice?: number
-    pricingConfidence?: number
-    createdAt?: string
-}
-
-export type PublishLotResult = {
-    lotId: string
-    productId: string
-    productName: string
-    productBarcode?: string
-    productBrand?: string
-    productImageUrl?: string
-    expiryDate?: string
-    daysToExpiry?: number
-    quantity?: number
-    weight?: number
-    status: ProductStateLabel | ProductStateValue | string
-    originalPrice?: number
-    suggestedPrice?: number
-    finalPrice?: number
-    pricingConfidence?: number
-    createdAt?: string
-    publishedBy?: string
-    publishedAt?: string
-}
-
-export type AiExtractResult = {
-    extractedText?: string
-    extractedInfo?: OcrExtractedInfo
-    confidence?: number
-    imageUrl?: string
-    rawData?: JsonLike
-}
-
-export type AiDirectPricingResult = {
-    suggestedPrice?: number
-    confidence?: number
-    reasons?: string[]
-    minMarketPrice?: number
-    avgMarketPrice?: number
-    maxMarketPrice?: number
-    marketPriceSources?: MarketPriceSource[]
-}
-
-// request payloads
-
-export type AnalyzeImagePayload = {
-    supermarketId: string
-    file: File
-}
-
-export type CreateDraftProductPayload = {
-    supermarketId: string
-    name: string
-    barcode: string
-    brand?: string
-    category?: string
-    isFreshFood?: boolean
-    ingredients?: string
+    nutritionFactsJson?: string
+    usageInstructions?: string
+    storageInstructions?: string
     manufacturer?: string
     origin?: string
+    description?: string
+    safetyWarnings?: string
+}
+
+export type WorkflowCreateProductRequestDto = {
+    barcode: string
+    name: string
+    detail: WorkflowCreateProductDetailRequestDto
+    categoryName: string
     ocrImageUrl?: string
-    ocrExtractedData?: JsonLike
+    ocrExtractedData?: string
     ocrConfidence?: number
-    createdBy: string
+    isManualFallback?: boolean
 }
 
-export type VerifyProductPayload = {
-    name?: string
-    brand?: string
-    category?: string
-    barcode?: string
-    originalPrice: number
-    expiryDate?: string
-    manufactureDate?: string
-    isFreshFood?: boolean
-    verifiedBy: string
+export type WorkflowCreateProductResultDto = {
+    productId: string
+    supermarketId?: string | null
+    name?: string | null
+    brand?: string | null
+    category?: string | null
+    barcode?: string | null
+    manufacturer?: string | null
+    ingredients?: string[] | null
+    mainImageUrl?: string | null
+    status?: ProductStateValue | string | null
+    createdBy?: string | null
+    createdAt?: string | null
+    isManualFallback?: boolean | null
+    nextAction?: WorkflowNextAction | null
+    nextActionDescription?: string | null
 }
 
-export type CreateLotFromExistingPayload = {
+export type WorkflowCreateAndPublishLotRequestDto = {
     productId: string
     expiryDate: string
-    manufactureDate?: string
+    manufactureDate?: string | null
     quantity?: number
     weight?: number
-    createdBy: string
-}
-
-export type LotPricingSuggestionPayload = {
-    originalPrice: number
-}
-
-export type ConfirmLotPricePayload = {
-    finalPrice?: number
-    priceFeedback?: string
-    acceptedSuggestion: boolean
-    confirmedBy: string
-}
-
-export type PublishLotPayload = {
-    publishedBy: string
-}
-
-export type AiExtractPayload = {
-    file: File
-}
-
-export type AiPricingPayload = {
-    productName?: string
-    category?: string
-    brand?: string
-    originalPrice?: number
-    expiryDate?: string
-    manufactureDate?: string
-    daysToExpiry?: number
-}
-
-// FE normalized models
-
-export type ProductWorkflowDraft = {
-    productId?: string
-    supermarketId?: string
-    name?: string
-    brand?: string
-    category?: string
-    barcode?: string
-    isFreshFood?: boolean
-    manufacturer?: string
-    ingredients?: string
-    origin?: string
-    mainImageUrl?: string
-    createdBy?: string
-    createdAt?: string
-    ocrConfidence?: number
-}
-
-export type ProductWorkflowVerification = {
-    verifiedBy?: string
-    verifiedAt?: string
-    originalPrice?: number
-    expiryDate?: string
-    manufactureDate?: string
-    daysToExpiry?: number
-    nutritionFacts?: NutritionFactsMap | string | null
-    barcodeLookupInfo?: BarcodeLookupInfo
-}
-
-export type ProductWorkflowLot = {
-    lotId?: string
-    quantity?: number
-    weight?: number
-    createdAt?: string
-    publishedBy?: string
-    publishedAt?: string
-}
-
-export type ProductWorkflowPricing = {
-    originalPrice?: number
-    suggestedPrice?: number
-    finalPrice?: number
-    discountPercent?: number
-    pricingConfidence?: number
-    pricingReasons: string[]
-    minMarketPrice?: number
-    avgMarketPrice?: number
-    maxMarketPrice?: number
-    marketPriceSources: MarketPriceSource[]
+    originalUnitPrice: number
+    finalUnitPrice?: number
     acceptedSuggestion?: boolean
     priceFeedback?: string
+    isManualFallback?: boolean
 }
 
-export type ProductWorkflowSnapshot = {
-    step: ProductAiStep
-    productState?: ProductStateLabel | ProductStateValue | string
+export type WorkflowMarketPriceSourceDto = {
+    storeName?: string | null
+    price?: number | null
+    source?: string | null
+}
 
-    barcode?: string
-    productExists?: boolean
-    requiresOcrUpload?: boolean
-    nextAction?: string
+export type WorkflowPricingSuggestionDto = {
+    productId?: string | null
+    productName?: string | null
+    originalPrice?: number | null
+    suggestedPrice?: number | null
+    confidence?: number | null
+    discountPercent?: number | null
+    expiryDate?: string | null
+    daysToExpiry?: number | null
+    reasons?: string[] | null
+    minMarketPrice?: number | null
+    avgMarketPrice?: number | null
+    maxMarketPrice?: number | null
+    marketPriceSources?: WorkflowMarketPriceSourceDto[] | null
+}
 
-    existingProduct?: ExistingProductSummary
-    barcodeLookupInfo?: BarcodeLookupInfo
+export type WorkflowStockLotDto = {
+    lotId: string
+    productId: string
+    productName?: string | null
+    productBarcode?: string | null
+    productBrand?: string | null
+    productImageUrl?: string | null
+    expiryDate?: string | null
+    manufactureDate?: string | null
+    daysToExpiry?: number | null
+    quantity?: number | null
+    weight?: number | null
+    status?: number | string | null
+    createdAt?: string | null
+    createdBy?: string | null
+    publishedBy?: string | null
+    publishedAt?: string | null
+    originalPrice?: number | null
+    suggestedPrice?: number | null
+    finalPrice?: number | null
+    pricingConfidence?: number | null
+}
 
-    extractedInfo?: OcrExtractedInfo
-    rawOcrData?: JsonLike
-    aiExtract?: AiExtractResult
+export type WorkflowCreateAndPublishLotResultDto = {
+    productId: string
+    lotId: string
+    phase?: string | null
+    pricingSuggestionResolvedBeforePublish?: boolean | null
+    pricingSuggestion?: WorkflowPricingSuggestionDto | null
+    stockLot?: WorkflowStockLotDto | null
+    isManualFallback?: boolean | null
+    timeoutInfo?: WorkflowTimeoutInfoDto | null
+    productCategory?: string | null
+    productNutritionFacts?: NutritionFactsMap | null
+}
 
-    draft: ProductWorkflowDraft
-    verification: ProductWorkflowVerification
-    lot: ProductWorkflowLot
-    pricing: ProductWorkflowPricing
+export type LocalImageFile = {
+    id: string
+    file: File
+    preview: string
+    source: "upload" | "camera"
+}
 
-    name?: string
-    brand?: string
-    category?: string
-    productId?: string
-    supermarketId?: string
-    mainImageUrl?: string
-    productImages: ProductImageItem[]
+export type ProductFormState = {
+    name: string
+    brand: string
+    categoryName: string
+    barcode: string
+    manufacturer: string
+    origin: string
+    description: string
+    ingredients: string
+    nutritionFacts: string
+    usageInstructions: string
+    storageInstructions: string
+    safetyWarnings: string
+    isManualFallback: boolean
+}
 
-    statusText?: string
+export type LotFormState = {
+    expiryDate: string
+    manufactureDate: string
+    quantity: number | ""
+    weight: number | ""
+    originalUnitPrice: number | ""
+    finalUnitPrice: number | ""
+    acceptedSuggestion: boolean
+    priceFeedback: string
+    isManualFallback: boolean
+}
+
+export type ProductWorkflowState = {
+    step: ProductWorkflowStep
+    mode: ProductWorkflowMode
+    nextAction: WorkflowNextAction | null
+    barcode: string
+    phase?: string | null
+    statusText: string
+    errorMessage: string | null
+
+    identifyResult: WorkflowIdentifyResultDto | null
+    analyzeResult: WorkflowAnalyzeImageResultDto | null
+    createdProduct: WorkflowCreateProductResultDto | null
+    createdLot: WorkflowCreateAndPublishLotResultDto | null
+
+    ownProduct: ExistingProductSummaryDto | null
+    referenceProduct: ExistingProductSummaryDto | null
+    externalProducts: ExistingProductSummaryDto[]
+
+    requiresVerification: boolean
+    verificationProductId?: string | null
+    canCreateLotDirectly: boolean
+    canCreatePrivateProductForCurrentSupermarket: boolean
+
+    productForm: ProductFormState
+    lotForm: LotFormState
+}
+
+export const CATEGORY_OPTIONS = [
+    { label: "Thực phẩm tươi", value: "Fresh Food" },
+    { label: "Thực phẩm khô", value: "Dry Food" },
+    { label: "Đồ uống", value: "Beverages" },
+    { label: "Gia vị", value: "Spices" },
+    { label: "Bánh kẹo", value: "Snacks" },
+    { label: "Đông lạnh", value: "Frozen Food" },
+    { label: "Khác", value: "Other" },
+] as const
+
+export const emptyProductForm = (): ProductFormState => ({
+    name: "",
+    brand: "",
+    categoryName: "",
+    barcode: "",
+    manufacturer: "",
+    origin: "",
+    description: "",
+    ingredients: "",
+    nutritionFacts: "",
+    usageInstructions: "",
+    storageInstructions: "",
+    safetyWarnings: "",
+    isManualFallback: false,
+})
+
+export const emptyLotForm = (): LotFormState => ({
+    expiryDate: "",
+    manufactureDate: "",
+    quantity: 1,
+    weight: "",
+    originalUnitPrice: "",
+    finalUnitPrice: "",
+    acceptedSuggestion: true,
+    priceFeedback: "",
+    isManualFallback: false,
+})
+
+export const buildInitialWorkflowState = (): ProductWorkflowState => ({
+    step: "SCAN",
+    mode: null,
+    nextAction: null,
+    barcode: "",
+    phase: null,
+    statusText: "Bắt đầu bằng barcode hoặc ảnh sản phẩm",
+    errorMessage: null,
+
+    identifyResult: null,
+    analyzeResult: null,
+    createdProduct: null,
+    createdLot: null,
+
+    ownProduct: null,
+    referenceProduct: null,
+    externalProducts: [],
+
+    requiresVerification: false,
+    verificationProductId: null,
+    canCreateLotDirectly: false,
+    canCreatePrivateProductForCurrentSupermarket: false,
+
+    productForm: emptyProductForm(),
+    lotForm: emptyLotForm(),
+})
+
+export const joinIngredientsForRequest = (value: string) => {
+    return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .join(", ")
+}
+
+export const stringifyNutritionFactsForRequest = (value: string) => {
+    const trimmed = value.trim()
+    if (!trimmed) return undefined
+
+    try {
+        JSON.parse(trimmed)
+        return trimmed
+    } catch {
+        return JSON.stringify({ note: trimmed })
+    }
 }

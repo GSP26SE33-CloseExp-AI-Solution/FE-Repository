@@ -22,6 +22,7 @@ import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage";
 
 import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard";
 import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductsLotsPage";
+import ProductWorkflowPage from "@/pages/SupermarketStaff/sProducts/ProductWorkflowPage";
 import ProfilePage from "@/pages/SupermarketStaff/sProfile";
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard";
@@ -137,6 +138,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/supermarketStaff/products"
                                 element={<ProductsLotsPage />}
+                            />
+                            <Route
+                                path="/supermarketStaff/products/workflow"
+                                element={<ProductWorkflowPage />}
                             />
                             <Route
                                 path="/supermarketStaff/profile"

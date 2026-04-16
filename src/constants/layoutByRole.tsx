@@ -48,7 +48,7 @@ export const STAFF_HEADER_CONFIG = {
         roleLabel: "Nhân viên siêu thị",
         profileRoute: "/supermarketStaff/profile",
         accentClass: "from-sky-500 to-cyan-400",
-        centerHint: "Quản lý sản phẩm, tồn kho và hỗ trợ kiểm duyệt AI",
+        centerHint: "Quản lý sản phẩm, số lượng hàng và hỗ trợ định giá",
         meta: (
             <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700">
                 <Store size={12} />
