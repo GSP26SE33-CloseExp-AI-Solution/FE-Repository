@@ -370,6 +370,9 @@ export type OrderItemResponse = {
 	lineTotal?: number;
 	productName?: string;
 	expiryDate?: string;
+	deliveryStatus?: string | null;
+	deliveredAt?: string | null;
+	deliveryNote?: string | null;
 };
 
 /**
@@ -485,6 +488,9 @@ export type MyOrderLineItem = {
 	lineTotal?: number;
 	productName?: string;
 	expiryDate?: string;
+	deliveryStatus?: string | null;
+	deliveredAt?: string | null;
+	deliveryNote?: string | null;
 };
 
 /**
