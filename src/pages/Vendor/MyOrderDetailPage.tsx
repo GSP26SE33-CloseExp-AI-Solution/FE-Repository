@@ -28,26 +28,27 @@ import { googleMapsUrl, lastOrderStorage, money } from "@/utils/orderStorage";
 import toast from "react-hot-toast";
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
-    classes.filter(Boolean).join(" ");
+    classes.filter(Boolean).join(" ")
 
 const panel =
-    "rounded-[24px] border border-slate-200/70 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]";
+    "rounded-[24px] border border-slate-200/70 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
 
-const softPanel = "rounded-[20px] border border-slate-200/70 bg-slate-50/70";
+const softPanel =
+    "rounded-[20px] border border-slate-200/70 bg-slate-50/70"
 
 const primaryBtn =
-    "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]";
+    "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
 
 const secondaryBtn =
-    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]";
+    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]"
 
-const muted = "text-slate-500";
+const muted = "text-slate-500"
 
 const formatDateTime = (value?: string) => {
-    if (!value) return "--";
+    if (!value) return "--"
 
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "--";
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return "--"
 
     return new Intl.DateTimeFormat("vi-VN", {
         hour: "2-digit",
@@ -55,8 +56,8 @@ const formatDateTime = (value?: string) => {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-    }).format(date);
-};
+    }).format(date)
+}
 
 const getOrderStatusMeta = (status?: string) => {
     switch ((status || "").toLowerCase()) {
@@ -65,81 +66,81 @@ const getOrderStatusMeta = (status?: string) => {
                 label: "Chờ xác nhận",
                 className: "border-amber-200 bg-amber-50 text-amber-700",
                 note: "Đơn hàng đã được ghi nhận và đang chờ hệ thống xử lý.",
-            };
+            }
 
         case "paid":
             return {
                 label: "Đang chuẩn bị hàng",
                 className: "border-sky-200 bg-sky-50 text-sky-700",
                 note: "Đơn hàng đã thanh toán và đang được chuẩn bị.",
-            };
+            }
 
         case "readytoship":
             return {
                 label: "Sẵn sàng giao",
                 className: "border-violet-200 bg-violet-50 text-violet-700",
                 note: "Đơn hàng đã sẵn sàng để giao hoặc bàn giao tại điểm nhận.",
-            };
+            }
 
         case "deliveredwaitconfirm":
             return {
                 label: "Đã giao, chờ xác nhận",
                 className: "border-indigo-200 bg-indigo-50 text-indigo-700",
                 note: "Đơn hàng đã được giao và đang chờ xác nhận hoàn tất.",
-            };
+            }
 
         case "completed":
             return {
                 label: "Hoàn tất",
                 className: "border-emerald-200 bg-emerald-50 text-emerald-700",
                 note: "Đơn hàng đã hoàn tất.",
-            };
+            }
 
         case "canceled":
             return {
                 label: "Đã hủy",
                 className: "border-rose-200 bg-rose-50 text-rose-700",
                 note: "Đơn hàng đã bị hủy.",
-            };
+            }
 
         case "refunded":
             return {
                 label: "Đã hoàn tiền",
                 className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
                 note: "Đơn hàng đã được hoàn tiền.",
-            };
+            }
 
         case "failed":
             return {
                 label: "Không thành công",
                 className: "border-rose-200 bg-rose-50 text-rose-700",
                 note: "Đã có lỗi xảy ra khi xử lý đơn hàng.",
-            };
+            }
 
         default:
             return {
                 label: status || "Chưa rõ",
                 className: "border-slate-200 bg-slate-50 text-slate-700",
                 note: "Trạng thái đơn hàng hiện chưa được xác định rõ.",
-            };
+            }
     }
-};
+}
 
-type OrderItemDeliveryKind = "delivered" | "pending" | "exception" | "unknown";
+type OrderItemDeliveryKind = "delivered" | "pending" | "exception" | "unknown"
 
 type OrderItemDeliveryMeta = OrderItemResponse & {
-    deliveryStatus?: string | null;
-    deliveredAt?: string | null;
-    packagingStatus?: string | null;
-    deliveryNote?: string | null;
-};
+    deliveryStatus?: string | null
+    deliveredAt?: string | null
+    packagingStatus?: string | null
+    deliveryNote?: string | null
+}
 
 const normalizeStatusToken = (value?: string | null) =>
-    (value || "").toLowerCase().replace(/[\s_-]+/g, "");
+    (value || "").toLowerCase().replace(/[\s_-]+/g, "")
 
 const getOrderItemDeliveryMeta = (item: OrderItemDeliveryMeta) => {
-    const rawStatus = item.deliveryStatus || item.packagingStatus || "";
-    const normalizedStatus = normalizeStatusToken(rawStatus);
+    const rawStatus = item.deliveryStatus || item.packagingStatus || ""
+    const normalizedStatus = normalizeStatusToken(rawStatus)
 
     const deliveredStatuses = new Set([
         "delivered",
@@ -149,7 +150,7 @@ const getOrderItemDeliveryMeta = (item: OrderItemDeliveryMeta) => {
         "done",
         "deliveredwaitconfirm",
         "delivered_wait_confirm",
-    ]);
+    ])
 
     const pendingStatuses = new Set([
         "pending",
@@ -165,14 +166,9 @@ const getOrderItemDeliveryMeta = (item: OrderItemDeliveryMeta) => {
         "assigned",
         "outfordelivery",
         "waitingforpickup",
-    ]);
+    ])
 
-    const exceptionStatuses = new Set([
-        "failed",
-        "canceled",
-        "cancelled",
-        "refunded",
-    ]);
+    const exceptionStatuses = new Set(["failed", "canceled", "cancelled", "refunded"])
 
     if (item.deliveredAt || deliveredStatuses.has(normalizedStatus)) {
         return {
@@ -182,7 +178,7 @@ const getOrderItemDeliveryMeta = (item: OrderItemDeliveryMeta) => {
             note: item.deliveredAt
                 ? `Đã giao lúc ${formatDateTime(item.deliveredAt)}`
                 : "Món này đã được giao.",
-        };
+        }
     }
 
     if (exceptionStatuses.has(normalizedStatus)) {
@@ -191,7 +187,7 @@ const getOrderItemDeliveryMeta = (item: OrderItemDeliveryMeta) => {
             label: "Không giao",
             className: "border-rose-200 bg-rose-50 text-rose-700",
             note: "Món này không được giao thành công.",
-        };
+        }
     }
 
     if (pendingStatuses.has(normalizedStatus) || rawStatus) {
@@ -200,7 +196,7 @@ const getOrderItemDeliveryMeta = (item: OrderItemDeliveryMeta) => {
             label: "Chưa giao",
             className: "border-amber-200 bg-amber-50 text-amber-700",
             note: "Món này vẫn chưa được giao.",
-        };
+        }
     }
 
     return {
@@ -208,69 +204,51 @@ const getOrderItemDeliveryMeta = (item: OrderItemDeliveryMeta) => {
         label: "Chưa rõ",
         className: "border-slate-200 bg-slate-50 text-slate-600",
         note: "API chưa trả trạng thái giao riêng cho món này.",
-    };
-};
+    }
+}
 
 const MyOrderDetailPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { orderId = "" } = useParams();
 
-    const [order, setOrder] = useState<OrderDetails | null>(null);
-    const [refunds, setRefunds] = useState<RefundDetails[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [canceling, setCanceling] = useState(false);
-    const [confirmingReceipt, setConfirmingReceipt] = useState(false);
-    const [error, setError] = useState("");
+    const [order, setOrder] = useState<OrderDetails | null>(null)
+    const [refunds, setRefunds] = useState<RefundDetails[]>([])
+    const [loading, setLoading] = useState(true)
+    const [canceling, setCanceling] = useState(false)
+    const [error, setError] = useState("")
     /** Địa chỉ điểm nhận từ GET /api/Orders/collection-points (public), khớp collectionId trên đơn */
-    const [pickupCatalogPoint, setPickupCatalogPoint] =
-        useState<PickupPoint | null>(null);
+    const [pickupCatalogPoint, setPickupCatalogPoint] = useState<PickupPoint | null>(
+        null
+    )
 
     useEffect(() => {
-        let mounted = true;
+        let mounted = true
 
         const run = async () => {
             try {
-                setLoading(true);
-                setError("");
+                setLoading(true)
+                setError("")
 
-                console.log(
-                    "OrderDetailPage.fetchOrderDetails -> orderId:",
-                    orderId,
-                );
+                console.log("OrderDetailPage.fetchOrderDetails -> orderId:", orderId)
 
-                const res = await orderService.getOrderDetails(orderId);
+                const res = await orderService.getOrderDetails(orderId)
                 const refundsRes = await orderService.getMyRefunds({
                     orderId,
                     pageNumber: 1,
                     pageSize: 20,
-                });
+                })
 
-                const fallbackLastOrder = lastOrderStorage.get?.() as
-                    | OrderDetails
-                    | null
-                    | undefined;
-                console.log(
-                    "OrderDetailPage.fetchOrderDetails -> fallbackLastOrder:",
-                    fallbackLastOrder,
-                );
-                console.log(
-                    "OrderDetailPage.fetchOrderDetails -> fallback orderId match:",
-                    fallbackLastOrder?.orderId === res.orderId,
-                );
-                console.log(
-                    "OrderDetailPage.fetchOrderDetails -> api orderItems:",
-                    res?.orderItems,
-                );
-                console.log(
-                    "OrderDetailPage.fetchOrderDetails -> fallback orderItems:",
-                    fallbackLastOrder?.orderItems,
-                );
+                const fallbackLastOrder = lastOrderStorage.get?.() as OrderDetails | null | undefined
+                console.log("OrderDetailPage.fetchOrderDetails -> fallbackLastOrder:", fallbackLastOrder)
+                console.log("OrderDetailPage.fetchOrderDetails -> fallback orderId match:", fallbackLastOrder?.orderId === res.orderId)
+                console.log("OrderDetailPage.fetchOrderDetails -> api orderItems:", res?.orderItems)
+                console.log("OrderDetailPage.fetchOrderDetails -> fallback orderItems:", fallbackLastOrder?.orderItems)
 
                 const fallbackItems =
                     fallbackLastOrder?.orderId === res.orderId
                         ? fallbackLastOrder?.orderItems || []
-                        : [];
+                        : []
 
                 const resolvedOrder: OrderDetails = {
                     ...res,
@@ -278,157 +256,141 @@ const MyOrderDetailPage: React.FC = () => {
                         res?.orderItems && res.orderItems.length > 0
                             ? res.orderItems
                             : fallbackItems,
-                };
+                }
 
-                console.log(
-                    "OrderDetailPage.fetchOrderDetails -> response:",
-                    res,
-                );
-                console.log(
-                    "OrderDetailPage.fetchOrderDetails -> resolvedOrder:",
-                    resolvedOrder,
-                );
+                console.log("OrderDetailPage.fetchOrderDetails -> response:", res)
+                console.log("OrderDetailPage.fetchOrderDetails -> resolvedOrder:", resolvedOrder)
 
-                if (!mounted) return;
-                setOrder(resolvedOrder);
-                setRefunds(refundsRes.items || []);
+                if (!mounted) return
+                setOrder(resolvedOrder)
+                setRefunds(refundsRes.items || [])
             } catch (e: any) {
-                console.error("OrderDetailPage.fetchOrderDetails -> error:", e);
-                if (!mounted) return;
+                console.error("OrderDetailPage.fetchOrderDetails -> error:", e)
+                if (!mounted) return
 
-                setOrder(null);
-                setRefunds([]);
+                setOrder(null)
+                setRefunds([])
                 setError(
-                    e?.response?.data?.message ||
-                        "Không thể tải chi tiết đơn hàng.",
-                );
+                    e?.response?.data?.message || "Không thể tải chi tiết đơn hàng."
+                )
             } finally {
-                if (mounted) setLoading(false);
+                if (mounted) setLoading(false)
             }
-        };
-
-        if (!orderId) {
-            setLoading(false);
-            setError("Thiếu mã đơn hàng để hiển thị chi tiết.");
-            return;
         }
 
-        void run();
+        if (!orderId) {
+            setLoading(false)
+            setError("Thiếu mã đơn hàng để hiển thị chi tiết.")
+            return
+        }
+
+        void run()
 
         return () => {
-            mounted = false;
-        };
-    }, [orderId]);
+            mounted = false
+        }
+    }, [orderId])
 
     // Lấy tên + địa chỉ chuẩn từ catalog public (không dùng API admin)
     useEffect(() => {
         if (!order || order.deliveryType !== "PICKUP" || !order.collectionId) {
-            setPickupCatalogPoint(null);
-            return;
+            setPickupCatalogPoint(null)
+            return
         }
 
-        let cancelled = false;
+        let cancelled = false
 
         void (async () => {
             try {
-                const points = await supermarketService.getPickupPoints();
-                if (cancelled) return;
-                const target = String(order.collectionId).toLowerCase();
+                const points = await supermarketService.getPickupPoints()
+                if (cancelled) return
+                const target = String(order.collectionId).toLowerCase()
                 const hit = points.find(
-                    (p) => p.pickupPointId.toLowerCase() === target,
-                );
-                setPickupCatalogPoint(hit ?? null);
+                    (p) => p.pickupPointId.toLowerCase() === target
+                )
+                setPickupCatalogPoint(hit ?? null)
             } catch {
-                if (!cancelled) setPickupCatalogPoint(null);
+                if (!cancelled) setPickupCatalogPoint(null)
             }
-        })();
+        })()
 
         return () => {
-            cancelled = true;
-        };
-    }, [order]);
+            cancelled = true
+        }
+    }, [order])
 
     const breadcrumbs = useMemo(
         () =>
             getBreadcrumbsByPath(location.pathname, {
                 dynamicLabel: order?.orderCode || "Chi tiết đơn hàng",
             }),
-        [location.pathname, order?.orderCode],
-    );
+        [location.pathname, order?.orderCode]
+    )
 
     const statusMeta = useMemo(
         () => getOrderStatusMeta(order?.status),
-        [order?.status],
-    );
+        [order?.status]
+    )
 
     const latestRefund = useMemo(() => {
-        if (!refunds.length) return null;
+        if (!refunds.length) return null
         return [...refunds].sort(
-            (a, b) =>
-                new Date(b.createdAt).getTime() -
-                new Date(a.createdAt).getTime(),
-        )[0];
-    }, [refunds]);
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )[0]
+    }, [refunds])
 
     const canCancelOrder = useMemo(() => {
-        if (!order) return false;
-        if (order.status !== "Paid") return false;
-        if (!order.cancelDeadline) return false;
-        return new Date(order.cancelDeadline).getTime() >= Date.now();
-    }, [order]);
-
-    const canConfirmReceipt = useMemo(() => {
-        if (!order?.status) return false;
-        return order.status.toLowerCase() === "deliveredwaitconfirm";
-    }, [order?.status]);
+        if (!order) return false
+        if (order.status !== "Paid") return false
+        if (!order.cancelDeadline) return false
+        return new Date(order.cancelDeadline).getTime() >= Date.now()
+    }, [order])
 
     const subtotal = useMemo(() => {
-        if (!order?.orderItems?.length) return order?.totalAmount || 0;
+        if (!order?.orderItems?.length) return order?.totalAmount || 0
 
         return order.orderItems.reduce((sum, item) => {
             const line =
                 item.lineTotal ??
                 item.totalPrice ??
-                item.unitPrice * item.quantity;
-            return sum + line;
-        }, 0);
-    }, [order]);
+                item.unitPrice * item.quantity
+            return sum + line
+        }, 0)
+    }, [order])
 
     const itemDeliveryStats = useMemo(() => {
         return (order?.orderItems || []).reduce(
             (stats, item) => {
-                const meta = getOrderItemDeliveryMeta(
-                    item as OrderItemDeliveryMeta,
-                );
+                const meta = getOrderItemDeliveryMeta(item as OrderItemDeliveryMeta)
 
-                if (meta.kind === "delivered") stats.delivered += 1;
-                else if (meta.kind === "pending") stats.pending += 1;
-                else if (meta.kind === "exception") stats.exception += 1;
-                else stats.unknown += 1;
+                if (meta.kind === "delivered") stats.delivered += 1
+                else if (meta.kind === "pending") stats.pending += 1
+                else if (meta.kind === "exception") stats.exception += 1
+                else stats.unknown += 1
 
-                return stats;
+                return stats
             },
             {
                 delivered: 0,
                 pending: 0,
                 exception: 0,
                 unknown: 0,
-            },
-        );
-    }, [order?.orderItems]);
+            }
+        )
+    }, [order?.orderItems])
 
     const deliveryTypeLabel = useMemo(() => {
         return order?.deliveryType === "DELIVERY"
             ? "Giao tận nơi"
             : order?.deliveryType === "PICKUP"
-              ? "Nhận tại điểm tập kết"
-              : "Chưa rõ";
-    }, [order?.deliveryType]);
+                ? "Nhận tại điểm tập kết"
+                : "Chưa rõ"
+    }, [order?.deliveryType])
 
     const mapUrl = useMemo(() => {
         if (order?.deliveryType === "PICKUP" && pickupCatalogPoint) {
-            const lat = pickupCatalogPoint.lat;
-            const lng = pickupCatalogPoint.lng;
+            const lat = pickupCatalogPoint.lat
+            const lng = pickupCatalogPoint.lng
             if (
                 Number.isFinite(lat) &&
                 Number.isFinite(lng) &&
@@ -437,23 +399,23 @@ const MyOrderDetailPage: React.FC = () => {
                 lng >= -180 &&
                 lng <= 180
             ) {
-                return googleMapsUrl(lat, lng);
+                return googleMapsUrl(lat, lng)
             }
         }
 
-        if (!order?.deliveryNote) return "";
+        if (!order?.deliveryNote) return ""
 
         const latLngMatch = order.deliveryNote.match(
-            /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i,
-        );
+            /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i
+        )
 
-        if (!latLngMatch) return "";
+        if (!latLngMatch) return ""
 
-        const lat = Number(latLngMatch[1]);
-        const lng = Number(latLngMatch[2]);
+        const lat = Number(latLngMatch[1])
+        const lng = Number(latLngMatch[2])
 
-        if (Number.isNaN(lat) || Number.isNaN(lng)) return "";
-        return googleMapsUrl(lat, lng);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return ""
+        return googleMapsUrl(lat, lng)
     }, [order?.deliveryNote, order?.deliveryType, pickupCatalogPoint]);
 
     if (loading) {
@@ -477,10 +439,7 @@ const MyOrderDetailPage: React.FC = () => {
                 <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-5 lg:px-6">
                     <section className={cn(panel, "p-6")}>
                         <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
-                            <AlertCircle
-                                size={16}
-                                className="mt-0.5 shrink-0 text-rose-600"
-                            />
+                            <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
                             <div>
                                 <div className="text-[13px] font-semibold text-rose-800">
                                     Không tải được chi tiết đơn hàng
@@ -511,79 +470,40 @@ const MyOrderDetailPage: React.FC = () => {
                     </section>
                 </main>
             </div>
-        );
+        )
     }
 
     const handleCancelOrder = async () => {
-        if (!order || !canCancelOrder || canceling) return;
-        const ok = window.confirm("Bạn chắc chắn muốn hủy đơn hàng này?");
-        if (!ok) return;
+        if (!order || !canCancelOrder || canceling) return
+        const ok = window.confirm("Bạn chắc chắn muốn hủy đơn hàng này?")
+        if (!ok) return
 
-        const reasonRaw = window.prompt("Nhập lý do hủy đơn hàng (bắt buộc):");
-        if (reasonRaw === null) return;
-        const reason = reasonRaw.trim();
+        const reasonRaw = window.prompt("Nhập lý do hủy đơn hàng (bắt buộc):")
+        if (reasonRaw === null) return
+        const reason = reasonRaw.trim()
         if (!reason) {
-            toast.error("Chưa hủy đơn — cần nhập lý do.");
-            return;
+            toast.error("Chưa hủy đơn — cần nhập lý do.")
+            return
         }
 
         try {
-            setCanceling(true);
-            await orderService.markCanceled(order.orderId, reason);
+            setCanceling(true)
+            await orderService.markCanceled(order.orderId, reason)
 
             const [nextOrder, nextRefunds] = await Promise.all([
                 orderService.getOrderDetails(order.orderId),
-                orderService.getMyRefunds({
-                    orderId: order.orderId,
-                    pageNumber: 1,
-                    pageSize: 20,
-                }),
-            ]);
+                orderService.getMyRefunds({ orderId: order.orderId, pageNumber: 1, pageSize: 20 }),
+            ])
 
-            setOrder(nextOrder);
-            setRefunds(nextRefunds.items || []);
-            toast.success("Đã hủy đơn hàng.");
+            setOrder(nextOrder)
+            setRefunds(nextRefunds.items || [])
+            toast.success("Đã hủy đơn hàng.")
         } catch (e: any) {
-            toast.error(e?.message || "Không thể hủy đơn hàng.");
+            toast.error(e?.message || "Không thể hủy đơn hàng.")
         } finally {
-            setCanceling(false);
+            setCanceling(false)
         }
-    };
-
-    const handleConfirmReceipt = async () => {
-        if (!order || !canConfirmReceipt || confirmingReceipt) return;
-
-        const ok = window.confirm("Bạn xác nhận đã nhận đủ hàng cho đơn này?");
-        if (!ok) return;
-
-        const noteRaw = window.prompt("Ghi chú xác nhận (không bắt buộc):");
-        if (noteRaw === null) return;
-        const notes = noteRaw.trim();
-
-        try {
-            setConfirmingReceipt(true);
-            await deliveryService.customerConfirmation(order.orderId, {
-                notes: notes || undefined,
-            });
-
-            const [nextOrder, nextRefunds] = await Promise.all([
-                orderService.getOrderDetails(order.orderId),
-                orderService.getMyRefunds({
-                    orderId: order.orderId,
-                    pageNumber: 1,
-                    pageSize: 20,
-                }),
-            ]);
-
-            setOrder(nextOrder);
-            setRefunds(nextRefunds.items || []);
-            toast.success("Đã xác nhận nhận hàng thành công.");
-        } catch (e: any) {
-            toast.error(e?.message || "Không thể xác nhận nhận hàng.");
-        } finally {
-            setConfirmingReceipt(false);
-        }
-    };
+    }
 
     return (
         <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
@@ -605,7 +525,7 @@ const MyOrderDetailPage: React.FC = () => {
                                     "transition",
                                     index === breadcrumbs.length - 1
                                         ? "font-medium text-slate-800"
-                                        : "text-slate-500",
+                                        : "text-slate-500"
                                 )}
                             >
                                 {crumb}
@@ -631,7 +551,7 @@ const MyOrderDetailPage: React.FC = () => {
                                         <span
                                             className={cn(
                                                 "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                                                statusMeta.className,
+                                                statusMeta.className
                                             )}
                                         >
                                             {statusMeta.label}
@@ -646,31 +566,12 @@ const MyOrderDetailPage: React.FC = () => {
                                     </p>
 
                                     <div className="mt-2 text-[12px] text-slate-500">
-                                        Đặt lúc:{" "}
-                                        {formatDateTime(
-                                            order.orderDate || order.createdAt,
-                                        )}
+                                        Đặt lúc: {formatDateTime(order.orderDate || order.createdAt)}
                                     </div>
                                 </div>
                             </div>
 
                             <div className="flex flex-wrap gap-3">
-                                {canConfirmReceipt ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleConfirmReceipt}
-                                        disabled={confirmingReceipt}
-                                        className={primaryBtn}
-                                    >
-                                        {confirmingReceipt ? (
-                                            <Loader2
-                                                size={14}
-                                                className="animate-spin"
-                                            />
-                                        ) : null}
-                                        Xác nhận đã nhận hàng
-                                    </button>
-                                ) : null}
                                 {canCancelOrder ? (
                                     <button
                                         type="button"
@@ -678,12 +579,7 @@ const MyOrderDetailPage: React.FC = () => {
                                         disabled={canceling}
                                         className={secondaryBtn}
                                     >
-                                        {canceling ? (
-                                            <Loader2
-                                                size={14}
-                                                className="animate-spin"
-                                            />
-                                        ) : null}
+                                        {canceling ? <Loader2 size={14} className="animate-spin" /> : null}
                                         Hủy đơn
                                     </button>
                                 ) : null}
@@ -736,8 +632,7 @@ const MyOrderDetailPage: React.FC = () => {
                                     </span>
                                     {itemDeliveryStats.exception ? (
                                         <span className="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-rose-700">
-                                            Không giao:{" "}
-                                            {itemDeliveryStats.exception}
+                                            Không giao: {itemDeliveryStats.exception}
                                         </span>
                                     ) : null}
                                     {itemDeliveryStats.unknown ? (
@@ -747,14 +642,10 @@ const MyOrderDetailPage: React.FC = () => {
                                     ) : null}
                                 </div>
 
-                                {itemDeliveryStats.delivered +
-                                    itemDeliveryStats.pending +
-                                    itemDeliveryStats.exception ===
-                                    0 && itemDeliveryStats.unknown > 0 ? (
+                                {itemDeliveryStats.delivered + itemDeliveryStats.pending + itemDeliveryStats.exception === 0 &&
+                                    itemDeliveryStats.unknown > 0 ? (
                                     <div className="mt-3 text-[12px] leading-5 text-slate-500">
-                                        API chưa trả trạng thái giao riêng cho
-                                        từng món, nên phần này chỉ hiển thị
-                                        thông tin sản phẩm.
+                                        API chưa trả trạng thái giao riêng cho từng món, nên phần này chỉ hiển thị thông tin sản phẩm.
                                     </div>
                                 ) : null}
 
@@ -764,81 +655,61 @@ const MyOrderDetailPage: React.FC = () => {
                                             const lineTotal =
                                                 item.lineTotal ??
                                                 item.totalPrice ??
-                                                item.unitPrice * item.quantity;
-                                            const deliveryMeta =
-                                                getOrderItemDeliveryMeta(
-                                                    item as OrderItemDeliveryMeta,
-                                                );
+                                                item.unitPrice * item.quantity
+                                            const deliveryMeta = getOrderItemDeliveryMeta(
+                                                item as OrderItemDeliveryMeta
+                                            )
 
                                             return (
                                                 <article
                                                     key={item.orderItemId}
                                                     className={cn(
                                                         "flex flex-col gap-3 rounded-[18px] border p-3.5 transition sm:flex-row sm:items-start sm:justify-between",
-                                                        deliveryMeta.kind ===
-                                                            "delivered"
+                                                        deliveryMeta.kind === "delivered"
                                                             ? "border-emerald-200 bg-emerald-50/70"
-                                                            : deliveryMeta.kind ===
-                                                                "exception"
-                                                              ? "border-rose-200 bg-rose-50/70"
-                                                              : deliveryMeta.kind ===
-                                                                  "pending"
-                                                                ? "border-amber-200 bg-amber-50/70"
-                                                                : "border-slate-200 bg-slate-50/70",
+                                                            : deliveryMeta.kind === "exception"
+                                                                ? "border-rose-200 bg-rose-50/70"
+                                                                : deliveryMeta.kind === "pending"
+                                                                    ? "border-amber-200 bg-amber-50/70"
+                                                                    : "border-slate-200 bg-slate-50/70"
                                                     )}
                                                 >
                                                     <div className="min-w-0 flex-1">
                                                         <div className="flex flex-wrap items-start justify-between gap-2">
                                                             <div className="min-w-0">
                                                                 <div className="truncate text-[13px] font-semibold text-slate-900">
-                                                                    {item.productName ||
-                                                                        item.lotId}
+                                                                    {item.productName || item.lotId}
                                                                 </div>
 
                                                                 <div className="mt-1 text-[11px] text-slate-500">
-                                                                    Mã lô:{" "}
-                                                                    {item.lotId}
+                                                                    Mã lô: {item.lotId}
                                                                 </div>
 
                                                                 <div className="mt-1 text-[11px] text-slate-500">
-                                                                    {money(
-                                                                        item.unitPrice,
-                                                                    )}{" "}
-                                                                    ×{" "}
-                                                                    {
-                                                                        item.quantity
-                                                                    }
+                                                                    {money(item.unitPrice)} × {item.quantity}
                                                                 </div>
                                                             </div>
 
                                                             <span
                                                                 className={cn(
                                                                     "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                                                                    deliveryMeta.className,
+                                                                    deliveryMeta.className
                                                                 )}
                                                             >
-                                                                {
-                                                                    deliveryMeta.label
-                                                                }
+                                                                {deliveryMeta.label}
                                                             </span>
                                                         </div>
 
                                                         <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium text-slate-600">
                                                             <span className="inline-flex rounded-full border border-white/70 bg-white/70 px-2.5 py-1">
-                                                                Số lượng:{" "}
-                                                                {item.quantity}
+                                                                Số lượng: {item.quantity}
                                                             </span>
                                                             <span className="inline-flex rounded-full border border-white/70 bg-white/70 px-2.5 py-1">
-                                                                Đơn giá:{" "}
-                                                                {money(
-                                                                    item.unitPrice,
-                                                                )}
+                                                                Đơn giá: {money(item.unitPrice)}
                                                             </span>
                                                             {item.deliveredAt ? (
                                                                 <span className="inline-flex rounded-full border border-white/70 bg-white/70 px-2.5 py-1">
-                                                                    {formatDateTime(
-                                                                        item.deliveredAt,
-                                                                    )}
+                                                                    {formatDateTime(item.deliveredAt)}
                                                                 </span>
                                                             ) : null}
                                                         </div>
@@ -848,27 +719,16 @@ const MyOrderDetailPage: React.FC = () => {
                                                         <div className="text-[13px] font-bold text-slate-900">
                                                             {money(lineTotal)}
                                                         </div>
-                                                        <div
-                                                            className={cn(
-                                                                "mt-1 text-[11px] leading-5",
-                                                                muted,
-                                                            )}
-                                                        >
+                                                        <div className={cn("mt-1 text-[11px] leading-5", muted)}>
                                                             {deliveryMeta.note}
                                                         </div>
                                                     </div>
                                                 </article>
-                                            );
+                                            )
                                         })
                                     ) : (
-                                        <div
-                                            className={cn(
-                                                softPanel,
-                                                "p-4 text-[13px] text-slate-500",
-                                            )}
-                                        >
-                                            Đơn hàng hiện chưa có dữ liệu sản
-                                            phẩm để hiển thị.
+                                        <div className={cn(softPanel, "p-4 text-[13px] text-slate-500")}>
+                                            Đơn hàng hiện chưa có dữ liệu sản phẩm để hiển thị.
                                         </div>
                                     )}
                                 </div>
@@ -896,29 +756,20 @@ const MyOrderDetailPage: React.FC = () => {
 
                                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
                                     <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">
-                                            Phương thức
-                                        </div>
+                                        <div className="text-[11px] text-slate-500">Phương thức</div>
                                         <div className="mt-1 text-[13px] font-semibold text-slate-900">
                                             {deliveryTypeLabel}
                                         </div>
                                     </div>
 
                                     <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">
-                                            Khung giờ
-                                        </div>
+                                        <div className="text-[11px] text-slate-500">Khung giờ</div>
                                         <div className="mt-1 text-[13px] font-semibold text-slate-900">
                                             {order.timeSlotDisplay || "--"}
                                         </div>
                                     </div>
 
-                                    <div
-                                        className={cn(
-                                            softPanel,
-                                            "p-4 sm:col-span-2",
-                                        )}
-                                    >
+                                    <div className={cn(softPanel, "p-4 sm:col-span-2")}>
                                         <div className="text-[11px] text-slate-500">
                                             {order.deliveryType === "DELIVERY"
                                                 ? "Địa chỉ nhận hàng"
@@ -928,15 +779,15 @@ const MyOrderDetailPage: React.FC = () => {
                                         <div className="mt-1 text-[13px] font-semibold text-slate-900">
                                             {order.deliveryType === "DELIVERY"
                                                 ? order.deliveryNote ||
-                                                  "Chưa có địa chỉ giao hàng"
+                                                "Chưa có địa chỉ giao hàng"
                                                 : pickupCatalogPoint?.name ||
-                                                  order.collectionPointName ||
-                                                  "Chưa có điểm nhận"}
+                                                order.collectionPointName ||
+                                                "Chưa có điểm nhận"}
                                         </div>
 
                                         {order.deliveryType === "PICKUP" &&
-                                        (pickupCatalogPoint?.address ||
-                                            order.deliveryNote) ? (
+                                            (pickupCatalogPoint?.address ||
+                                                order.deliveryNote) ? (
                                             <div className="mt-2 text-[12px] text-slate-500">
                                                 {pickupCatalogPoint?.address ||
                                                     order.deliveryNote}
@@ -964,21 +815,16 @@ const MyOrderDetailPage: React.FC = () => {
                         <div className="sticky top-[88px] space-y-4">
                             <section className={cn(panel, "p-4 sm:p-5")}>
                                 <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-900">
-                                    <ShieldCheck
-                                        className="text-sky-600"
-                                        size={17}
-                                    />
+                                    <ShieldCheck className="text-sky-600" size={17} />
                                     Trạng thái đơn hàng
                                 </div>
 
                                 <div className="mt-4 rounded-xl bg-white/70 p-4 ring-1 ring-slate-100">
-                                    <div className={cn("text-[11px]", muted)}>
-                                        Trạng thái hiện tại
-                                    </div>
+                                    <div className={cn("text-[11px]", muted)}>Trạng thái hiện tại</div>
                                     <div
                                         className={cn(
                                             "mt-2 inline-flex rounded-full border px-3 py-1 text-[12px] font-semibold",
-                                            statusMeta.className,
+                                            statusMeta.className
                                         )}
                                     >
                                         {statusMeta.label}
@@ -989,9 +835,7 @@ const MyOrderDetailPage: React.FC = () => {
                                 </div>
 
                                 <div className="mt-3 rounded-xl bg-white/70 p-4 ring-1 ring-slate-100">
-                                    <div className={cn("text-[11px]", muted)}>
-                                        Thanh toán
-                                    </div>
+                                    <div className={cn("text-[11px]", muted)}>Thanh toán</div>
                                     <div className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-emerald-700">
                                         <CreditCard size={14} />
                                         Đã thanh toán
@@ -1029,9 +873,7 @@ const MyOrderDetailPage: React.FC = () => {
                                     </div>
 
                                     <div className="flex items-center justify-between text-[13px]">
-                                        <span className={muted}>
-                                            Phí giao / nhận
-                                        </span>
+                                        <span className={muted}>Phí giao / nhận</span>
                                         <span className="font-semibold text-slate-900">
                                             {money(order.deliveryFee || 0)}
                                         </span>
@@ -1077,21 +919,14 @@ const MyOrderDetailPage: React.FC = () => {
 
                                 <div className="mt-5 space-y-3">
                                     <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">
-                                            Ngày đặt
-                                        </div>
+                                        <div className="text-[11px] text-slate-500">Ngày đặt</div>
                                         <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                            {formatDateTime(
-                                                order.orderDate ||
-                                                    order.createdAt,
-                                            )}
+                                            {formatDateTime(order.orderDate || order.createdAt)}
                                         </div>
                                     </div>
 
                                     <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">
-                                            Cập nhật gần nhất
-                                        </div>
+                                        <div className="text-[11px] text-slate-500">Cập nhật gần nhất</div>
                                         <div className="mt-1 text-[13px] font-semibold text-slate-900">
                                             {formatDateTime(order.updatedAt)}
                                         </div>
@@ -1099,13 +934,9 @@ const MyOrderDetailPage: React.FC = () => {
 
                                     {order.cancelDeadline ? (
                                         <div className={cn(softPanel, "p-4")}>
-                                            <div className="text-[11px] text-slate-500">
-                                                Hạn hủy đơn
-                                            </div>
+                                            <div className="text-[11px] text-slate-500">Hạn hủy đơn</div>
                                             <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                                {formatDateTime(
-                                                    order.cancelDeadline,
-                                                )}
+                                                {formatDateTime(order.cancelDeadline)}
                                             </div>
                                         </div>
                                     ) : null}
@@ -1127,33 +958,20 @@ const MyOrderDetailPage: React.FC = () => {
                                 <div className="mt-5">
                                     {latestRefund ? (
                                         <div className={cn(softPanel, "p-4")}>
-                                            <div className="text-[11px] text-slate-500">
-                                                Trạng thái mới nhất
-                                            </div>
+                                            <div className="text-[11px] text-slate-500">Trạng thái mới nhất</div>
                                             <div className="mt-1 text-[13px] font-semibold text-slate-900">
                                                 {latestRefund.status}
                                             </div>
                                             <div className="mt-2 text-[12px] text-slate-600">
-                                                Số tiền:{" "}
-                                                {money(latestRefund.amount)} -{" "}
-                                                {latestRefund.reason}
+                                                Số tiền: {money(latestRefund.amount)} - {latestRefund.reason}
                                             </div>
                                             <div className="mt-2 text-[11px] text-slate-500">
-                                                Tạo lúc:{" "}
-                                                {formatDateTime(
-                                                    latestRefund.createdAt,
-                                                )}
+                                                Tạo lúc: {formatDateTime(latestRefund.createdAt)}
                                             </div>
                                         </div>
                                     ) : (
-                                        <div
-                                            className={cn(
-                                                softPanel,
-                                                "p-4 text-[13px] text-slate-500",
-                                            )}
-                                        >
-                                            Chưa có yêu cầu hoàn tiền cho đơn
-                                            hàng này.
+                                        <div className={cn(softPanel, "p-4 text-[13px] text-slate-500")}>
+                                            Chưa có yêu cầu hoàn tiền cho đơn hàng này.
                                         </div>
                                     )}
                                 </div>
@@ -1163,7 +981,7 @@ const MyOrderDetailPage: React.FC = () => {
                 </div>
             </main>
         </div>
-    );
-};
+    )
+}
 
-export default MyOrderDetailPage;
+export default MyOrderDetailPage
