@@ -35,6 +35,7 @@
     "tsparticles-slim": "^2.12.0",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4",
+    "xlsx": "^0.18.5",
     "zustand": "^5.0.11"
   },
   "scripts": {
