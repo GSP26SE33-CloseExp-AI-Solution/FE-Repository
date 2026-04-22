@@ -1,5 +1,7 @@
 export type { ApiResponse } from "./api.types"
 
+/* ========================= Shared ========================= */
+
 export type PaginationResult<T> = {
     items: T[]
     totalResult: number
@@ -23,10 +25,6 @@ export type TimeSpanDto = {
     totalNanoseconds: number
     totalMinutes: number
     totalSeconds: number
-}
-
-export type TimeSpanTicksPayload = {
-    ticks: number
 }
 
 /* ========================= Dashboard ========================= */
@@ -80,8 +78,8 @@ export type AdminTimeSlot = {
 }
 
 export type UpsertTimeSlotPayload = {
-    startTime: TimeSpanTicksPayload
-    endTime: TimeSpanTicksPayload
+    startTime: string
+    endTime: string
 }
 
 export type CollectionPoint = {
@@ -108,6 +106,28 @@ export type SystemParameter = {
 
 export type UpdateSystemParameterPayload = {
     configValue: string
+}
+
+/* ========================= Categories ========================= */
+
+export type CategoryItem = {
+    categoryId: string
+    parentCatId?: string | null
+    parentName?: string | null
+    isFreshFood: boolean
+    name: string
+    description?: string | null
+    catIconUrl?: string | null
+    isActive: boolean
+}
+
+export type UpsertCategoryPayload = {
+    parentCatId?: string | null
+    isFreshFood: boolean
+    name: string
+    description?: string | null
+    catIconUrl?: string | null
+    isActive: boolean
 }
 
 /* ========================= Catalog ========================= */
@@ -518,7 +538,7 @@ export type DeliveryGroupSchedulerCard = {
     deliveryStaffName?: string | null
 }
 
-/* ========================= FE aggregate for Admin Delivery ========================= */
+/* ========================= FE Aggregate for Admin Delivery ========================= */
 
 export type DeliveryStaffBoardItem = {
     deliveryStaffId: string
@@ -666,7 +686,7 @@ export type ReportBreakdownItem = {
     percentage?: number
 }
 
-/* ========================= ENUM STATE ========================= */
+/* ========================= Enum State ========================= */
 
 export const USER_STATUS = {
     UNVERIFIED: 0,

@@ -1,4 +1,5 @@
 import axios from "axios"
+
 import axiosClient from "@/utils/axiosClient"
 import type { ApiResponse } from "@/types/api.types"
 import type {
@@ -12,6 +13,7 @@ import type {
     AdminUser,
     AiPricingHistoryItem,
     AssignDeliveryGroupPayload,
+    CategoryItem,
     CollectionPoint,
     CreateSupermarketPayload,
     CreateUserPayload,
@@ -46,6 +48,7 @@ import type {
     UpdateSupermarketPayload,
     UpdateSystemParameterPayload,
     UpdateUserPayload,
+    UpsertCategoryPayload,
     UpsertCollectionPointPayload,
     UpsertPromotionPayload,
     UpsertTimeSlotPayload,
@@ -73,9 +76,27 @@ const buildQueryString = (params?: Query) => {
 
 const extractApiErrorMessage = (error: unknown, fallback: string) => {
     if (axios.isAxiosError(error)) {
-        const apiMessage =
-            (error.response?.data as any)?.message ||
-            (error.response?.data as any)?.errors?.filter(Boolean)?.join(", ")
+        const responseData = error.response?.data as any
+
+        let apiMessage = ""
+
+        if (typeof responseData?.message === "string" && responseData.message.trim()) {
+            apiMessage = responseData.message.trim()
+        } else if (Array.isArray(responseData?.errors)) {
+            apiMessage = responseData.errors.filter(Boolean).join(", ")
+        } else if (
+            responseData?.errors &&
+            typeof responseData.errors === "object"
+        ) {
+            apiMessage = Object.values(responseData.errors)
+                .flatMap((value) =>
+                    Array.isArray(value) ? value : [String(value)]
+                )
+                .filter(Boolean)
+                .join(", ")
+        } else if (typeof responseData?.errors === "string") {
+            apiMessage = responseData.errors
+        }
 
         console.error("admin.service axios error:", {
             url: error.config?.url,
@@ -93,18 +114,14 @@ const extractApiErrorMessage = (error: unknown, fallback: string) => {
     return fallback
 }
 
-const isObject = (value: unknown): value is Record<string, unknown> => {
-    return typeof value === "object" && value !== null
-}
+const isObject = (value: unknown): value is Record<string, unknown> =>
+    typeof value === "object" && value !== null
 
-const isApiResponseShape = <T,>(value: unknown): value is ApiResponse<T> => {
-    return (
-        isObject(value) &&
-        "success" in value &&
-        "message" in value &&
-        "data" in value
-    )
-}
+const isApiResponseShape = <T,>(value: unknown): value is ApiResponse<T> =>
+    isObject(value) &&
+    "success" in value &&
+    "message" in value &&
+    "data" in value
 
 const unwrapResponse = <T,>(response: { data?: unknown } | ApiResponse<T>): T => {
     const payload =
@@ -115,10 +132,23 @@ const unwrapResponse = <T,>(response: { data?: unknown } | ApiResponse<T>): T =>
     }
 
     if (payload.success === false) {
+        let errorMessage = ""
+
+        if (Array.isArray(payload.errors)) {
+            errorMessage = payload.errors.filter(Boolean).join(", ")
+        } else if (payload.errors && typeof payload.errors === "object") {
+            errorMessage = Object.values(payload.errors as Record<string, unknown>)
+                .flatMap((value) =>
+                    Array.isArray(value) ? value : [String(value)]
+                )
+                .filter(Boolean)
+                .join(", ")
+        } else if (typeof payload.errors === "string") {
+            errorMessage = payload.errors
+        }
+
         throw new Error(
-            payload.errors?.filter(Boolean).join(", ") ||
-            payload.message ||
-            "Yêu cầu không thành công"
+            errorMessage || payload.message || "Yêu cầu không thành công"
         )
     }
 
@@ -210,6 +240,7 @@ const normalizeStatus = (value?: string) =>
 
 const toDateKey = (value?: string) => {
     if (!value) return ""
+
     const date = new Date(value)
     if (Number.isNaN(date.getTime())) {
         return String(value).slice(0, 10)
@@ -284,7 +315,10 @@ export const adminService = {
     },
 
     updateTimeSlot(timeSlotId: string, payload: UpsertTimeSlotPayload) {
-        console.log("adminService.updateTimeSlot payload:", { timeSlotId, payload })
+        console.log("adminService.updateTimeSlot payload:", {
+            timeSlotId,
+            payload,
+        })
         return put<AdminTimeSlot, UpsertTimeSlotPayload>(
             `/admin/system-config/time-slots/${timeSlotId}`,
             payload,
@@ -315,7 +349,10 @@ export const adminService = {
         )
     },
 
-    updateCollectionPoint(collectionId: string, payload: UpsertCollectionPointPayload) {
+    updateCollectionPoint(
+        collectionId: string,
+        payload: UpsertCollectionPointPayload
+    ) {
         console.log("adminService.updateCollectionPoint payload:", {
             collectionId,
             payload,
@@ -341,8 +378,14 @@ export const adminService = {
         )
     },
 
-    updateSystemParameter(configKey: string, payload: UpdateSystemParameterPayload) {
-        console.log("adminService.updateSystemParameter payload:", { configKey, payload })
+    updateSystemParameter(
+        configKey: string,
+        payload: UpdateSystemParameterPayload
+    ) {
+        console.log("adminService.updateSystemParameter payload:", {
+            configKey,
+            payload,
+        })
         return put<SystemParameter, UpdateSystemParameterPayload>(
             `/admin/system-config/parameters/${configKey}`,
             payload,
@@ -350,10 +393,64 @@ export const adminService = {
         )
     },
 
+    /* ========================= Categories ========================= */
+
+    getCategories(includeInactive = true) {
+        return get<CategoryItem[]>(
+            `/Categories${buildQueryString({ includeInactive })}`,
+            "Không thể tải danh sách danh mục"
+        )
+    },
+
+    getParentCategories(includeInactive = true) {
+        return get<CategoryItem[]>(
+            `/Categories/parents${buildQueryString({ includeInactive })}`,
+            "Không thể tải danh mục cha"
+        )
+    },
+
+    getCategoryById(categoryId: string) {
+        return get<CategoryItem>(
+            `/Categories/${categoryId}`,
+            "Không thể tải chi tiết danh mục"
+        )
+    },
+
+    createCategory(payload: UpsertCategoryPayload) {
+        console.log("adminService.createCategory payload:", payload)
+        return post<CategoryItem, UpsertCategoryPayload>(
+            "/Categories",
+            payload,
+            "Không thể tạo danh mục"
+        )
+    },
+
+    updateCategory(categoryId: string, payload: UpsertCategoryPayload) {
+        console.log("adminService.updateCategory payload:", {
+            categoryId,
+            payload,
+        })
+        return put<string, UpsertCategoryPayload>(
+            `/Categories/${categoryId}`,
+            payload,
+            "Không thể cập nhật danh mục"
+        )
+    },
+
+    deleteCategory(categoryId: string) {
+        return remove<string>(
+            `/Categories/${categoryId}`,
+            "Không thể xóa danh mục"
+        )
+    },
+
     /* ========================= Catalog ========================= */
 
     getUnits() {
-        return get<UnitItem[]>("/admin/catalog/units", "Không thể tải danh sách đơn vị")
+        return get<UnitItem[]>(
+            "/admin/catalog/units",
+            "Không thể tải danh sách đơn vị"
+        )
     },
 
     createUnit(payload: UpsertUnitPayload) {
@@ -375,7 +472,10 @@ export const adminService = {
     },
 
     deleteUnit(unitId: string) {
-        return remove<boolean>(`/admin/catalog/units/${unitId}`, "Không thể xóa đơn vị")
+        return remove<boolean>(
+            `/admin/catalog/units/${unitId}`,
+            "Không thể xóa đơn vị"
+        )
     },
 
     getPromotions() {
@@ -404,7 +504,10 @@ export const adminService = {
     },
 
     updatePromotionStatus(promotionId: string, status: string) {
-        console.log("adminService.updatePromotionStatus payload:", { promotionId, status })
+        console.log("adminService.updatePromotionStatus payload:", {
+            promotionId,
+            status,
+        })
         return patch<PromotionItem, UpdatePromotionStatusPayload>(
             `/admin/catalog/promotions/${promotionId}/status`,
             { status },
@@ -451,7 +554,9 @@ export const adminService = {
                     item.marketStaffInfo?.supermarket?.name,
                 ]
                     .filter(Boolean)
-                    .some((value) => String(value).toLowerCase().includes(keyword))
+                    .some((value) =>
+                        String(value).toLowerCase().includes(keyword)
+                    )
 
             const matchesRole =
                 params?.roleId === undefined ? true : item.roleId === params.roleId
@@ -593,7 +698,10 @@ export const adminService = {
     },
 
     getUserImages(userId: string) {
-        return get<UserImageItem[]>(`/users/${userId}/images`, "Không thể tải ảnh user")
+        return get<UserImageItem[]>(
+            `/users/${userId}/images`,
+            "Không thể tải ảnh user"
+        )
     },
 
     /* ========================= Orders ========================= */
@@ -649,7 +757,10 @@ export const adminService = {
     },
 
     updateSupermarket(supermarketId: string, payload: UpdateSupermarketPayload) {
-        console.log("adminService.updateSupermarket payload:", { supermarketId, payload })
+        console.log("adminService.updateSupermarket payload:", {
+            supermarketId,
+            payload,
+        })
         return put<AdminSupermarketItem, UpdateSupermarketPayload>(
             `/supermarkets/${supermarketId}`,
             payload,
@@ -777,19 +888,10 @@ export const adminService = {
         )
     },
 
-    /**
-     * Theo Swagger hiện tại:
-     * PUT /delivery/order-items/draft-group
-     * body: { orderItemIds: string[]; deliveryGroupId?: string | null }
-     *
-     * Note:
-     * Tài liệu BE delivery-context đang có một nhánh ghi /delivery/orders/{orderId}/draft-group,
-     * nhưng trạng thái đang FIXING. Tạm thời ưu tiên Swagger hiện hành.
-     */
     moveOrderItemsToDraftGroup(payload: MoveOrderItemsToDraftGroupPayload) {
         console.log("adminService.moveOrderItemsToDraftGroup payload:", payload)
         return put<MoveOrderItemsToDraftGroupResult, MoveOrderItemsToDraftGroupPayload>(
-            `/delivery/order-items/draft-group`,
+            "/delivery/order-items/draft-group",
             payload,
             "Không thể chuyển item giữa các nhóm draft"
         )
@@ -831,49 +933,12 @@ export const adminService = {
             })
 
         const groups = Array.from(uniqueMap.values())
-        const dayMap = new Map<string, DeliveryCalendarDaySummary>()
-
-        groups.forEach((group) => {
-            const dateKey = toDateKey(group.deliveryDate)
-            if (!dateKey) return
-
-            if (!dayMap.has(dateKey)) {
-                dayMap.set(dateKey, {
-                    date: dateKey,
-                    totalGroups: 0,
-                    totalDraftGroups: 0,
-                    totalPendingGroups: 0,
-                    totalAssignedGroups: 0,
-                    totalInTransitGroups: 0,
-                    totalCompletedGroups: 0,
-                    totalFailedGroups: 0,
-                    totalUnassignedGroups: 0,
-                    totalOrders: 0,
-                    groups: [],
-                })
-            }
-
-            const day = dayMap.get(dateKey)!
-            const status = normalizeStatus(group.status)
-            const isUnassigned = !(group.deliveryStaffId || group.deliveryStaffName)
-
-            day.totalGroups += 1
-            day.totalOrders += group.totalOrders ?? 0
-            day.groups.push(group)
-
-            if (status === "draft") day.totalDraftGroups += 1
-            if (status === "pending" || status === "confirmed") day.totalPendingGroups += 1
-            if (status === "assigned") day.totalAssignedGroups += 1
-            if (status === "intransit") day.totalInTransitGroups += 1
-            if (status === "completed") day.totalCompletedGroups += 1
-            if (status === "failed") day.totalFailedGroups += 1
-            if (isUnassigned) day.totalUnassignedGroups += 1
-        })
-
-        return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date))
+        return this.groupDeliveryGroupsByDate(groups)
     },
 
-    async getDeliveryCalendarSlotsByDate(date: string): Promise<DeliveryCalendarSlotSummary[]> {
+    async getDeliveryCalendarSlotsByDate(
+        date: string
+    ): Promise<DeliveryCalendarSlotSummary[]> {
         const days = await this.getDeliveryCalendarDays({
             deliveryDate: date,
             pageNumber: 1,
@@ -883,34 +948,7 @@ export const adminService = {
         const selectedDay = days.find((item) => item.date === toDateKey(date))
         if (!selectedDay) return []
 
-        const slotMap = new Map<string, DeliveryCalendarSlotSummary>()
-
-        selectedDay.groups.forEach((group) => {
-            const key = group.timeSlotId || group.timeSlotDisplay || "unknown"
-            const label = group.timeSlotDisplay || "Chưa có khung giờ"
-            const isUnassigned = !(group.deliveryStaffId || group.deliveryStaffName)
-
-            if (!slotMap.has(key)) {
-                slotMap.set(key, {
-                    timeSlotId: group.timeSlotId,
-                    timeSlotDisplay: label,
-                    totalGroups: 0,
-                    totalOrders: 0,
-                    unassignedGroups: 0,
-                    groups: [],
-                })
-            }
-
-            const slot = slotMap.get(key)!
-            slot.totalGroups += 1
-            slot.totalOrders += group.totalOrders ?? 0
-            if (isUnassigned) slot.unassignedGroups += 1
-            slot.groups.push(group)
-        })
-
-        return Array.from(slotMap.values()).sort((a, b) =>
-            a.timeSlotDisplay.localeCompare(b.timeSlotDisplay, "vi")
-        )
+        return this.groupDeliveryGroupsByTimeSlot(selectedDay.groups)
     },
 
     async getDeliveryCalendarMonth(params?: {
@@ -924,18 +962,17 @@ export const adminService = {
 
         const monthText = String(month).padStart(2, "0")
         const startDate = `${year}-${monthText}-01`
-        const start = new Date(startDate)
         const end = new Date(year, month, 0)
         const endDate = `${year}-${monthText}-${String(end.getDate()).padStart(2, "0")}`
-
-        void start
 
         const days = await this.getDeliveryCalendarDays({
             pageNumber: 1,
             pageSize: 99999,
         })
 
-        const filteredDays = days.filter((item) => item.date >= startDate && item.date <= endDate)
+        const filteredDays = days.filter(
+            (item) => item.date >= startDate && item.date <= endDate
+        )
 
         return {
             monthKey: `${year}-${monthText}`,
@@ -1001,21 +1038,21 @@ export const adminService = {
         return `${hh}:${mm}`
     },
 
-    toTimeSpanTicksPayload(value: string) {
-        const [hoursText, minutesText] = value.split(":")
-        const hours = Number(hoursText || 0)
-        const minutes = Number(minutesText || 0)
-        const totalSeconds = hours * 60 * 60 + minutes * 60
+    toTimeSpanPayload(value: string) {
+        const normalized = value.trim()
+        if (!normalized) return "00:00:00"
 
-        return {
-            ticks: totalSeconds * 10_000_000,
-        }
+        const [hoursText, minutesText] = normalized.split(":")
+        const hours = String(Number(hoursText || 0)).padStart(2, "0")
+        const minutes = String(Number(minutesText || 0)).padStart(2, "0")
+
+        return `${hours}:${minutes}:00`
     },
 
     toTimeSlotPayload(startHHmm: string, endHHmm: string): UpsertTimeSlotPayload {
         return {
-            startTime: this.toTimeSpanTicksPayload(startHHmm),
-            endTime: this.toTimeSpanTicksPayload(endHHmm),
+            startTime: this.toTimeSpanPayload(startHHmm),
+            endTime: this.toTimeSpanPayload(endHHmm),
         }
     },
 
@@ -1150,7 +1187,9 @@ export const adminService = {
         return Array.from(dayMap.values()).sort((a, b) => a.date.localeCompare(b.date))
     },
 
-    groupDeliveryGroupsByTimeSlot(groups: DeliveryGroupSummary[]): DeliveryCalendarSlotSummary[] {
+    groupDeliveryGroupsByTimeSlot(
+        groups: DeliveryGroupSummary[]
+    ): DeliveryCalendarSlotSummary[] {
         const slotMap = new Map<string, DeliveryCalendarSlotSummary>()
 
         groups.forEach((group) => {
