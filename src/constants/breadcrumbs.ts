@@ -1,7 +1,5 @@
 export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/admin/internal-staff": ["Quản trị", "Nhân sự nội bộ"],
-    "/admin/approvals": ["Quản trị", "Phê duyệt"],
-    "/admin/transactions": ["Quản trị", "Giao dịch"],
     "/admin/delivery": ["Quản trị", "Điều phối giao hàng"],
     "/admin/operations": ["Quản trị", "Điều phối đóng gói"],
     "/admin/feedbacks": ["Quản trị", "Phản hồi"],
@@ -10,6 +8,7 @@ export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/admin/users": ["Quản trị", "Tài khoản"],
     "/admin/profile": ["Quản trị", "Hồ sơ"],
     "/admin": ["Quản trị", "Tổng quan"],
+    "/admin/supermarkets": ["Quản trị", "Hồ sơ siêu thị"],
 
     "/supermarketStaff/products/add": ["Siêu thị", "Sản phẩm", "Thêm sản phẩm"],
     "/supermarketStaff/products/edit": ["Siêu thị", "Sản phẩm", "Chỉnh sửa"],

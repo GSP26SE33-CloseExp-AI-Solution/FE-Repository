@@ -214,7 +214,6 @@ const AdminDashboard = () => {
                     value={currency.format(overview?.totalRevenue ?? 0)}
                     hint="Doanh thu toàn hệ thống"
                     icon={DollarSign}
-                    to="/admin/reports"
                     tone="dark"
                 />
 
@@ -223,7 +222,6 @@ const AdminDashboard = () => {
                     value={formatCompactNumber(overview?.totalOrders ?? 0)}
                     hint="Số đơn đã ghi nhận"
                     icon={ShoppingCart}
-                    to="/admin/transactions"
                 />
 
                 <DashboardStatCard

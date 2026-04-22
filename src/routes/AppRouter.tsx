@@ -27,11 +27,9 @@ import ProfilePage from "@/pages/SupermarketStaff/sProfile";
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard";
 import AdminUsers from "@/pages/Admin/AdminUsers";
-import AdminTransactions from "@/pages/Admin/AdminTransactions";
 import AdminReports from "@/pages/Admin/AdminReports";
 import AdminFeedbacks from "@/pages/Admin/AdminFeedbacks";
 import AdminSettings from "@/pages/Admin/AdminSettings";
-import AdminApprovals from "@/pages/Admin/AdminApprovals";
 import AdminInternalStaff from "@/pages/Admin/AdminInternalStaff";
 import AdminDelivery from "@/pages/Admin/AdminDelivery";
 import AdminOperations from "@/pages/Admin/AdminOperations";
@@ -78,16 +76,8 @@ const AppRouter: React.FC = () => {
                                 element={<AdminUsers />}
                             />
                             <Route
-                                path="/admin/approvals"
-                                element={<AdminApprovals />}
-                            />
-                            <Route
                                 path="/admin/internal-staff"
                                 element={<AdminInternalStaff />}
-                            />
-                            <Route
-                                path="/admin/transactions"
-                                element={<AdminTransactions />}
                             />
                             <Route
                                 path="/admin/delivery"
