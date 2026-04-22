@@ -73,8 +73,9 @@ export type SlaAlertItem = {
 
 export type AdminTimeSlot = {
     timeSlotId: string
-    startTime: TimeSpanDto | string
-    endTime: TimeSpanDto | string
+    startTime: TimeSpanDto
+    endTime: TimeSpanDto
+    relatedOrderCount: number
     displayTimeRange?: string
 }
 
@@ -89,6 +90,7 @@ export type CollectionPoint = {
     addressLine: string
     latitude: number
     longitude: number
+    relatedOrderCount: number
 }
 
 export type UpsertCollectionPointPayload = {
@@ -114,9 +116,11 @@ export type UnitItem = {
     unitId: string
     name: string
     type: string
-    symbol?: string
-    createdAt?: string
-    updatedAt?: string
+    symbol: string
+    createdAt: string
+    updatedAt: string
+    relatedStockLotCount: number
+    isInUse: boolean
 }
 
 export type UpsertUnitPayload = {
@@ -132,8 +136,8 @@ export type PromotionItem = {
     name: string
     discountType: string
     discountValue: number
-    minOrderAmount: number
-    maxDiscountAmount: number
+    minOrderAmount?: number | null
+    maxDiscountAmount?: number | null
     maxUsage: number
     usedCount: number
     perUserLimit: number
@@ -148,8 +152,8 @@ export type UpsertPromotionPayload = {
     name: string
     discountType: string
     discountValue: number
-    minOrderAmount: number
-    maxDiscountAmount: number
+    minOrderAmount?: number | null
+    maxDiscountAmount?: number | null
     maxUsage: number
     perUserLimit: number
     startDate: string
@@ -170,8 +174,8 @@ export type AiPricingHistoryItem = {
     marketAvgPrice: number
     aiConfidence: number
     acceptedSuggestion: boolean
-    confirmedBy: string
-    confirmedAt: string
+    confirmedBy?: string | null
+    confirmedAt?: string | null
     createdAt: string
 }
 
@@ -181,6 +185,8 @@ export type MarketStaffInfo = {
     marketStaffId: string
     position?: string
     joinedAt?: string
+    isManager?: boolean
+    employeeCodeHint?: string
     supermarket?: {
         supermarketId: string
         name: string
@@ -210,16 +216,24 @@ export type CreateUserPayload = {
     roleId: number
 }
 
-export type UpdateUserPayload = {
+export type AdminRegisterInternalPayload = {
     fullName: string
     email: string
     phone?: string
-    status: number
+    password?: string
     roleId: number
 }
 
+export type UpdateUserPayload = {
+    fullName?: string
+    email?: string
+    phone?: string
+    status?: number
+    roleId?: number
+}
+
 export type UpdateCurrentUserProfilePayload = {
-    fullName: string
+    fullName?: string
     phone?: string
 }
 
@@ -227,9 +241,6 @@ export type PatchUserStatusPayload = {
     status: number
 }
 
-/**
- * FE aggregate row: map từ AdminUser để dùng cho UI bảng account
- */
 export type AdminAccountRow = {
     id: string
     fullName: string
@@ -245,9 +256,6 @@ export type AdminAccountRow = {
     position?: string
 }
 
-/**
- * FE aggregate row: không phải response BE
- */
 export type AdminApprovalRow = {
     id: string
     userId: string
@@ -263,9 +271,6 @@ export type AdminApprovalRow = {
     position?: string
 }
 
-/**
- * FE aggregate row: không phải response BE
- */
 export type InternalStaffRow = {
     id: string
     userId: string
@@ -286,46 +291,35 @@ export type InternalStaffRow = {
 
 export type AdminOrderItem = {
     orderItemId: string
-    orderId: string
     lotId: string
     quantity: number
     unitPrice: number
     totalPrice?: number
-    lineTotal?: number
     productName?: string
     expiryDate?: string
 }
 
 export type AdminOrder = {
     orderId: string
-    orderCode?: string
-    userId?: string
-    userName?: string
-    timeSlotId?: string
-    timeSlotDisplay?: string
-    collectionId?: string
-    collectionPointName?: string
-    deliveryType?: string
+    orderCode: string
+    status: string
+    orderDate: string
+    createdAt: string
+    updatedAt: string
+    deliveryType: string
     totalAmount: number
-    discountAmount?: number
+    discountAmount: number
     finalAmount: number
-    deliveryFee?: number
-    status?: string
-    orderDate?: string
-    addressId?: string
-    promotionId?: string
-    deliveryGroupId?: string
-    deliveryNote?: string
-    cancelDeadline?: string
-    createdAt?: string
-    updatedAt?: string
+    deliveryFee: number
+    systemUsageFeeAmount?: number
+    userId: string
+    userName?: string
+    timeSlotId: string
+    timeSlotDisplay?: string
+    collectionId?: string | null
+    collectionPointName?: string | null
+    deliveryGroupId?: string | null
     orderItems?: AdminOrderItem[]
-}
-
-export type OrderCollectionPoint = {
-    pickupPointId: string
-    name: string
-    address: string
 }
 
 export type AdminOrdersQuery = {
@@ -339,6 +333,7 @@ export type AdminOrdersQuery = {
     timeSlotId?: string
     collectionId?: string
     deliveryGroupId?: string
+    unassignedOnly?: boolean
     search?: string
     sortBy?: string
     sortDir?: string
@@ -346,7 +341,48 @@ export type AdminOrdersQuery = {
 
 /* ========================= Delivery ========================= */
 
-export type DeliveryGroupListItem = {
+export type DeliveryGroupsQuery = {
+    deliveryDate?: string
+    pageNumber?: number
+    pageSize?: number
+    status?: string
+}
+
+export type DraftDeliveryGroupsQuery = {
+    deliveryDate?: string
+    timeSlotId?: string
+    collectionId?: string
+    pageNumber?: number
+    pageSize?: number
+}
+
+export type GenerateDraftDeliveryGroupsPayload = {
+    deliveryDate?: string
+    timeSlotId?: string
+    collectionId?: string
+    maxDistanceKm?: number
+    maxOrdersPerGroup?: number
+}
+
+export type AssignDeliveryGroupPayload = {
+    deliveryStaffId: string
+    reason?: string
+}
+
+export type MoveOrderItemsToDraftGroupPayload = {
+    orderItemIds: string[]
+    deliveryGroupId?: string | null
+}
+
+export type MoveOrderItemsToDraftGroupResult = {
+    updatedItemCount: number
+    updatedOrderCount: number
+    orderItemIds: string[]
+    orderIds: string[]
+    deliveryGroupId?: string | null
+}
+
+export type DeliveryGroupSummary = {
     deliveryGroupId: string
     groupCode: string
     timeSlotDisplay: string
@@ -358,6 +394,21 @@ export type DeliveryGroupListItem = {
     totalOrders: number
     completedOrders: number
     deliveryDate: string
+
+    slotStartAtUtc?: string
+    slotEndAtUtc?: string
+    distanceFromCurrentKm?: number
+    priorityScore?: number
+    priorityReasons?: string[]
+
+    deliveryStaffId?: string | null
+    deliveryStaffName?: string | null
+    timeSlotId?: string
+    collectionId?: string | null
+    collectionPointName?: string | null
+    failedOrders?: number
+    createdAt?: string
+    updatedAt?: string
 }
 
 export type DeliveryGroupOrderItem = {
@@ -366,10 +417,14 @@ export type DeliveryGroupOrderItem = {
     quantity: number
     unitPrice: number
     subTotal: number
+    packagingStatus: string
+    deliveryStatus: string
+    deliveryGroupId: string
 }
 
 export type DeliveryGroupOrder = {
     orderId: string
+    deliveryGroupId: string
     orderCode: string
     status: string
     deliveryType: string
@@ -380,20 +435,20 @@ export type DeliveryGroupOrder = {
     customerPhone: string
     collectionPointName: string
     addressLine: string
-    latitude: number
-    longitude: number
+    latitude?: number
+    longitude?: number
     deliveryNote: string
     timeSlotDisplay: string
-    totalItems: number
+    totalItems?: number
     items: DeliveryGroupOrderItem[]
 }
 
 export type DeliveryGroupDetail = {
     deliveryGroupId: string
     groupCode: string
-    deliveryStaffId?: string
-    deliveryStaffName?: string
-    timeSlotId?: string
+    deliveryStaffId?: string | null
+    deliveryStaffName?: string | null
+    timeSlotId: string
     timeSlotDisplay: string
     deliveryType: string
     deliveryArea: string
@@ -403,96 +458,85 @@ export type DeliveryGroupDetail = {
     totalOrders: number
     completedOrders: number
     failedOrders: number
-    notes?: string
+    notes?: string | null
     deliveryDate: string
     createdAt: string
     updatedAt: string
     orders: DeliveryGroupOrder[]
+    collectionId?: string | null
+    collectionPointName?: string | null
 }
 
-export type AssignDeliveryPayload = {
-    deliveryStaffId: string
-    reason?: string
-}
+/* ========================= Delivery Calendar / Scheduler UI ========================= */
 
-export type UpdateDeliveryAssignmentPayload = {
-    deliveryStaffId: string
-    reason?: string
-}
-
-export type DeliveryActionPayload = {
-    notes?: string
-}
-
-export type DeliveryOrderDetailItem = {
-    orderItemId: string
-    productName: string
-    quantity: number
-    unitPrice: number
-    subTotal: number
-}
-
-export type DeliveryOrderDetail = {
-    orderId: string
-    orderCode: string
-    status: string
-    deliveryType: string
-    totalAmount: number
-    deliveryFee: number
-    orderDate: string
-    customerName: string
-    customerPhone: string
-    collectionPointName: string
-    addressLine: string
-    latitude: number
-    longitude: number
-    deliveryNote: string
-    timeSlotDisplay: string
-    totalItems: number
-    items: DeliveryOrderDetailItem[]
-}
-
-export type ConfirmDeliveryPayload = {
-    proofImageUrl?: string
-    notes?: string
-}
-
-export type ReportDeliveryFailurePayload = {
-    failureReason: string
-    notes?: string
-}
-
-export type CustomerConfirmationPayload = {
-    notes?: string
-}
-
-export type DeliveryHistoryItem = {
-    deliveryId: string
-    orderId: string
-    orderCode: string
-    userId: string
-    deliveryStaffName: string
-    status: string
-    failureReason?: string
-    deliveredAt?: string
-    deliveryLatitude?: number
-    deliveryLongitude?: number
-}
-
-export type DeliveryStats = {
-    deliveryStaffId: string
-    deliveryStaffName: string
+export type DeliveryCalendarDaySummary = {
+    date: string
+    totalGroups: number
+    totalDraftGroups: number
+    totalPendingGroups: number
     totalAssignedGroups: number
+    totalInTransitGroups: number
+    totalCompletedGroups: number
+    totalFailedGroups: number
+    totalUnassignedGroups: number
+    totalOrders: number
+    groups: DeliveryGroupSummary[]
+}
+
+export type DeliveryCalendarSlotSummary = {
+    timeSlotId?: string
+    timeSlotDisplay: string
+    totalGroups: number
+    totalOrders: number
+    unassignedGroups: number
+    groups: DeliveryGroupSummary[]
+}
+
+export type DeliveryCalendarMonthSummary = {
+    monthKey: string
+    year: number
+    month: number
+    days: DeliveryCalendarDaySummary[]
+}
+
+export type DeliveryGroupSchedulerCard = {
+    deliveryGroupId: string
+    groupCode: string
+    deliveryDate: string
+    timeSlotId?: string
+    timeSlotDisplay: string
+    collectionId?: string | null
+    collectionPointName?: string | null
+    deliveryType: string
+    deliveryArea: string
+    status: string
     totalOrders: number
     completedOrders: number
     failedOrders: number
-    pendingOrders: number
-    inTransitOrders: number
-    completionRate: number
-    lastDeliveryAt?: string
+    unassigned: boolean
+    deliveryStaffId?: string | null
+    deliveryStaffName?: string | null
 }
 
-/* ========================= Packaging / Operations ========================= */
+/* ========================= FE aggregate for Admin Delivery ========================= */
+
+export type DeliveryStaffBoardItem = {
+    deliveryStaffId: string
+    deliveryStaffName: string
+    email?: string
+    phone?: string
+    status: number
+    totalAssignedGroups: number
+    draftGroups: number
+    activeGroups: number
+    completedGroups: number
+    failedGroups: number
+    inTransitGroups: number
+    pendingGroups: number
+    latestAssignedGroupDate?: string
+}
+
+/* ========================= Packaging ========================= */
 
 export type PackagingPendingOrderItem = {
     orderId: string
@@ -537,30 +581,6 @@ export type PackagingActionPayload = {
     notes?: string
 }
 
-/* ========================= Feedbacks ========================= */
-
-export type FeedbackItem = {
-    feedbackId: string
-    userId: string
-    userName: string
-    orderId: string
-    rating: number
-    comment: string
-    createdAt: string
-    updatedAt: string
-}
-
-export type CreateFeedbackPayload = {
-    orderId: string
-    rating: number
-    comment: string
-}
-
-export type UpdateFeedbackPayload = {
-    rating: number
-    comment: string
-}
-
 /* ========================= Supermarkets ========================= */
 
 export type AdminSupermarketItem = {
@@ -570,8 +590,10 @@ export type AdminSupermarketItem = {
     latitude: number
     longitude: number
     contactPhone: string
+    contactEmail?: string
     status: number
-    createdAt: string
+    createdAt?: string
+    updatedAt?: string
 }
 
 export type CreateSupermarketPayload = {
@@ -625,7 +647,7 @@ export type UserImageItem = {
     createdAt: string
 }
 
-/* ========================= Reports UI (FE aggregate types) ========================= */
+/* ========================= Reports UI ========================= */
 
 export type ReportStatCard = {
     label: string
@@ -669,6 +691,7 @@ export const SUPERMARKET_STATUS = {
     ACTIVE: 1,
     SUSPENDED: 2,
     CLOSED: 3,
+    REJECTED: 4,
 } as const
 
 export const SUPERMARKET_STAFF_STATUS = {
@@ -686,6 +709,16 @@ export const ROLE_USER = {
     SUPERMARKET_STAFF: 4,
     DELIVERY_STAFF: 5,
     VENDOR: 6,
+} as const
+
+export const DELIVERY_GROUP_STATUS = {
+    DRAFT: "Draft",
+    PENDING: "Pending",
+    ASSIGNED: "Assigned",
+    IN_TRANSIT: "InTransit",
+    COMPLETED: "Completed",
+    FAILED: "Failed",
+    CONFIRMED: "Confirmed",
 } as const
 
 export const PROMOTION_STATUS = {
