@@ -1,27 +1,36 @@
 import { useEffect, useMemo, useState } from "react"
 import type { FormEvent } from "react"
-import { Link, useNavigate } from "react-router-dom"
-import {
-    ArrowRight,
-    Briefcase,
-    Mail,
-    Phone,
-    Plus,
-    RefreshCcw,
-    Search,
-    ShieldCheck,
-    UserCog,
-    Users,
-    X,
-    ClipboardList,
-    Layers3,
-    Route,
-    Sparkles,
-} from "lucide-react"
+import { Plus, RefreshCcw, Search, Users, Loader2 } from "lucide-react"
 
 import { adminService } from "@/services/admin.service"
-import type { InternalStaffRow } from "@/types/admin.type"
+import type {
+    AdminUser,
+    InternalStaffRow,
+    UpdateUserPayload,
+} from "@/types/admin.type"
+import { ROLE_USER, USER_STATUS } from "@/types/admin.type"
 import { showError, showSuccess } from "@/utils/toast"
+
+import {
+    BaseModal,
+    CreateInternalStaffModal,
+    EditInternalStaffModal,
+} from "./adminInternalStaff/FormModals"
+import StaffDetailModal from "./adminInternalStaff/DetailModal"
+import InternalStaffTable from "./adminInternalStaff/Table"
+import {
+    DEFAULT_INTERNAL_ROLE_OPTIONS,
+    STATUS_OPTIONS,
+    formatDateTime,
+    getRoleClassById,
+    getRoleHintById,
+    getRoleLabelById,
+    getStatusClass,
+    getStatusLabel,
+    isInternalRoleId,
+    mapAdminUserToInternalStaffRow,
+    matchesKeyword,
+} from "./adminInternalStaff/adminInternalStaff.utils"
 
 type InternalRoleOption = {
     roleId: number
@@ -34,594 +43,89 @@ type CreateInternalUserForm = {
     fullName: string
     email: string
     phone: string
-    password: string
-    confirmPassword: string
     roleId: number
 }
 
-const DEFAULT_INTERNAL_ROLE_OPTIONS: InternalRoleOption[] = [
-    {
-        roleId: 1,
-        roleName: "Admin",
-        label: "Quản trị viên",
-        hint: "Quản lý vận hành và cấu hình toàn hệ thống",
-    },
-    {
-        roleId: 2,
-        roleName: "PackagingStaff",
-        label: "Nhân sự đóng gói",
-        hint: "Phụ trách xác nhận và đóng gói đơn hàng",
-    },
-    {
-        roleId: 3,
-        roleName: "MarketingStaff",
-        label: "Nhân sự marketing",
-        hint: "Phụ trách nội dung, ưu đãi và truyền thông",
-    },
-    {
-        roleId: 5,
-        roleName: "DeliveryStaff",
-        label: "Nhân sự giao hàng",
-        hint: "Phụ trách vận chuyển và giao đơn",
-    },
-]
-
-const formatDateTime = (value?: string) => {
-    if (!value) return "--"
-
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return "--"
-
-    return new Intl.DateTimeFormat("vi-VN", {
-        hour: "2-digit",
-        minute: "2-digit",
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    }).format(date)
+type EditInternalUserForm = {
+    fullName: string
+    email: string
+    phone: string
+    roleId: number
+    status: number
 }
 
-const normalizeText = (value?: string | null) => (value || "").trim().toLowerCase()
-
-const isInternalRole = (roleName?: string | null) => {
-    const normalized = normalizeText(roleName)
-    if (!normalized) return false
-
-    return (
-        normalized.includes("admin") ||
-        normalized.includes("marketing") ||
-        normalized.includes("packaging") ||
-        normalized.includes("delivery")
-    )
-}
-
-const getRoleLabel = (roleName?: string | null) => {
-    const normalized = normalizeText(roleName)
-
-    if (normalized.includes("admin")) return "Quản trị viên"
-    if (normalized.includes("marketing")) return "Nhân sự marketing"
-    if (normalized.includes("packaging")) return "Nhân sự đóng gói"
-    if (normalized.includes("delivery")) return "Nhân sự giao hàng"
-
-    return roleName || "--"
-}
-
-const getRoleHint = (roleName?: string | null) => {
-    const normalized = normalizeText(roleName)
-
-    if (normalized.includes("admin")) return "Điều phối và quản trị hệ thống"
-    if (normalized.includes("marketing")) return "Quản lý truyền thông và ưu đãi"
-    if (normalized.includes("packaging")) return "Xử lý đơn và đóng gói"
-    if (normalized.includes("delivery")) return "Điều phối và giao hàng"
-
-    return "Nhân sự vận hành nội bộ"
-}
-
-const getRoleClass = (roleName?: string | null) => {
-    const normalized = normalizeText(roleName)
-
-    if (normalized.includes("admin")) {
-        return "border border-violet-200 bg-violet-100 text-violet-700"
-    }
-
-    if (normalized.includes("marketing")) {
-        return "border border-sky-200 bg-sky-100 text-sky-700"
-    }
-
-    if (normalized.includes("packaging")) {
-        return "border border-orange-200 bg-orange-100 text-orange-700"
-    }
-
-    if (normalized.includes("delivery")) {
-        return "border border-cyan-200 bg-cyan-100 text-cyan-700"
-    }
-
-    return "border border-slate-200 bg-slate-100 text-slate-700"
-}
-
-const isOperationalRoutingRole = (roleName?: string | null) => {
-    const normalized = normalizeText(roleName)
-
-    return (
-        normalized.includes("packaging") ||
-        normalized.includes("delivery")
-    )
-}
-
-const getOperationsRoute = (roleName?: string | null) => {
-    const normalized = normalizeText(roleName)
-
-    if (normalized.includes("packaging")) return "/admin/operations"
-    if (normalized.includes("delivery")) return "/admin/delivery"
-
-    return "/admin"
-}
-
-const statusMap: Record<number, string> = {
-    0: "Chưa xác minh",
-    1: "Chờ phê duyệt",
-    2: "Đang hoạt động",
-    3: "Bị từ chối",
-    4: "Đã khóa",
-    5: "Bị cấm",
-    6: "Đã xóa",
-    7: "Đã ẩn",
-}
-
-const getStatusClass = (status?: number) => {
-    switch (status) {
-        case 0:
-            return "border border-slate-200 bg-slate-100 text-slate-700"
-        case 1:
-            return "border border-amber-200 bg-amber-100 text-amber-700"
-        case 2:
-            return "border border-emerald-200 bg-emerald-100 text-emerald-700"
-        case 3:
-            return "border border-rose-200 bg-rose-100 text-rose-700"
-        case 4:
-            return "border border-orange-200 bg-orange-100 text-orange-700"
-        case 5:
-            return "border border-red-200 bg-red-100 text-red-700"
-        case 6:
-            return "border border-slate-300 bg-slate-200 text-slate-700"
-        case 7:
-            return "border border-zinc-200 bg-zinc-100 text-zinc-700"
-        default:
-            return "border border-slate-200 bg-slate-100 text-slate-700"
-    }
-}
-
-const matchesKeyword = (item: InternalStaffRow, keyword: string) => {
-    const normalizedKeyword = normalizeText(keyword)
-    if (!normalizedKeyword) return true
-
-    return [
-        item.fullName,
-        item.email,
-        item.phone,
-        item.roleName,
-        item.position,
-        item.department,
-    ]
-        .map((value) => normalizeText(value))
-        .some((value) => value.includes(normalizedKeyword))
-}
-
-const StaffCard = ({ item }: { item: InternalStaffRow }) => {
-    const navigate = useNavigate()
-    const canNavigateToOperations = isOperationalRoutingRole(item.roleName)
-
-    return (
-        <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-            <div className="border-b border-slate-100 bg-gradient-to-r from-sky-50/70 via-white to-white px-5 py-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="text-lg font-bold text-slate-900">
-                                {item.fullName || "--"}
-                            </h3>
-
-                            <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRoleClass(
-                                    item.roleName
-                                )}`}
-                            >
-                                {getRoleLabel(item.roleName)}
-                            </span>
-
-                            <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getStatusClass(
-                                    item.status
-                                )}`}
-                            >
-                                {statusMap[item.status] ?? "Không xác định"}
-                            </span>
-                        </div>
-
-                        <p className="mt-2 text-sm text-slate-500">
-                            {getRoleHint(item.roleName)}
-                        </p>
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-right">
-                        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                            Mã nhân sự
-                        </p>
-                        <p className="mt-1 break-all text-sm font-semibold text-slate-900">
-                            {item.id || "--"}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            <div className="p-5">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Mail className="h-4 w-4" />
-                            <p className="text-xs font-medium uppercase tracking-wide">
-                                Email
-                            </p>
-                        </div>
-                        <p className="mt-2 break-all text-sm font-medium text-slate-900">
-                            {item.email || "--"}
-                        </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Phone className="h-4 w-4" />
-                            <p className="text-xs font-medium uppercase tracking-wide">
-                                Số điện thoại
-                            </p>
-                        </div>
-                        <p className="mt-2 text-sm font-medium text-slate-900">
-                            {item.phone || "--"}
-                        </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Briefcase className="h-4 w-4" />
-                            <p className="text-xs font-medium uppercase tracking-wide">
-                                Chức vụ
-                            </p>
-                        </div>
-                        <p className="mt-2 text-sm font-medium text-slate-900">
-                            {item.position || "--"}
-                        </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <ShieldCheck className="h-4 w-4" />
-                            <p className="text-xs font-medium uppercase tracking-wide">
-                                Bộ phận
-                            </p>
-                        </div>
-                        <p className="mt-2 text-sm font-medium text-slate-900">
-                            {item.department || "--"}
-                        </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <UserCog className="h-4 w-4" />
-                            <p className="text-xs font-medium uppercase tracking-wide">
-                                Cập nhật lúc
-                            </p>
-                        </div>
-                        <p className="mt-2 text-sm font-medium text-slate-900">
-                            {formatDateTime(item.updatedAt || item.createdAt)}
-                        </p>
-                    </div>
-
-                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-                        <div className="flex items-center gap-2 text-slate-500">
-                            <Users className="h-4 w-4" />
-                            <p className="text-xs font-medium uppercase tracking-wide">
-                                Trạng thái hiện tại
-                            </p>
-                        </div>
-                        <p className="mt-2 text-sm font-medium text-slate-900">
-                            {statusMap[item.status] ?? "Không xác định"}
-                        </p>
-                    </div>
-                </div>
-
-                <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-5">
-                    <button
-                        type="button"
-                        onClick={() => showSuccess("UI placeholder: sau này sẽ mở hồ sơ nhân sự chi tiết.")}
-                        className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                        Xem hồ sơ
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => showSuccess("UI placeholder: sau này sẽ mở checklist onboarding và sẵn sàng làm việc.")}
-                        className="inline-flex items-center justify-center rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-100"
-                    >
-                        Onboarding
-                    </button>
-
-                    {canNavigateToOperations ? (
-                        <button
-                            type="button"
-                            onClick={() => navigate(getOperationsRoute(item.roleName))}
-                            className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
-                        >
-                            Sang điều phối
-                        </button>
-                    ) : null}
-                </div>
-            </div>
-        </div>
-    )
-}
-
-type PlaceholderFeatureCardProps = {
+type ConfirmActionState = {
+    open: boolean
     title: string
     description: string
-    bullets: string[]
-    icon: React.ComponentType<{ className?: string }>
-    tone?: "sky" | "violet" | "emerald"
+    confirmText: string
+    tone?: "default" | "danger" | "warning"
+    onConfirm?: () => Promise<void>
 }
 
-const PlaceholderFeatureCard = ({
-    title,
-    description,
-    bullets,
-    icon: Icon,
-    tone = "sky",
-}: PlaceholderFeatureCardProps) => {
-    const toneClass =
-        tone === "violet"
-            ? "border-violet-200 bg-violet-50/70 text-violet-700"
-            : tone === "emerald"
-                ? "border-emerald-200 bg-emerald-50/70 text-emerald-700"
-                : "border-sky-200 bg-sky-50/70 text-sky-700"
-
-    return (
-        <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-5 shadow-sm">
-            <div className="flex items-start gap-3">
-                <div className={`rounded-2xl border p-3 ${toneClass}`}>
-                    <Icon className="h-5 w-5" />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-base font-bold text-slate-900">{title}</h3>
-
-                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600">
-                            Sắp triển khai
-                        </span>
-
-                        <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-semibold text-amber-700">
-                            Chờ API
-                        </span>
-                    </div>
-
-                    <p className="mt-2 text-sm leading-6 text-slate-500">
-                        {description}
-                    </p>
-
-                    <ul className="mt-4 space-y-2 text-sm text-slate-600">
-                        {bullets.map((item) => (
-                            <li key={item} className="flex items-start gap-2">
-                                <span className="mt-1 h-1.5 w-1.5 rounded-full bg-slate-400" />
-                                <span>{item}</span>
-                            </li>
-                        ))}
-                    </ul>
-
-                    <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-500">
-                        Sắp ra mắt
-                    </div>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-const CreateInternalStaffModal = ({
-    open,
-    form,
-    roleOptions,
-    submitting,
+const ConfirmActionModal = ({
+    state,
+    loading,
     onClose,
-    onChange,
-    onSubmit,
 }: {
-    open: boolean
-    form: CreateInternalUserForm
-    roleOptions: InternalRoleOption[]
-    submitting: boolean
+    state: ConfirmActionState
+    loading: boolean
     onClose: () => void
-    onChange: <K extends keyof CreateInternalUserForm>(
-        field: K,
-        value: CreateInternalUserForm[K]
-    ) => void
-    onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>
 }) => {
-    if (!open) return null
+    if (!state.open) return null
 
-    const selectedRole = roleOptions.find((item) => item.roleId === form.roleId)
+    const toneClass =
+        state.tone === "danger"
+            ? "bg-rose-600 hover:bg-rose-700"
+            : state.tone === "warning"
+                ? "bg-amber-600 hover:bg-amber-700"
+                : "bg-slate-900 hover:bg-slate-800"
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4">
-            <div className="w-full max-w-3xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl">
-                <div className="border-b border-slate-200 bg-gradient-to-r from-sky-50 via-white to-white px-6 py-5">
-                    <div className="flex items-start justify-between gap-4">
-                        <div>
-                            <div className="inline-flex items-center gap-2 rounded-full border border-sky-200 bg-sky-100/80 px-3 py-1 text-xs font-semibold text-sky-800">
-                                <Plus className="h-3.5 w-3.5" />
-                                Tạo mới
-                            </div>
-                            <h2 className="mt-3 text-xl font-bold text-slate-900">
-                                Tạo tài khoản nội bộ
-                            </h2>
-                            <p className="mt-1 text-sm text-slate-500">
-                                Tạo nhanh tài khoản cho đội ngũ vận hành nội bộ và đưa vào hệ thống.
-                            </p>
-                        </div>
+        <BaseModal
+            open={state.open}
+            title={state.title}
+            description={state.description}
+            onClose={onClose}
+            maxWidth="max-w-xl"
+        >
+            <div className="p-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        disabled={loading}
+                        className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        Hủy
+                    </button>
 
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={submitting}
-                            className="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <X className="h-5 w-5" />
-                        </button>
-                    </div>
+                    <button
+                        type="button"
+                        disabled={loading}
+                        onClick={() => void state.onConfirm?.()}
+                        className={`inline-flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50 ${toneClass}`}
+                    >
+                        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                        {state.confirmText}
+                    </button>
                 </div>
-
-                <form onSubmit={(e) => void onSubmit(e)} className="p-6">
-                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-slate-900">
-                                        Họ và tên
-                                    </label>
-                                    <input
-                                        value={form.fullName}
-                                        onChange={(e) => onChange("fullName", e.target.value)}
-                                        placeholder="Nhập họ và tên nhân sự"
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
-                                    />
-                                </div>
-
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-slate-900">
-                                        Email
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={form.email}
-                                        onChange={(e) => onChange("email", e.target.value)}
-                                        placeholder="example@company.com"
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-900">
-                                        Số điện thoại
-                                    </label>
-                                    <input
-                                        value={form.phone}
-                                        onChange={(e) => onChange("phone", e.target.value)}
-                                        placeholder="Nhập số điện thoại"
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-900">
-                                        Vai trò nội bộ
-                                    </label>
-                                    <select
-                                        value={form.roleId}
-                                        onChange={(e) => onChange("roleId", Number(e.target.value))}
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
-                                    >
-                                        {roleOptions.map((role) => (
-                                            <option key={role.roleId} value={role.roleId}>
-                                                {role.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-900">
-                                        Mật khẩu tạm thời
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={form.password}
-                                        onChange={(e) => onChange("password", e.target.value)}
-                                        placeholder="Nhập mật khẩu"
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-900">
-                                        Xác nhận mật khẩu
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={form.confirmPassword}
-                                        onChange={(e) => onChange("confirmPassword", e.target.value)}
-                                        placeholder="Nhập lại mật khẩu"
-                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-5">
-                                <p className="text-sm font-semibold text-slate-900">
-                                    Vai trò đang chọn
-                                </p>
-                                <p className="mt-3 text-base font-bold text-slate-900">
-                                    {selectedRole?.label || "--"}
-                                </p>
-                                <p className="mt-2 text-sm leading-6 text-slate-500">
-                                    {selectedRole?.hint || "Chọn vai trò phù hợp cho nhân sự."}
-                                </p>
-                            </div>
-
-                            <div className="rounded-[24px] border border-dashed border-slate-300 bg-white p-5">
-                                <p className="text-sm font-semibold text-slate-900">
-                                    Lưu ý
-                                </p>
-                                <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-500">
-                                    <li>Tài khoản tạo tại đây chỉ dành cho đội ngũ nội bộ.</li>
-                                    <li>Thông tin chi tiết như bộ phận hoặc chức vụ có thể được cập nhật sau.</li>
-                                    <li>Nếu backend chưa map đúng role ID, hãy chỉnh lại danh sách role mặc định trong FE.</li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="mt-6 flex flex-col gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            disabled={submitting}
-                            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            Hủy
-                        </button>
-
-                        <button
-                            type="submit"
-                            disabled={submitting}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                            <Plus className="h-4 w-4" />
-                            {submitting ? "Đang tạo..." : "Tạo tài khoản"}
-                        </button>
-                    </div>
-                </form>
             </div>
-        </div>
+        </BaseModal>
     )
 }
 
 const AdminInternalStaff = () => {
-    const [items, setItems] = useState<InternalStaffRow[]>([])
+    const [allItems, setAllItems] = useState<InternalStaffRow[]>([])
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
     const [submitting, setSubmitting] = useState(false)
+    const [actionLoading, setActionLoading] = useState(false)
+    const [detailLoading, setDetailLoading] = useState(false)
     const [error, setError] = useState("")
     const [openCreateModal, setOpenCreateModal] = useState(false)
+    const [openEditModal, setOpenEditModal] = useState(false)
+    const [openDetailModal, setOpenDetailModal] = useState(false)
 
     const [search, setSearch] = useState("")
     const [keyword, setKeyword] = useState("")
@@ -629,32 +133,43 @@ const AdminInternalStaff = () => {
     const [statusFilter, setStatusFilter] = useState("")
 
     const [page, setPage] = useState(1)
-    const [pageSize] = useState(12)
-    const [totalResult, setTotalResult] = useState(0)
+    const pageSize = 12
+
+    const [selectedStaff, setSelectedStaff] = useState<InternalStaffRow | null>(null)
+    const [selectedUserDetail, setSelectedUserDetail] = useState<AdminUser | null>(null)
+
+    const [confirmAction, setConfirmAction] = useState<ConfirmActionState>({
+        open: false,
+        title: "",
+        description: "",
+        confirmText: "",
+        tone: "default",
+    })
 
     const [createForm, setCreateForm] = useState<CreateInternalUserForm>({
         fullName: "",
         email: "",
         phone: "",
-        password: "",
-        confirmPassword: "",
-        roleId: DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? 1,
+        roleId: DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? ROLE_USER.PACKAGING_STAFF,
     })
 
-    const internalItems = useMemo(() => {
-        return items.filter((item) => isInternalRole(item.roleName))
-    }, [items])
+    const [editForm, setEditForm] = useState<EditInternalUserForm>({
+        fullName: "",
+        email: "",
+        phone: "",
+        roleId: DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? ROLE_USER.PACKAGING_STAFF,
+        status: USER_STATUS.PENDING_APPROVAL,
+    })
 
     const detectedRoleOptions = useMemo<InternalRoleOption[]>(() => {
-        const fromApi = internalItems
-            .filter((item) => isInternalRole(item.roleName))
+        const fromApi = allItems
+            .filter((item) => isInternalRoleId(item.roleId))
             .map((item) => ({
-                roleId: Number((item as any).roleId ?? 0),
+                roleId: item.roleId,
                 roleName: item.roleName || "",
-                label: getRoleLabel(item.roleName),
-                hint: getRoleHint(item.roleName),
+                label: getRoleLabelById(item.roleId, item.roleName),
+                hint: getRoleHintById(item.roleId),
             }))
-            .filter((item) => item.roleId > 0)
 
         const merged = [...DEFAULT_INTERNAL_ROLE_OPTIONS, ...fromApi]
         const map = new Map<number, InternalRoleOption>()
@@ -666,76 +181,72 @@ const AdminInternalStaff = () => {
         })
 
         return Array.from(map.values()).sort((a, b) => a.roleId - b.roleId)
-    }, [internalItems])
+    }, [allItems])
 
     const filteredItems = useMemo(() => {
-        return internalItems.filter((item) => {
-            const matchesRole =
-                !roleFilter || normalizeText(item.roleName) === normalizeText(roleFilter)
-
-            const matchesStatus =
-                !statusFilter || String(item.status ?? "") === statusFilter
-
+        return allItems.filter((item) => {
+            const matchesRole = !roleFilter || String(item.roleId) === roleFilter
+            const matchesStatus = !statusFilter || String(item.status ?? "") === statusFilter
             return matchesKeyword(item, keyword) && matchesRole && matchesStatus
         })
-    }, [internalItems, keyword, roleFilter, statusFilter])
+    }, [allItems, keyword, roleFilter, statusFilter])
+
+    const pagedItems = useMemo(() => {
+        const start = (page - 1) * pageSize
+        return filteredItems.slice(start, start + pageSize)
+    }, [filteredItems, page])
 
     const totalPages = useMemo(() => {
-        const total = Math.ceil(totalResult / pageSize)
+        const total = Math.ceil(filteredItems.length / pageSize)
         return total > 0 ? total : 1
-    }, [pageSize, totalResult])
+    }, [filteredItems.length])
 
-    const activeCount = useMemo(() => {
-        return internalItems.filter((item) => item.status === 2).length
-    }, [internalItems])
+    const activeCount = useMemo(
+        () => allItems.filter((item) => item.status === USER_STATUS.ACTIVE).length,
+        [allItems]
+    )
 
-    const pendingCount = useMemo(() => {
-        return internalItems.filter((item) => item.status === 1).length
-    }, [internalItems])
+    const pendingCount = useMemo(
+        () =>
+            allItems.filter((item) => item.status === USER_STATUS.PENDING_APPROVAL).length,
+        [allItems]
+    )
 
-    const lockedCount = useMemo(() => {
-        return internalItems.filter((item) => item.status === 4 || item.status === 5).length
-    }, [internalItems])
+    const packagingCount = useMemo(
+        () => allItems.filter((item) => item.roleId === ROLE_USER.PACKAGING_STAFF).length,
+        [allItems]
+    )
 
-    const roleOptions = useMemo(() => {
-        const uniqueRoles = Array.from(
-            new Set(
-                internalItems
-                    .map((item) => item.roleName)
-                    .filter(Boolean)
-                    .filter((role) => isInternalRole(role))
-            )
-        ) as string[]
+    const marketingCount = useMemo(
+        () => allItems.filter((item) => item.roleId === ROLE_USER.MARKETING_STAFF).length,
+        [allItems]
+    )
 
-        return uniqueRoles.sort((a, b) => a.localeCompare(b))
-    }, [internalItems])
+    const deliveryCount = useMemo(
+        () => allItems.filter((item) => item.roleId === ROLE_USER.DELIVERY_STAFF).length,
+        [allItems]
+    )
 
     const loadInternalStaff = async (isRefresh = false) => {
         try {
-            if (isRefresh) {
-                setRefreshing(true)
-            } else {
-                setLoading(true)
-            }
+            if (isRefresh) setRefreshing(true)
+            else setLoading(true)
 
             setError("")
 
-            const response = await adminService.getInternalStaffRows({
-                pageNumber: page,
-                pageSize,
+            const response = await adminService.getUsers({
+                pageNumber: 1,
+                pageSize: 99999,
                 keyword: keyword || undefined,
             })
 
-            const apiItems = response.items ?? []
-            const onlyInternal = apiItems.filter((item) => isInternalRole(item.roleName))
-
-            setItems(apiItems)
-            setTotalResult(response.totalResult ?? onlyInternal.length)
-        } catch (err: any) {
-            setError(
-                err?.response?.data?.message ||
-                "Không thể tải danh sách nhân sự nội bộ."
+            const internalUsers = (response.items ?? []).filter((user) =>
+                isInternalRoleId(user.roleId)
             )
+
+            setAllItems(internalUsers.map(mapAdminUserToInternalStaffRow))
+        } catch (err: any) {
+            setError(err?.message || "Không thể tải danh sách nhân sự nội bộ.")
         } finally {
             setLoading(false)
             setRefreshing(false)
@@ -744,7 +255,13 @@ const AdminInternalStaff = () => {
 
     useEffect(() => {
         void loadInternalStaff()
-    }, [page, keyword])
+    }, [keyword])
+
+    useEffect(() => {
+        if (page > totalPages) {
+            setPage(totalPages)
+        }
+    }, [page, totalPages])
 
     const handleSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -762,14 +279,25 @@ const AdminInternalStaff = () => {
         }))
     }
 
+    const handleEditFormChange = <K extends keyof EditInternalUserForm>(
+        field: K,
+        value: EditInternalUserForm[K]
+    ) => {
+        setEditForm((prev) => ({
+            ...prev,
+            [field]: value,
+        }))
+    }
+
     const resetCreateForm = () => {
         setCreateForm({
             fullName: "",
             email: "",
             phone: "",
-            password: "",
-            confirmPassword: "",
-            roleId: detectedRoleOptions[0]?.roleId ?? DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? 1,
+            roleId:
+                detectedRoleOptions[0]?.roleId ??
+                DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ??
+                ROLE_USER.PACKAGING_STAFF,
         })
     }
 
@@ -786,53 +314,197 @@ const AdminInternalStaff = () => {
     const handleCreateInternalUser = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
 
-        if (!createForm.fullName.trim()) {
+        const trimmedFullName = createForm.fullName.trim()
+        const trimmedEmail = createForm.email.trim()
+        const trimmedPhone = createForm.phone.trim()
+
+        if (!trimmedFullName) {
             showError("Vui lòng nhập họ và tên.")
             return
         }
 
-        if (!createForm.email.trim()) {
+        if (!trimmedEmail) {
             showError("Vui lòng nhập email.")
             return
         }
 
-        if (!createForm.password.trim()) {
-            showError("Vui lòng nhập mật khẩu.")
-            return
-        }
-
-        if (createForm.password.length < 6) {
-            showError("Mật khẩu cần có ít nhất 6 ký tự.")
-            return
-        }
-
-        if (createForm.password !== createForm.confirmPassword) {
-            showError("Mật khẩu xác nhận không khớp.")
+        if (!isInternalRoleId(createForm.roleId)) {
+            showError("Vai trò nội bộ không hợp lệ.")
             return
         }
 
         try {
             setSubmitting(true)
 
-            await adminService.createUser({
-                fullName: createForm.fullName.trim(),
-                email: createForm.email.trim(),
-                phone: createForm.phone.trim(),
-                password: createForm.password,
+            await adminService.registerInternalStaff({
+                fullName: trimmedFullName,
+                email: trimmedEmail,
+                phone: trimmedPhone || undefined,
                 roleId: createForm.roleId,
-            } as any)
+            })
 
             showSuccess("Đã tạo tài khoản nội bộ.")
             setOpenCreateModal(false)
             resetCreateForm()
+            setPage(1)
             await loadInternalStaff(true)
         } catch (err: any) {
-            showError(
-                err?.response?.data?.message || "Tạo tài khoản nội bộ không thành công."
-            )
+            showError(err?.message || "Tạo tài khoản nội bộ không thành công.")
         } finally {
             setSubmitting(false)
         }
+    }
+
+    const loadUserDetail = async (userId: string) => {
+        try {
+            setDetailLoading(true)
+            const detail = await adminService.getUserById(userId)
+            setSelectedUserDetail(detail)
+            return detail
+        } catch (err: any) {
+            showError(err?.message || "Không thể tải chi tiết nhân sự.")
+            return null
+        } finally {
+            setDetailLoading(false)
+        }
+    }
+
+    const handleOpenDetail = async (item: InternalStaffRow) => {
+        setSelectedStaff(item)
+        setOpenDetailModal(true)
+        await loadUserDetail(item.userId)
+    }
+
+    const handleOpenEdit = async (item: InternalStaffRow) => {
+        setSelectedStaff(item)
+        const detail = await loadUserDetail(item.userId)
+        if (!detail) return
+
+        setEditForm({
+            fullName: detail.fullName || "",
+            email: detail.email || "",
+            phone: detail.phone || "",
+            roleId: isInternalRoleId(detail.roleId)
+                ? detail.roleId
+                : DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? ROLE_USER.PACKAGING_STAFF,
+            status: detail.status ?? USER_STATUS.PENDING_APPROVAL,
+        })
+        setOpenDetailModal(false)
+        setOpenEditModal(true)
+    }
+
+    const handleCloseEditModal = () => {
+        if (submitting) return
+        setOpenEditModal(false)
+    }
+
+    const handleSubmitEdit = async (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault()
+
+        if (!selectedStaff) {
+            showError("Không tìm thấy nhân sự cần cập nhật.")
+            return
+        }
+
+        const trimmedFullName = editForm.fullName.trim()
+        const trimmedEmail = editForm.email.trim()
+        const trimmedPhone = editForm.phone.trim()
+
+        if (!trimmedFullName) {
+            showError("Vui lòng nhập họ và tên.")
+            return
+        }
+
+        if (!trimmedEmail) {
+            showError("Vui lòng nhập email.")
+            return
+        }
+
+        if (!isInternalRoleId(editForm.roleId)) {
+            showError("Vai trò nội bộ không hợp lệ.")
+            return
+        }
+
+        try {
+            setSubmitting(true)
+
+            const payload: UpdateUserPayload = {
+                fullName: trimmedFullName,
+                email: trimmedEmail,
+                phone: trimmedPhone || undefined,
+                roleId: editForm.roleId,
+                status: editForm.status,
+            }
+
+            await adminService.updateUser(selectedStaff.userId, payload)
+
+            showSuccess("Đã cập nhật hồ sơ nhân sự.")
+            setOpenEditModal(false)
+
+            if (openDetailModal) {
+                const detail = await loadUserDetail(selectedStaff.userId)
+                if (detail) {
+                    setSelectedUserDetail(detail)
+                }
+            }
+
+            await loadInternalStaff(true)
+        } catch (err: any) {
+            showError(err?.message || "Không thể cập nhật hồ sơ nhân sự.")
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    const openConfirm = (state: Omit<ConfirmActionState, "open">) => {
+        setConfirmAction({
+            ...state,
+            open: true,
+        })
+    }
+
+    const closeConfirm = () => {
+        if (actionLoading) return
+        setConfirmAction({
+            open: false,
+            title: "",
+            description: "",
+            confirmText: "",
+            tone: "default",
+        })
+    }
+
+    const executeDelete = async (staff: InternalStaffRow) => {
+        try {
+            setActionLoading(true)
+            await adminService.deleteUser(staff.userId)
+            showSuccess("Đã xóa mềm tài khoản nhân sự.")
+
+            if (selectedStaff?.userId === staff.userId) {
+                setOpenDetailModal(false)
+                setSelectedUserDetail(null)
+                setSelectedStaff(null)
+            }
+
+            await loadInternalStaff(true)
+            closeConfirm()
+        } catch (err: any) {
+            showError(err?.message || "Không thể xóa tài khoản nhân sự.")
+        } finally {
+            setActionLoading(false)
+        }
+    }
+
+    const handleDelete = (staff: InternalStaffRow) => {
+        openConfirm({
+            title: "Xóa mềm tài khoản nhân sự",
+            description: `Tài khoản "${staff.fullName}" sẽ bị đánh dấu đã xóa trong hệ thống. Bạn vẫn có thể tra cứu lại bằng dữ liệu backend, nhưng người dùng sẽ không còn dùng tài khoản này như bình thường.`,
+            confirmText: "Xóa mềm tài khoản",
+            tone: "danger",
+            onConfirm: async () => {
+                await executeDelete(staff)
+            },
+        })
     }
 
     return (
@@ -851,7 +523,8 @@ const AdminInternalStaff = () => {
                                     Nhân sự nội bộ
                                 </h1>
                                 <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                                    Theo dõi danh sách nhân sự nội bộ theo vai trò, bộ phận và tình trạng hiện tại trong hệ thống.
+                                    Quản lý nhân sự nội bộ: hồ sơ, vai trò, trạng thái và điều
+                                    hướng sang màn vận hành tương ứng.
                                 </p>
                             </div>
 
@@ -871,7 +544,9 @@ const AdminInternalStaff = () => {
                                     disabled={refreshing}
                                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    <RefreshCcw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+                                    <RefreshCcw
+                                        className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                                    />
                                     Làm mới
                                 </button>
                             </div>
@@ -879,179 +554,46 @@ const AdminInternalStaff = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                    <Link
-                        to="/admin/approvals"
-                        className="group rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50/40 hover:shadow-md"
-                    >
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-amber-700">Cần xử lý</p>
-                                <h3 className="mt-2 text-lg font-bold text-slate-900">
-                                    Hồ sơ chờ phê duyệt
-                                </h3>
-                                <p className="mt-2 text-sm leading-6 text-slate-500">
-                                    Kiểm tra và xử lý các tài khoản đang chờ xác nhận.
-                                </p>
-                            </div>
-                            <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-amber-700" />
-                        </div>
-                    </Link>
-
-                    <Link
-                        to="/admin/users"
-                        className="group rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md"
-                    >
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-slate-500">Quản lý tiếp theo</p>
-                                <h3 className="mt-2 text-lg font-bold text-slate-900">
-                                    Quản lý tài khoản
-                                </h3>
-                                <p className="mt-2 text-sm leading-6 text-slate-500">
-                                    Theo dõi trạng thái và thực hiện các thay đổi cần thiết trên từng tài khoản.
-                                </p>
-                            </div>
-                            <ArrowRight className="h-5 w-5 text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-slate-700" />
-                        </div>
-                    </Link>
-
-                    <div className="rounded-[28px] border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-800 p-5 shadow-sm">
-                        <p className="text-sm font-medium text-slate-300">Trung tâm theo dõi</p>
-                        <h3 className="mt-2 text-lg font-bold text-white">
-                            Đội ngũ nội bộ
-                        </h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-300">
-                            Tập trung theo dõi nhân sự vận hành nội bộ, không bao gồm phía đối tác hay khách hàng.
-                        </p>
-                    </div>
-                </div>
-
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-slate-500">Nhân sự hiển thị</p>
-                                <h3 className="mt-2 text-2xl font-bold text-slate-900">
-                                    {filteredItems.length}
-                                </h3>
-                                <p className="mt-2 text-sm text-slate-500">
-                                    Sau khi áp dụng bộ lọc hiện tại
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-slate-100 p-3">
-                                <Users className="h-5 w-5 text-slate-700" />
-                            </div>
-                        </div>
+                        <p className="text-sm font-medium text-slate-500">Tổng nhân sự</p>
+                        <h3 className="mt-2 text-2xl font-bold text-slate-900">
+                            {allItems.length}
+                        </h3>
+                        <p className="mt-2 text-sm text-slate-500">
+                            Toàn bộ nội bộ đang quản lý
+                        </p>
                     </div>
 
                     <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-slate-500">Đang hoạt động</p>
-                                <h3 className="mt-2 text-2xl font-bold text-emerald-700">
-                                    {activeCount}
-                                </h3>
-                                <p className="mt-2 text-sm text-slate-500">
-                                    Tài khoản đang vận hành bình thường
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-emerald-50 p-3">
-                                <ShieldCheck className="h-5 w-5 text-emerald-700" />
-                            </div>
-                        </div>
+                        <p className="text-sm font-medium text-slate-500">Đang hoạt động</p>
+                        <h3 className="mt-2 text-2xl font-bold text-emerald-700">
+                            {activeCount}
+                        </h3>
+                        <p className="mt-2 text-sm text-slate-500">
+                            Có thể vận hành bình thường
+                        </p>
                     </div>
 
                     <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-slate-500">Chờ phê duyệt</p>
-                                <h3 className="mt-2 text-2xl font-bold text-amber-700">
-                                    {pendingCount}
-                                </h3>
-                                <p className="mt-2 text-sm text-slate-500">
-                                    Cần hoàn tất bước xác nhận trước khi sử dụng
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-amber-50 p-3">
-                                <UserCog className="h-5 w-5 text-amber-700" />
-                            </div>
-                        </div>
+                        <p className="text-sm font-medium text-slate-500">Chờ phê duyệt</p>
+                        <h3 className="mt-2 text-2xl font-bold text-amber-700">
+                            {pendingCount}
+                        </h3>
+                        <p className="mt-2 text-sm text-slate-500">
+                            Cần admin xác nhận thêm
+                        </p>
                     </div>
 
                     <div className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-start justify-between gap-4">
-                            <div>
-                                <p className="text-sm font-medium text-slate-500">Khóa / cấm</p>
-                                <h3 className="mt-2 text-2xl font-bold text-rose-700">
-                                    {lockedCount}
-                                </h3>
-                                <p className="mt-2 text-sm text-slate-500">
-                                    Cần theo dõi quyền truy cập
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-rose-50 p-3">
-                                <Briefcase className="h-5 w-5 text-rose-700" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5 text-slate-700" />
-                        <h2 className="text-lg font-bold text-slate-900">
-                            Sắp ra mắt
-                        </h2>
-                    </div>
-
-                    <p className="text-sm leading-6 text-slate-500">
-                        Hồ sơ nhân sự chi tiết và onboarding.
-                    </p>
-
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                        <PlaceholderFeatureCard
-                            title="Hồ sơ nhân sự"
-                            description="Hiển thị hồ sơ làm việc chi tiết của từng nhân sự khi bấm xem từ danh sách bên dưới."
-                            bullets={[
-                                "Bộ phận và chức vụ chính thức",
-                                "Quản lý trực tiếp / người phụ trách",
-                                "Ngày tham gia và ghi chú nội bộ",
-                                "Mức độ hoàn thiện hồ sơ",
-                            ]}
-                            icon={ClipboardList}
-                            tone="sky"
-                        />
-
-                        <PlaceholderFeatureCard
-                            title="Điều phối theo nghiệp vụ"
-                            description="Phân chia khu vực làm việc và phạm vi phụ trách sẽ được xử lý ở màn điều phối tương ứng, không gom tại đây."
-                            bullets={[
-                                "Nhân sự giao hàng sẽ điều phối tại trang giao hàng",
-                                "Nhân sự đóng gói sẽ điều phối tại trang đóng gói",
-                                "Trang này chỉ đóng vai trò theo dõi hồ sơ nhân sự",
-                                "Giúp tách rõ quản lý con người và quản lý vận hành",
-                            ]}
-                            icon={Route}
-                            tone="emerald"
-                        />
-
-                        <PlaceholderFeatureCard
-                            title="Onboarding và sẵn sàng làm việc"
-                            description="Theo dõi nhân sự đã đủ điều kiện vào vận hành hay chưa ngay tại trang Nhân sự nội bộ."
-                            bullets={[
-                                "Đã tạo tài khoản và kích hoạt",
-                                "Đã cập nhật đủ hồ sơ cần thiết",
-                                "Đã được phân công nghiệp vụ",
-                                "Trạng thái sẵn sàng làm việc",
-                            ]}
-                            icon={Layers3}
-                            tone="violet"
-                        />
+                        <p className="text-sm font-medium text-slate-500">Theo vai trò</p>
+                        <h3 className="mt-2 text-2xl font-bold text-sky-700">
+                            {packagingCount + marketingCount + deliveryCount}
+                        </h3>
+                        <p className="mt-2 text-sm text-slate-500">
+                            {packagingCount} đóng gói • {marketingCount} marketing •{" "}
+                            {deliveryCount} giao hàng
+                        </p>
                     </div>
                 </div>
 
@@ -1072,31 +614,34 @@ const AdminInternalStaff = () => {
 
                         <select
                             value={roleFilter}
-                            onChange={(e) => setRoleFilter(e.target.value)}
+                            onChange={(e) => {
+                                setPage(1)
+                                setRoleFilter(e.target.value)
+                            }}
                             className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                         >
                             <option value="">Tất cả vai trò nội bộ</option>
-                            {roleOptions.map((role) => (
-                                <option key={role} value={role}>
-                                    {getRoleLabel(role)}
+                            {detectedRoleOptions.map((role) => (
+                                <option key={role.roleId} value={role.roleId}>
+                                    {role.label}
                                 </option>
                             ))}
                         </select>
 
                         <select
                             value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
+                            onChange={(e) => {
+                                setPage(1)
+                                setStatusFilter(e.target.value)
+                            }}
                             className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400"
                         >
                             <option value="">Tất cả trạng thái</option>
-                            <option value="0">Chưa xác minh</option>
-                            <option value="1">Chờ phê duyệt</option>
-                            <option value="2">Đang hoạt động</option>
-                            <option value="3">Bị từ chối</option>
-                            <option value="4">Đã khóa</option>
-                            <option value="5">Bị cấm</option>
-                            <option value="6">Đã xóa</option>
-                            <option value="7">Đã ẩn</option>
+                            {STATUS_OPTIONS.map((status) => (
+                                <option key={status.value} value={status.value}>
+                                    {status.label}
+                                </option>
+                            ))}
                         </select>
 
                         <button
@@ -1123,7 +668,7 @@ const AdminInternalStaff = () => {
                             />
                         ))}
                     </div>
-                ) : filteredItems.length === 0 ? (
+                ) : pagedItems.length === 0 ? (
                     <div className="rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
                         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
                             <Users className="h-7 w-7 text-slate-500" />
@@ -1137,19 +682,23 @@ const AdminInternalStaff = () => {
                     </div>
                 ) : (
                     <>
-                        <div className="grid grid-cols-1 gap-4">
-                            {filteredItems.map((item) => (
-                                <StaffCard key={item.id} item={item} />
-                            ))}
-                        </div>
+                        <InternalStaffTable
+                            items={pagedItems}
+                            actionLoading={actionLoading}
+                            onView={handleOpenDetail}
+                        />
 
                         <div className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                             <p className="text-sm text-slate-500">
                                 Đang hiển thị{" "}
                                 <span className="font-semibold text-slate-900">
+                                    {pagedItems.length}
+                                </span>{" "}
+                                /{" "}
+                                <span className="font-semibold text-slate-900">
                                     {filteredItems.length}
                                 </span>{" "}
-                                nhân sự trong trang hiện tại
+                                nhân sự phù hợp
                             </p>
 
                             <div className="flex items-center gap-2">
@@ -1190,6 +739,57 @@ const AdminInternalStaff = () => {
                 onClose={handleCloseCreateModal}
                 onChange={handleCreateFormChange}
                 onSubmit={handleCreateInternalUser}
+            />
+
+            <EditInternalStaffModal
+                open={openEditModal}
+                form={editForm}
+                roleOptions={detectedRoleOptions}
+                submitting={submitting}
+                onClose={handleCloseEditModal}
+                onChange={handleEditFormChange}
+                onSubmit={handleSubmitEdit}
+                getStatusClass={getStatusClass}
+                getStatusLabel={getStatusLabel}
+            />
+
+            <StaffDetailModal
+                open={openDetailModal}
+                loading={detailLoading}
+                user={selectedUserDetail}
+                onClose={() => setOpenDetailModal(false)}
+                onEdit={() => {
+                    if (!selectedUserDetail || !selectedStaff) return
+                    setEditForm({
+                        fullName: selectedUserDetail.fullName || "",
+                        email: selectedUserDetail.email || "",
+                        phone: selectedUserDetail.phone || "",
+                        roleId: isInternalRoleId(selectedUserDetail.roleId)
+                            ? selectedUserDetail.roleId
+                            : DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ??
+                            ROLE_USER.PACKAGING_STAFF,
+                        status:
+                            selectedUserDetail.status ?? USER_STATUS.PENDING_APPROVAL,
+                    })
+                    setOpenDetailModal(false)
+                    setOpenEditModal(true)
+                }}
+                onDelete={() => {
+                    if (!selectedStaff) return
+                    handleDelete(selectedStaff)
+                }}
+                getRoleClassById={getRoleClassById}
+                getRoleLabelById={getRoleLabelById}
+                getRoleHintById={getRoleHintById}
+                getStatusClass={getStatusClass}
+                getStatusLabel={getStatusLabel}
+                formatDateTime={formatDateTime}
+            />
+
+            <ConfirmActionModal
+                state={confirmAction}
+                loading={actionLoading}
+                onClose={closeConfirm}
             />
         </>
     )
