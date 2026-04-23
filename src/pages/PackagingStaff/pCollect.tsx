@@ -83,7 +83,7 @@ const PackageCollect = () => {
 
     useEffect(() => {
         fetchDetail()
-    }, [orderId])
+    }, [orderId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleConfirm = async () => {
         if (!orderId) return

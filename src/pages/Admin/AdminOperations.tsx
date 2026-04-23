@@ -437,7 +437,7 @@ const AdminOperations = () => {
 
     useEffect(() => {
         void loadPendingOrders()
-    }, [page])
+    }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()

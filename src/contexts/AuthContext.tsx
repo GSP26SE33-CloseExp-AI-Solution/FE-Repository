@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         void run()
-    }, [])
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const loginSuccess = (session: AuthData) => {
         saveAuth(session)

@@ -192,7 +192,7 @@ const AdminFeedbacks = () => {
 
   useEffect(() => {
     void loadFeedbacks()
-  }, [])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const filteredItems = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase()

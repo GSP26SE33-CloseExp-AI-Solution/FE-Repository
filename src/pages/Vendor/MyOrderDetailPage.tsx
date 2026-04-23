@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs";
-import { deliveryService } from "@/services/delivery.service";
 import { orderService } from "@/services/order.service";
 import { supermarketService } from "@/services/supermarket.service";
 import type {

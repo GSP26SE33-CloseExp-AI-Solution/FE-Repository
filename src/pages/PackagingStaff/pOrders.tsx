@@ -148,7 +148,7 @@ const PackageOrders = () => {
 
     useEffect(() => {
         fetchOrders()
-    }, [page])
+    }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
     return (
         <div className="space-y-6">

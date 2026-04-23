@@ -9,7 +9,6 @@ import {
     Search,
     Settings2,
     Tag,
-    X,
 } from "lucide-react"
 
 import { adminService } from "@/services/admin.service"
@@ -54,11 +53,6 @@ const tabs: Array<{
 
 type TimeSlotUsageRow = AdminTimeSlot & {
     relatedOrderCount: number
-    isInUse: boolean
-}
-
-type UnitUsageRow = UnitItem & {
-    relatedStockLotCount: number
     isInUse: boolean
 }
 

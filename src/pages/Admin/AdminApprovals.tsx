@@ -337,7 +337,7 @@ const AdminApprovals = () => {
 
     useEffect(() => {
         void loadApprovals()
-    }, [page, keyword])
+    }, [page, keyword]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSearch = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()

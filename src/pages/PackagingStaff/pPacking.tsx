@@ -50,7 +50,7 @@ const PackagePacking = () => {
 
     useEffect(() => {
         fetchDetail()
-    }, [orderId])
+    }, [orderId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handlePackage = async () => {
         if (!orderId) return

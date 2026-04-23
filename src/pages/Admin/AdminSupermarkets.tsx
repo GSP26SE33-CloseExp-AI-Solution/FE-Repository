@@ -238,11 +238,11 @@ const AdminSupermarkets = () => {
 
     useEffect(() => {
         void loadSupermarkets()
-    }, [page])
+    }, [page]) // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         void loadApplications()
-    }, [])
+    }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleRefresh = async () => {
         setError("")
@@ -280,26 +280,9 @@ const AdminSupermarkets = () => {
                 incompleteProfile: 0,
             }
         )
-    }, [supermarkets])
+    }, [supermarkets]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const pendingApplicationCount = applications.length
-
-    const applicationSummary = useMemo(() => {
-        return applications.reduce(
-            (acc, item) => {
-                const blockedCount = blockingOrdersMap[item.applicantUserId]?.length ?? 0
-
-                if (blockedCount > 0) acc.blocked += 1
-                else acc.ready += 1
-
-                return acc
-            },
-            {
-                ready: 0,
-                blocked: 0,
-            }
-        )
-    }, [applications, blockingOrdersMap])
 
     const matchesStatusFilter = (item: AdminSupermarketItem) => {
         switch (statusFilter) {
@@ -389,7 +372,7 @@ const AdminSupermarkets = () => {
                         new Date(a.createdAt || 0).getTime()
                 )
         }
-    }, [supermarkets, keyword, sortBy, statusFilter])
+    }, [supermarkets, keyword, sortBy, statusFilter]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const displayApplications = useMemo(() => {
         const normalized = keyword.trim().toLowerCase()
@@ -558,33 +541,6 @@ const AdminSupermarkets = () => {
             setRejectingId("")
         }
     }
-
-    const statCards = [
-        {
-            label: "Hồ sơ chờ xem xét",
-            value: pendingApplicationCount,
-            hint: "Các hồ sơ đang đợi quyết định",
-            tone: "slate",
-        },
-        {
-            label: "Có thể phê duyệt",
-            value: applicationSummary.ready,
-            hint: "Chưa phát hiện đơn mua đang mở",
-            tone: "emerald",
-        },
-        {
-            label: "Cần xử lý trước",
-            value: applicationSummary.blocked,
-            hint: "Đang còn đơn mua cần hoàn tất",
-            tone: "amber",
-        },
-        {
-            label: "Tổng siêu thị hệ thống",
-            value: totalResult,
-            hint: "Số lượng bản ghi hiện có",
-            tone: "violet",
-        },
-    ] as const
 
     return (
         <div className="space-y-6">

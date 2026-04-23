@@ -6,7 +6,6 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
-  Filter,
   Mail,
   PackageSearch,
   Plus,

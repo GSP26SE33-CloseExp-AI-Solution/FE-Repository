@@ -19,7 +19,6 @@ import axiosClient from "@/utils/axiosClient"
 import { authStorage } from "@/utils/authStorage"
 import type { ApiResponse } from "@/types/api.types"
 
-import ProductEditModal from "./sProductEditModal"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")
@@ -231,7 +230,7 @@ const SupermarketDashboard: React.FC = () => {
 
     useEffect(() => {
         void loadDashboard()
-    }, [supermarketId])
+    }, [supermarketId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const stats = useMemo(() => {
         const publishedLots = lots.filter(

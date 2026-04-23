@@ -93,7 +93,7 @@ const MapboxLocationPicker = ({
             mapRef.current = null;
             markerRef.current = null;
         };
-    }, []);
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         if (!mapRef.current || !markerRef.current) return;

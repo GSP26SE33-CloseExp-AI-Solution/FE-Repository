@@ -744,7 +744,7 @@ const AdminInternalStaff = () => {
 
     useEffect(() => {
         void loadInternalStaff()
-    }, [page, keyword])
+    }, [page, keyword]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleSearch = (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()

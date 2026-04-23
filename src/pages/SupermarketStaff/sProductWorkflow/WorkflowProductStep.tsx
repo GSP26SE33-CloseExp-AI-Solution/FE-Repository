@@ -2,7 +2,6 @@ import React from "react"
 import {
     Camera,
     CheckCircle2,
-    Image as ImageIcon,
     Loader2,
     Sparkles,
     Trash2,

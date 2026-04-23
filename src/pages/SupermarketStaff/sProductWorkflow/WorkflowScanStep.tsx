@@ -976,8 +976,9 @@ const WorkflowScanStep: React.FC<Props> = ({
             window.removeEventListener("mousemove", handleWindowMouseMove)
             window.removeEventListener("mouseup", handleWindowMouseUp)
         }
-    }, [cropInteraction, previewRect])
+    }, [cropInteraction, previewRect]) // eslint-disable-line react-hooks/exhaustive-deps
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => {
         const element = previewContainerRef.current
         if (!element) return
