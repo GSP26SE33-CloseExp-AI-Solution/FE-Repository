@@ -1,17 +1,11 @@
 import { useEffect, useMemo, useState } from "react"
 import {
     AlertTriangle,
-    Building2,
-    CheckCircle2,
-    Copy,
-    MapPin,
-    MapPinned,
     RefreshCcw,
     Search,
     ShieldCheck,
     Store,
     UserRound,
-    XCircle,
 } from "lucide-react"
 
 import { adminService } from "@/services/admin.service"
@@ -19,42 +13,17 @@ import type {
     AdminOrder,
     AdminSupermarketItem,
     PendingSupermarketApplication,
+    UpdateSupermarketPayload,
 } from "@/types/admin.type"
 
-const cn = (...classes: Array<string | false | null | undefined>) =>
-    classes.filter(Boolean).join(" ")
-
-const formatCompactNumber = (value: number) => {
-    return new Intl.NumberFormat("vi-VN").format(value)
-}
-
-const formatDate = (value?: string) => {
-    if (!value) return "--"
-
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return "--"
-
-    return new Intl.DateTimeFormat("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-    }).format(date)
-}
-
-const formatDateTime = (value?: string) => {
-    if (!value) return "--"
-
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return "--"
-
-    return new Intl.DateTimeFormat("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-    }).format(date)
-}
+import ApplicationList from "./adminSupermarkets/ApplicationList"
+import SupermarketDetailModal from "./adminSupermarkets/SupermarketDetailModal"
+import SupermarketTable from "./adminSupermarkets/SupermarketTable"
+import {
+    cn,
+    formatCompactNumber,
+    normalizeStatus,
+} from "./adminSupermarkets/adminSupermarkets.utils"
 
 type SortOption =
     | "name-asc"
@@ -64,8 +33,22 @@ type SortOption =
     | "created-desc"
     | "created-asc"
 
-type StatusFilter = "all" | "pending" | "active" | "suspended" | "closed"
+type StatusFilter =
+    | "all"
+    | "pending"
+    | "active"
+    | "suspended"
+    | "closed"
+    | "rejected"
+
 type ViewTab = "applications" | "supermarkets"
+
+const BLOCKING_ORDER_STATUSES = new Set([
+    "pending",
+    "paid",
+    "readytoship",
+    "deliveredwaitconfirm",
+])
 
 const AdminSupermarkets = () => {
     const [tab, setTab] = useState<ViewTab>("applications")
@@ -92,8 +75,10 @@ const AdminSupermarkets = () => {
     const [rejectingId, setRejectingId] = useState("")
     const [openRejectId, setOpenRejectId] = useState("")
     const [rejectNote, setRejectNote] = useState("")
+    const [updatingStatusId, setUpdatingStatusId] = useState("")
 
     const [blockingOrdersMap, setBlockingOrdersMap] = useState<Record<string, AdminOrder[]>>({})
+    const [selectedSupermarket, setSelectedSupermarket] = useState<AdminSupermarketItem | null>(null)
 
     const totalPages = useMemo(() => {
         return Math.max(1, Math.ceil(totalResult / pageSize))
@@ -122,79 +107,17 @@ const AdminSupermarkets = () => {
         )
     }
 
-    function hasCoordinates(item: AdminSupermarketItem) {
-        return Number.isFinite(item.latitude) && Number.isFinite(item.longitude)
-    }
-
-    function getProfileScore(item: AdminSupermarketItem) {
-        let score = 0
-        if (item.name?.trim()) score += 1
-        if (item.address?.trim()) score += 1
-        if (item.contactPhone?.trim()) score += 1
-        if (hasCoordinates(item)) score += 1
-        return score
-    }
-
-    function getMissingFields(item: AdminSupermarketItem) {
-        const missing: string[] = []
-
-        if (!item.name?.trim()) missing.push("Tên siêu thị")
-        if (!item.address?.trim()) missing.push("Địa chỉ")
-        if (!item.contactPhone?.trim()) missing.push("Số điện thoại")
-        if (!hasCoordinates(item)) missing.push("Tọa độ")
-
-        return missing
-    }
-
-    function getProfileLabel(item: AdminSupermarketItem) {
-        const missing = getMissingFields(item)
-        if (missing.length === 0) return "Hoàn chỉnh"
-        return "Cần bổ sung"
-    }
-
-    function getProfileClass(item: AdminSupermarketItem) {
-        const score = getProfileScore(item)
-
-        if (score >= 4) {
-            return "border-emerald-200 bg-emerald-50 text-emerald-700"
-        }
-
-        if (score >= 2) {
-            return "border-amber-200 bg-amber-50 text-amber-700"
-        }
-
-        return "border-rose-200 bg-rose-50 text-rose-700"
-    }
-
-    function getStatusLabel(status?: number) {
-        switch (status) {
-            case 0:
-                return "Chờ duyệt"
-            case 1:
-                return "Đang hoạt động"
-            case 2:
-                return "Tạm ngưng"
-            case 3:
-                return "Đã đóng"
-            default:
-                return "Không xác định"
-        }
-    }
-
-    function getStatusClass(status?: number) {
-        switch (status) {
-            case 0:
-                return "border-amber-200 bg-amber-50 text-amber-700"
-            case 1:
-                return "border-emerald-200 bg-emerald-50 text-emerald-700"
-            case 2:
-                return "border-violet-200 bg-violet-50 text-violet-700"
-            case 3:
-                return "border-rose-200 bg-rose-50 text-rose-700"
-            default:
-                return "border-slate-200 bg-slate-50 text-slate-700"
-        }
-    }
+    const toUpdatePayload = (
+        item: AdminSupermarketItem,
+        nextStatus: number
+    ): UpdateSupermarketPayload => ({
+        name: item.name || "",
+        address: item.address || "",
+        latitude: item.latitude ?? 0,
+        longitude: item.longitude ?? 0,
+        contactPhone: item.contactPhone || "",
+        status: nextStatus,
+    })
 
     async function loadSupermarkets(isRefresh = false) {
         try {
@@ -244,6 +167,17 @@ const AdminSupermarkets = () => {
         void loadApplications()
     }, [])
 
+    useEffect(() => {
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setSelectedSupermarket(null)
+            }
+        }
+
+        window.addEventListener("keydown", handleEscape)
+        return () => window.removeEventListener("keydown", handleEscape)
+    }, [])
+
     const handleRefresh = async () => {
         setError("")
         await Promise.all([loadApplications(true), loadSupermarkets(true)])
@@ -263,10 +197,21 @@ const AdminSupermarkets = () => {
                 else if (item.status === 1) acc.active += 1
                 else if (item.status === 2) acc.suspended += 1
                 else if (item.status === 3) acc.closed += 1
+                else if (item.status === 4) acc.rejected += 1
 
                 if (!item.contactPhone?.trim()) acc.missingPhone += 1
-                if (!hasCoordinates(item)) acc.missingLocation += 1
-                if (getProfileScore(item) < 4) acc.incompleteProfile += 1
+                if (!Number.isFinite(item.latitude) || !Number.isFinite(item.longitude)) {
+                    acc.missingLocation += 1
+                }
+                if (
+                    !item.name?.trim() ||
+                    !item.address?.trim() ||
+                    !item.contactPhone?.trim() ||
+                    !Number.isFinite(item.latitude) ||
+                    !Number.isFinite(item.longitude)
+                ) {
+                    acc.incompleteProfile += 1
+                }
 
                 return acc
             },
@@ -275,6 +220,7 @@ const AdminSupermarkets = () => {
                 active: 0,
                 suspended: 0,
                 closed: 0,
+                rejected: 0,
                 missingPhone: 0,
                 missingLocation: 0,
                 incompleteProfile: 0,
@@ -282,22 +228,15 @@ const AdminSupermarkets = () => {
         )
     }, [supermarkets])
 
-    const pendingApplicationCount = applications.length
-
     const applicationSummary = useMemo(() => {
         return applications.reduce(
             (acc, item) => {
                 const blockedCount = blockingOrdersMap[item.applicantUserId]?.length ?? 0
-
                 if (blockedCount > 0) acc.blocked += 1
                 else acc.ready += 1
-
                 return acc
             },
-            {
-                ready: 0,
-                blocked: 0,
-            }
+            { ready: 0, blocked: 0 }
         )
     }, [applications, blockingOrdersMap])
 
@@ -311,6 +250,8 @@ const AdminSupermarkets = () => {
                 return item.status === 2
             case "closed":
                 return item.status === 3
+            case "rejected":
+                return item.status === 4
             case "all":
             default:
                 return true
@@ -321,11 +262,17 @@ const AdminSupermarkets = () => {
         const normalized = keyword.trim().toLowerCase()
 
         const filtered = supermarkets
-            .filter((item) => matchesStatusFilter(item))
+            .filter(matchesStatusFilter)
             .filter((item) => {
                 if (!normalized) return true
 
-                const target = [item.name, item.address, item.contactPhone, item.supermarketId]
+                const target = [
+                    item.name,
+                    item.address,
+                    item.contactPhone,
+                    item.contactEmail,
+                    item.supermarketId,
+                ]
                     .filter(Boolean)
                     .join(" ")
                     .toLowerCase()
@@ -347,7 +294,6 @@ const AdminSupermarkets = () => {
                 return list.sort((a, b) => {
                     const aValue = a.status === 0 ? 0 : 1
                     const bValue = b.status === 0 ? 0 : 1
-
                     if (aValue !== bValue) return aValue - bValue
 
                     return (a.name || "").localeCompare(b.name || "", "vi", {
@@ -359,7 +305,6 @@ const AdminSupermarkets = () => {
                 return list.sort((a, b) => {
                     const aValue = a.status === 1 ? 0 : 1
                     const bValue = b.status === 1 ? 0 : 1
-
                     if (aValue !== bValue) return aValue - bValue
 
                     return (a.name || "").localeCompare(b.name || "", "vi", {
@@ -422,17 +367,14 @@ const AdminSupermarkets = () => {
             )
     }, [applications, keyword])
 
-    const statusTabs: Array<{
-        key: StatusFilter
-        label: string
-        count: number
-    }> = [
-            { key: "all", label: "Tất cả", count: supermarkets.length },
-            { key: "pending", label: "Chờ duyệt", count: currentPageStats.pending },
-            { key: "active", label: "Đang hoạt động", count: currentPageStats.active },
-            { key: "suspended", label: "Tạm ngưng", count: currentPageStats.suspended },
-            { key: "closed", label: "Đã đóng", count: currentPageStats.closed },
-        ]
+    const statusTabs: Array<{ key: StatusFilter; label: string; count: number }> = [
+        { key: "all", label: "Tất cả", count: supermarkets.length },
+        { key: "pending", label: "Chờ duyệt", count: currentPageStats.pending },
+        { key: "active", label: "Đang hoạt động", count: currentPageStats.active },
+        { key: "suspended", label: "Tạm ngưng", count: currentPageStats.suspended },
+        { key: "closed", label: "Đã đóng", count: currentPageStats.closed },
+        { key: "rejected", label: "Đã từ chối", count: currentPageStats.rejected },
+    ]
 
     const handleCopyCode = async (code: string) => {
         try {
@@ -448,15 +390,20 @@ const AdminSupermarkets = () => {
         }
     }
 
-    const openMap = (item: AdminSupermarketItem | PendingSupermarketApplication) => {
+    const openMap = (item: { latitude?: number | null; longitude?: number | null }) => {
         if (!Number.isFinite(item.latitude) || !Number.isFinite(item.longitude)) return
 
         const url = `https://www.google.com/maps?q=${item.latitude},${item.longitude}`
         window.open(url, "_blank", "noopener,noreferrer")
     }
 
-    const getBlockingOrders = (userId: string) => {
-        return blockingOrdersMap[userId] ?? []
+    const getBlockingOrders = (userId: string) => blockingOrdersMap[userId] ?? []
+
+    const loadBlockingOrdersByUserId = async (userId: string) => {
+        const result = await adminService.getBlockingCustomerOrders(userId)
+        return result.filter((order) =>
+            BLOCKING_ORDER_STATUSES.has(normalizeStatus(order.status))
+        )
     }
 
     const handleCheckBlockingOrders = async (application: PendingSupermarketApplication) => {
@@ -464,9 +411,7 @@ const AdminSupermarkets = () => {
             setCheckingOrdersId(application.supermarketId)
             setError("")
 
-            const blockingOrders = await adminService.getBlockingCustomerOrders(
-                application.applicantUserId
-            )
+            const blockingOrders = await loadBlockingOrdersByUserId(application.applicantUserId)
 
             setBlockingOrdersMap((prev) => ({
                 ...prev,
@@ -488,10 +433,7 @@ const AdminSupermarkets = () => {
             let blockingOrders = getBlockingOrders(application.applicantUserId)
 
             if (blockingOrders.length === 0) {
-                blockingOrders = await adminService.getBlockingCustomerOrders(
-                    application.applicantUserId
-                )
-
+                blockingOrders = await loadBlockingOrdersByUserId(application.applicantUserId)
                 setBlockingOrdersMap((prev) => ({
                     ...prev,
                     [application.applicantUserId]: blockingOrders,
@@ -559,39 +501,75 @@ const AdminSupermarkets = () => {
         }
     }
 
-    const statCards = [
-        {
-            label: "Hồ sơ chờ xem xét",
-            value: pendingApplicationCount,
-            hint: "Các hồ sơ đang đợi quyết định",
-            tone: "slate",
-        },
-        {
-            label: "Có thể phê duyệt",
-            value: applicationSummary.ready,
-            hint: "Chưa phát hiện đơn mua đang mở",
-            tone: "emerald",
-        },
-        {
-            label: "Cần xử lý trước",
-            value: applicationSummary.blocked,
-            hint: "Đang còn đơn mua cần hoàn tất",
-            tone: "amber",
-        },
-        {
-            label: "Tổng siêu thị hệ thống",
-            value: totalResult,
-            hint: "Số lượng bản ghi hiện có",
-            tone: "violet",
-        },
-    ] as const
+    const handleUpdateSupermarketStatus = async (
+        item: AdminSupermarketItem,
+        nextStatus: number
+    ) => {
+        try {
+            setUpdatingStatusId(item.supermarketId)
+            setError("")
+
+            await adminService.updateSupermarket(
+                item.supermarketId,
+                toUpdatePayload(item, nextStatus)
+            )
+
+            setSupermarkets((prev) =>
+                prev.map((current) =>
+                    current.supermarketId === item.supermarketId
+                        ? { ...current, status: nextStatus }
+                        : current
+                )
+            )
+
+            setSelectedSupermarket((prev) =>
+                prev && prev.supermarketId === item.supermarketId
+                    ? { ...prev, status: nextStatus }
+                    : prev
+            )
+        } catch (err) {
+            console.error("AdminSupermarkets.handleUpdateSupermarketStatus -> error:", err)
+            setError(getErrorMessage(err, "Chưa thể cập nhật trạng thái siêu thị lúc này."))
+        } finally {
+            setUpdatingStatusId("")
+        }
+    }
+
+    const statCards: Array<{
+        label: string
+        value: number
+        hint: string
+        tone: "slate" | "emerald" | "amber" | "violet"
+    }> = [
+            {
+                label: "Hồ sơ chờ xem xét",
+                value: applications.length,
+                hint: "Các hồ sơ đang đợi quyết định",
+                tone: "slate",
+            },
+            {
+                label: "Có thể phê duyệt",
+                value: applicationSummary.ready,
+                hint: "Chưa phát hiện đơn mua đang mở",
+                tone: "emerald",
+            },
+            {
+                label: "Cần xử lý trước",
+                value: applicationSummary.blocked,
+                hint: "Đang còn đơn mua cần hoàn tất",
+                tone: "amber",
+            },
+            {
+                label: "Tổng siêu thị hệ thống",
+                value: totalResult,
+                hint: "Số lượng bản ghi hiện có",
+                tone: "violet",
+            },
+        ]
 
     return (
         <div className="space-y-6">
-
-            {/* BANNER */}
-
-            <section className="rounded-[24px] border border-slate-200 bg-white shadow-[0_16px_40px_-32px_rgba(15,23,42,0.18)]">
+            <section className="rounded-[24px] border border-slate-200 bg-white shadow-sm">
                 <div className="flex flex-col gap-4 px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6">
                     <div className="max-w-3xl">
                         <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold tracking-[0.08em] text-slate-600">
@@ -599,31 +577,20 @@ const AdminSupermarkets = () => {
                             QUẢN LÝ ĐỐI TÁC SIÊU THỊ
                         </div>
 
-                        <h1 className="mt-3 text-xl font-bold leading-tight text-slate-900 lg:text-[26px]">
+                        <h1 className="mt-3 text-xl font-semibold leading-tight text-slate-900 lg:text-[26px]">
                             Hồ sơ đối tác và mạng lưới siêu thị
                         </h1>
-
-                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                            Theo dõi hồ sơ đăng ký mới, kiểm tra điều kiện trước khi phê duyệt
-                            và giữ danh sách siêu thị trong một không gian gọn gàng, rõ ràng.
-                        </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3">
-                        <button
-                            type="button"
-                            onClick={() => void handleRefresh()}
-                            disabled={refreshing}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            <RefreshCcw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-                            Làm mới dữ liệu
-                        </button>
-
-                        <div className="inline-flex items-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600">
-                            Ưu tiên kiểm tra hồ sơ còn đơn mua đang mở
-                        </div>
-                    </div>
+                    <button
+                        type="button"
+                        onClick={() => void handleRefresh()}
+                        disabled={refreshing}
+                        className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <RefreshCcw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+                        Làm mới dữ liệu
+                    </button>
                 </div>
             </section>
 
@@ -633,8 +600,34 @@ const AdminSupermarkets = () => {
                 </div>
             ) : null}
 
-            <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)] lg:p-6">
-                <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm lg:p-6">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    {statCards.map((item) => {
+                        const toneClass =
+                            item.tone === "emerald"
+                                ? "border-emerald-200 bg-emerald-50/70"
+                                : item.tone === "amber"
+                                    ? "border-amber-200 bg-amber-50/70"
+                                    : item.tone === "violet"
+                                        ? "border-violet-200 bg-violet-50/70"
+                                        : "border-slate-200 bg-slate-50/80"
+
+                        return (
+                            <div
+                                key={item.label}
+                                className={cn("rounded-2xl border px-4 py-4", toneClass)}
+                            >
+                                <p className="text-xs font-medium text-slate-500">{item.label}</p>
+                                <p className="mt-2 text-2xl font-semibold text-slate-900">
+                                    {formatCompactNumber(item.value)}
+                                </p>
+                                <p className="mt-1 text-xs text-slate-600">{item.hint}</p>
+                            </div>
+                        )
+                    })}
+                </div>
+
+                <div className="mt-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                     <div className="flex flex-wrap gap-2">
                         <button
                             type="button"
@@ -647,7 +640,7 @@ const AdminSupermarkets = () => {
                             )}
                         >
                             <ShieldCheck className="h-4 w-4" />
-                            Hồ sơ đối tác
+                            Hồ sơ chờ duyệt
                             <span
                                 className={cn(
                                     "rounded-full px-2 py-0.5 text-xs",
@@ -656,7 +649,7 @@ const AdminSupermarkets = () => {
                                         : "bg-slate-100 text-slate-600"
                                 )}
                             >
-                                {formatCompactNumber(pendingApplicationCount)}
+                                {formatCompactNumber(applications.length)}
                             </span>
                         </button>
 
@@ -697,7 +690,7 @@ const AdminSupermarkets = () => {
                                 placeholder={
                                     tab === "applications"
                                         ? "Tìm theo tên siêu thị, người nộp hồ sơ, email hoặc mã hồ sơ..."
-                                        : "Tìm theo tên siêu thị, địa chỉ, số điện thoại hoặc mã..."
+                                        : "Tìm theo tên siêu thị, địa chỉ, điện thoại, email hoặc mã..."
                                 }
                                 className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-700 outline-none transition focus:border-slate-300 focus:bg-white"
                             />
@@ -739,8 +732,7 @@ const AdminSupermarkets = () => {
                                             Duyệt đúng vai trò
                                         </p>
                                         <p className="mt-1 text-sm leading-6 text-slate-600">
-                                            Sau khi được phê duyệt, tài khoản này sẽ chuyển sang vai trò
-                                            đối tác siêu thị và không tiếp tục mua hàng bằng luồng khách hàng.
+                                            Sau khi được phê duyệt, tài khoản này sẽ chuyển sang vai trò đối tác siêu thị.
                                         </p>
                                     </div>
                                 </div>
@@ -754,8 +746,7 @@ const AdminSupermarkets = () => {
                                             Kiểm tra trước khi quyết định
                                         </p>
                                         <p className="mt-1 text-sm leading-6 text-amber-700">
-                                            Nên kiểm tra đơn mua đang mở trước khi phê duyệt để tránh
-                                            phát sinh chồng vai trò trong quá trình xử lý đơn.
+                                            Nên kiểm tra đơn mua đang mở để tránh chồng vai trò khi xử lý đơn.
                                         </p>
                                     </div>
                                 </div>
@@ -769,8 +760,7 @@ const AdminSupermarkets = () => {
                                             Luồng xét duyệt riêng
                                         </p>
                                         <p className="mt-1 text-sm leading-6 text-emerald-700">
-                                            Mọi thao tác tại đây áp dụng cho hồ sơ đăng ký đối tác, không
-                                            dùng chung với luồng xét duyệt tài khoản thông thường.
+                                            Tách biệt với luồng duyệt tài khoản thông thường để quản trị rõ ràng hơn.
                                         </p>
                                     </div>
                                 </div>
@@ -813,533 +803,47 @@ const AdminSupermarkets = () => {
             </section>
 
             {tab === "applications" ? (
-                <section className="space-y-4">
-                    {loadingApplications ? (
-                        <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-12 text-center text-sm text-slate-500 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
-                            Đang tải danh sách hồ sơ đối tác...
-                        </div>
-                    ) : displayApplications.length === 0 ? (
-                        <div className="rounded-[28px] border border-slate-200 bg-white px-5 py-12 text-center text-sm text-slate-500 shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
-                            Hiện chưa có hồ sơ đối tác phù hợp với bộ lọc đang chọn.
-                        </div>
-                    ) : (
-                        displayApplications.map((item) => {
-                            const blockingOrders = getBlockingOrders(item.applicantUserId)
-                            const blocked = blockingOrders.length > 0
-                            const isChecking = checkingOrdersId === item.supermarketId
-                            const isApproving = approvingId === item.supermarketId
-                            const isRejecting = rejectingId === item.supermarketId
-                            const isRejectPanelOpen = openRejectId === item.supermarketId
-
-                            return (
-                                <article
-                                    key={item.supermarketId}
-                                    className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]"
-                                >
-                                    <div className="border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-white px-5 py-5 lg:px-6">
-                                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                                            <div className="flex items-start gap-4">
-                                                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-slate-100">
-                                                    <Building2 className="h-5 w-5 text-slate-700" />
-                                                </div>
-
-                                                <div>
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <h2 className="text-lg font-semibold text-slate-900">
-                                                            {item.name || "--"}
-                                                        </h2>
-
-                                                        <span
-                                                            className={cn(
-                                                                "inline-flex rounded-full border px-3 py-1 text-xs font-semibold",
-                                                                blocked
-                                                                    ? "border-amber-200 bg-amber-50 text-amber-700"
-                                                                    : "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                            )}
-                                                        >
-                                                            {blocked
-                                                                ? "Cần xử lý đơn mua trước"
-                                                                : "Sẵn sàng xem xét phê duyệt"}
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
-                                                            Mã hồ sơ: {item.applicationReference || "--"}
-                                                        </span>
-                                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
-                                                            Mã siêu thị: {item.supermarketId || "--"}
-                                                        </span>
-                                                        <span className="rounded-full bg-slate-100 px-2.5 py-1 font-medium text-slate-700">
-                                                            Gửi lúc:{" "}
-                                                            {formatDateTime(item.submittedAt || item.createdAt)}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex flex-wrap gap-2 xl:justify-end">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleCopyCode(
-                                                            item.applicationReference || item.supermarketId
-                                                        )
-                                                    }
-                                                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                                >
-                                                    <Copy className="h-4 w-4" />
-                                                    {copiedCode ===
-                                                        (item.applicationReference || item.supermarketId)
-                                                        ? "Đã sao chép"
-                                                        : "Sao chép mã"}
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openMap(item)}
-                                                    className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                                >
-                                                    <MapPinned className="h-4 w-4" />
-                                                    Xem vị trí
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-[1.2fr_0.8fr] lg:p-6">
-                                        <div className="space-y-4">
-                                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                                                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                                        Người nộp hồ sơ
-                                                    </p>
-                                                    <p className="mt-2 text-sm font-semibold text-slate-900">
-                                                        {item.applicantFullName || "--"}
-                                                    </p>
-                                                    <p className="mt-1 text-sm text-slate-700">
-                                                        {item.applicantEmail || "--"}
-                                                    </p>
-                                                    <p className="mt-2 text-xs text-slate-500">
-                                                        Mã tài khoản: {item.applicantUserId || "--"}
-                                                    </p>
-                                                </div>
-
-                                                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                                                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                                        Liên hệ đại diện
-                                                    </p>
-                                                    <p className="mt-2 text-sm font-semibold text-slate-900">
-                                                        {item.contactPhone || "--"}
-                                                    </p>
-                                                    <p className="mt-1 text-sm text-slate-700">
-                                                        {item.contactEmail || "--"}
-                                                    </p>
-                                                    <p className="mt-2 text-xs text-slate-500">
-                                                        Sẵn sàng cho bước đối chiếu hồ sơ
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                                                <div className="flex items-start gap-3">
-                                                    <MapPin className="mt-0.5 h-4 w-4 text-slate-400" />
-                                                    <div>
-                                                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                                            Địa chỉ siêu thị
-                                                        </p>
-                                                        <p className="mt-2 text-sm leading-6 text-slate-700">
-                                                            {item.address || "--"}
-                                                        </p>
-                                                        <p className="mt-2 text-xs text-slate-500">
-                                                            Tọa độ: {item.latitude}, {item.longitude}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {blocked ? (
-                                                <div className="rounded-3xl border border-amber-200 bg-amber-50 p-4">
-                                                    <p className="text-sm font-semibold text-amber-900">
-                                                        Cần hoàn tất đơn mua trước khi phê duyệt
-                                                    </p>
-                                                    <p className="mt-1 text-sm leading-6 text-amber-700">
-                                                        Tài khoản này hiện còn{" "}
-                                                        {formatCompactNumber(blockingOrders.length)} đơn mua
-                                                        chưa hoàn tất. Nên xử lý xong trước khi chuyển vai trò.
-                                                    </p>
-
-                                                    <div className="mt-3 grid grid-cols-1 gap-2">
-                                                        {blockingOrders.slice(0, 5).map((order) => (
-                                                            <div
-                                                                key={order.orderId}
-                                                                className="rounded-2xl border border-amber-200 bg-white px-4 py-3"
-                                                            >
-                                                                <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                                                                    <p className="text-sm font-semibold text-slate-900">
-                                                                        {order.orderCode || order.orderId}
-                                                                    </p>
-                                                                    <p className="text-xs font-medium text-amber-700">
-                                                                        {order.status || "--"}
-                                                                    </p>
-                                                                </div>
-                                                                <p className="mt-1 text-xs text-slate-500">
-                                                                    {formatDateTime(
-                                                                        order.orderDate || order.createdAt
-                                                                    )}
-                                                                </p>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ) : null}
-
-                                            {isRejectPanelOpen ? (
-                                                <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4">
-                                                    <p className="text-sm font-semibold text-rose-900">
-                                                        Ghi rõ lý do để người nộp hồ sơ dễ theo dõi
-                                                    </p>
-
-                                                    <textarea
-                                                        value={rejectNote}
-                                                        onChange={(e) => setRejectNote(e.target.value)}
-                                                        rows={4}
-                                                        placeholder="Ví dụ: Hồ sơ liên hệ chưa đầy đủ, cần bổ sung thông tin pháp lý hoặc xác minh lại địa chỉ..."
-                                                        className="mt-3 w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-rose-300"
-                                                    />
-
-                                                    <div className="mt-3 flex flex-wrap justify-end gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleCloseReject}
-                                                            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                                                        >
-                                                            Đóng lại
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => void handleReject(item)}
-                                                            disabled={isRejecting}
-                                                            className="rounded-2xl bg-rose-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                                        >
-                                                            {isRejecting ? "Đang xử lý..." : "Xác nhận từ chối"}
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ) : null}
-                                        </div>
-
-                                        <aside className="space-y-4 rounded-[28px] border border-slate-200 bg-slate-50 p-4 lg:p-5">
-                                            <div>
-                                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                                    Hành động đề xuất
-                                                </p>
-                                                <h3 className="mt-2 text-base font-semibold text-slate-900">
-                                                    Ra quyết định cho hồ sơ này
-                                                </h3>
-                                                <p className="mt-1 text-sm leading-6 text-slate-600">
-                                                    Kiểm tra điều kiện, sau đó chọn phê duyệt hoặc từ chối
-                                                    với lý do rõ ràng.
-                                                </p>
-                                            </div>
-
-                                            <div className="grid grid-cols-1 gap-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => void handleCheckBlockingOrders(item)}
-                                                    disabled={isChecking}
-                                                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                                >
-                                                    <Search className="h-4 w-4" />
-                                                    {isChecking
-                                                        ? "Đang kiểm tra đơn mua..."
-                                                        : "Kiểm tra đơn mua đang mở"}
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => void handleApprove(item)}
-                                                    disabled={isApproving || blocked}
-                                                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                                >
-                                                    <CheckCircle2 className="h-4 w-4" />
-                                                    {isApproving
-                                                        ? "Đang phê duyệt..."
-                                                        : "Phê duyệt trở thành đối tác"}
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleOpenReject(item)}
-                                                    disabled={isRejecting}
-                                                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
-                                                >
-                                                    <XCircle className="h-4 w-4" />
-                                                    Từ chối hồ sơ
-                                                </button>
-                                            </div>
-
-                                            <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                                                <p className="text-sm font-semibold text-slate-900">
-                                                    Tình trạng rà soát
-                                                </p>
-                                                <p className="mt-1 text-sm leading-6 text-slate-600">
-                                                    {blockingOrdersMap[item.applicantUserId]
-                                                        ? blocked
-                                                            ? "Đã kiểm tra và phát hiện đơn mua cần hoàn tất trước."
-                                                            : "Đã kiểm tra, hiện chưa phát hiện đơn mua đang mở."
-                                                        : "Chưa thực hiện kiểm tra đơn mua cho hồ sơ này."}
-                                                </p>
-                                            </div>
-                                        </aside>
-                                    </div>
-                                </article>
-                            )
-                        })
-                    )}
-                </section>
+                <ApplicationList
+                    loading={loadingApplications}
+                    applications={displayApplications}
+                    copiedCode={copiedCode}
+                    checkingOrdersId={checkingOrdersId}
+                    approvingId={approvingId}
+                    rejectingId={rejectingId}
+                    openRejectId={openRejectId}
+                    rejectNote={rejectNote}
+                    blockingOrdersMap={blockingOrdersMap}
+                    onCopyCode={handleCopyCode}
+                    onOpenMap={openMap}
+                    onCheckBlockingOrders={handleCheckBlockingOrders}
+                    onApprove={handleApprove}
+                    onOpenReject={handleOpenReject}
+                    onCloseReject={handleCloseReject}
+                    onRejectNoteChange={setRejectNote}
+                    onReject={handleReject}
+                />
             ) : (
-                <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_20px_60px_-35px_rgba(15,23,42,0.35)]">
-                    <div className="border-b border-slate-100 px-5 py-4 lg:px-6">
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                                <p className="text-xs font-medium text-slate-500">
-                                    Hồ sơ cần bổ sung
-                                </p>
-                                <p className="mt-1 text-lg font-semibold text-slate-900">
-                                    {formatCompactNumber(currentPageStats.incompleteProfile)}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3">
-                                <p className="text-xs font-medium text-violet-700">Thiếu tọa độ</p>
-                                <p className="mt-1 text-lg font-semibold text-violet-900">
-                                    {formatCompactNumber(currentPageStats.missingLocation)}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
-                                <p className="text-xs font-medium text-rose-700">Thiếu liên hệ</p>
-                                <p className="mt-1 text-lg font-semibold text-rose-900">
-                                    {formatCompactNumber(currentPageStats.missingPhone)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full">
-                            <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                    <th className="px-5 py-4">Siêu thị</th>
-                                    <th className="px-5 py-4">Liên hệ</th>
-                                    <th className="px-5 py-4">Địa chỉ</th>
-                                    <th className="px-5 py-4">Trạng thái</th>
-                                    <th className="px-5 py-4">Mức hoàn chỉnh</th>
-                                    <th className="px-5 py-4">Ngày tạo</th>
-                                    <th className="px-5 py-4 text-right">Thao tác</th>
-                                </tr>
-                            </thead>
-
-                            <tbody>
-                                {loadingSupermarkets ? (
-                                    <tr>
-                                        <td
-                                            colSpan={7}
-                                            className="px-5 py-12 text-center text-sm text-slate-500"
-                                        >
-                                            Đang tải danh sách siêu thị...
-                                        </td>
-                                    </tr>
-                                ) : displaySupermarkets.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={7}
-                                            className="px-5 py-12 text-center text-sm text-slate-500"
-                                        >
-                                            Chưa có siêu thị phù hợp với bộ lọc đang chọn.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    displaySupermarkets.map((item, index) => {
-                                        const code = item.supermarketId || "--"
-                                        const missingFields = getMissingFields(item)
-                                        const isComplete = missingFields.length === 0
-
-                                        return (
-                                            <tr
-                                                key={`${code}-${index}`}
-                                                className="border-b border-slate-100 align-top transition hover:bg-slate-50/70"
-                                            >
-                                                <td className="px-5 py-4">
-                                                    <div className="flex items-start gap-3">
-                                                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100">
-                                                            <Building2 className="h-5 w-5 text-slate-600" />
-                                                        </div>
-
-                                                        <div className="space-y-1">
-                                                            <p className="text-sm font-semibold text-slate-900">
-                                                                {item.name || "--"}
-                                                            </p>
-                                                            <p className="text-xs text-slate-500">
-                                                                Mã: {code}
-                                                            </p>
-                                                            {copiedCode === code ? (
-                                                                <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                                                    Đã sao chép
-                                                                </span>
-                                                            ) : null}
-                                                        </div>
-                                                    </div>
-                                                </td>
-
-                                                <td className="px-5 py-4">
-                                                    <div className="space-y-2">
-                                                        <p className="text-sm text-slate-900">
-                                                            {item.contactPhone || "--"}
-                                                        </p>
-                                                        <span
-                                                            className={cn(
-                                                                "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                                                                item.contactPhone?.trim()
-                                                                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                                                                    : "border-rose-200 bg-rose-50 text-rose-700"
-                                                            )}
-                                                        >
-                                                            {item.contactPhone?.trim()
-                                                                ? "Đã có liên hệ"
-                                                                : "Thiếu liên hệ"}
-                                                        </span>
-                                                    </div>
-                                                </td>
-
-                                                <td className="px-5 py-4">
-                                                    <div className="space-y-2">
-                                                        <div className="flex items-start gap-2">
-                                                            <MapPin className="mt-0.5 h-4 w-4 text-slate-400" />
-                                                            <p className="text-sm leading-6 text-slate-700">
-                                                                {item.address || "--"}
-                                                            </p>
-                                                        </div>
-
-                                                        <span
-                                                            className={cn(
-                                                                "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                                                                hasCoordinates(item)
-                                                                    ? "border-violet-200 bg-violet-50 text-violet-700"
-                                                                    : "border-slate-200 bg-slate-50 text-slate-700"
-                                                            )}
-                                                        >
-                                                            {hasCoordinates(item)
-                                                                ? "Có định vị"
-                                                                : "Chưa có tọa độ"}
-                                                        </span>
-                                                    </div>
-                                                </td>
-
-                                                <td className="px-5 py-4">
-                                                    <span
-                                                        className={cn(
-                                                            "inline-flex rounded-full border px-3 py-1 text-sm font-medium",
-                                                            getStatusClass(item.status)
-                                                        )}
-                                                    >
-                                                        {getStatusLabel(item.status)}
-                                                    </span>
-                                                </td>
-
-                                                <td className="px-5 py-4">
-                                                    <div className="group relative inline-flex">
-                                                        <span
-                                                            className={cn(
-                                                                "inline-flex rounded-full border px-3 py-1 text-sm font-medium",
-                                                                getProfileClass(item)
-                                                            )}
-                                                        >
-                                                            {getProfileLabel(item)}
-                                                        </span>
-
-                                                        {!isComplete ? (
-                                                            <div className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 hidden w-max max-w-[260px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-slate-900 px-3 py-2 text-xs text-white shadow-xl group-hover:block">
-                                                                <p className="font-semibold">Thông tin cần bổ sung</p>
-                                                                <ul className="mt-1 list-disc pl-4 text-slate-200">
-                                                                    {missingFields.map((field) => (
-                                                                        <li key={field}>{field}</li>
-                                                                    ))}
-                                                                </ul>
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                </td>
-
-                                                <td className="px-5 py-4">
-                                                    <p className="text-sm text-slate-700">
-                                                        {formatDate(item.createdAt)}
-                                                    </p>
-                                                </td>
-
-                                                <td className="px-5 py-4">
-                                                    <div className="flex justify-end gap-2">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleCopyCode(code)}
-                                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                                        >
-                                                            <Copy className="h-4 w-4" />
-                                                            Sao chép mã
-                                                        </button>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => openMap(item)}
-                                                            disabled={!hasCoordinates(item)}
-                                                            className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                                        >
-                                                            <MapPinned className="h-4 w-4" />
-                                                            Xem vị trí
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="flex flex-col gap-3 border-t border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm text-slate-500">
-                            Hiển thị {formatCompactNumber(displaySupermarkets.length)} /{" "}
-                            {formatCompactNumber(supermarkets.length)} siêu thị của trang hiện tại
-                        </p>
-
-                        <div className="flex items-center gap-3">
-                            <button
-                                type="button"
-                                onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
-                                disabled={page === 1}
-                                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Trang trước
-                            </button>
-
-                            <span className="text-sm font-medium text-slate-600">
-                                {page}/{totalPages}
-                            </span>
-
-                            <button
-                                type="button"
-                                onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
-                                disabled={page >= totalPages}
-                                className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Trang sau
-                            </button>
-                        </div>
-                    </div>
-                </section>
+                <SupermarketTable
+                    loading={loadingSupermarkets}
+                    supermarkets={displaySupermarkets}
+                    currentPageCount={supermarkets.length}
+                    page={page}
+                    totalPages={totalPages}
+                    onPrevPage={() => setPage((prev) => Math.max(prev - 1, 1))}
+                    onNextPage={() => setPage((prev) => Math.min(prev + 1, totalPages))}
+                    onOpenDetail={setSelectedSupermarket}
+                />
             )}
+
+            <SupermarketDetailModal
+                supermarket={selectedSupermarket}
+                copiedCode={copiedCode}
+                updatingStatusId={updatingStatusId}
+                onClose={() => setSelectedSupermarket(null)}
+                onCopyCode={handleCopyCode}
+                onOpenMap={openMap}
+                onUpdateStatus={handleUpdateSupermarketStatus}
+            />
         </div>
     )
 }

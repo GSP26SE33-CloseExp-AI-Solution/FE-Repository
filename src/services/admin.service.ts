@@ -1227,4 +1227,25 @@ export const adminService = {
     toDateKey(value?: string) {
         return toDateKey(value)
     },
+
+    async getBlockingCustomerOrders(userId: string): Promise<AdminOrder[]> {
+        const result = await this.getOrders({
+            pageNumber: 1,
+            pageSize: 100,
+            userId,
+            sortBy: "OrderDate",
+            sortDir: "desc",
+        })
+
+        const blockingStatuses = new Set([
+            "pending",
+            "paid",
+            "readytoship",
+            "deliveredwaitconfirm",
+        ])
+
+        return (result.items ?? []).filter((order) =>
+            blockingStatuses.has(normalizeStatus(order.status))
+        )
+    },
 }
