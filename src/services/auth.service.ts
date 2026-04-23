@@ -1,6 +1,6 @@
-import axios from "axios";
-import axiosClient from "@/utils/axiosClient";
-import type { ApiResponse } from "@/types/api.types";
+import axios from "axios"
+import axiosClient from "@/utils/axiosClient"
+import type { ApiResponse } from "@/types/api.types"
 import type {
     AuthData,
     RegisterPayload,
@@ -9,48 +9,95 @@ import type {
     ForgotPasswordPayload,
     ResetPasswordPayload,
     GoogleLoginPayload,
-} from "@/types/auth.types";
+} from "@/types/auth.types"
+import { AuthFlowError } from "@/types/auth.types"
 
 const unwrap = <T>(res: ApiResponse<T>): T => {
     if (!res?.success) {
-        const msg = res?.errors?.[0] || res?.message || "Request failed";
-        throw new Error(msg);
+        const msg = res?.errors?.[0] || res?.message || "Request failed"
+        throw new Error(msg)
     }
-    return res.data;
-};
+    return res.data
+}
+
+const normalizeMessage = (value?: string) =>
+    (value ?? "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+
+const isOtpVerificationRequiredMessage = (message?: string) => {
+    const normalized = normalizeMessage(message)
+
+    return (
+        normalized.includes("verify otp") ||
+        normalized.includes("verify email") ||
+        normalized.includes("email not verified") ||
+        normalized.includes("email chua duoc xac thuc") ||
+        normalized.includes("email chua duoc xac minh") ||
+        normalized.includes("chua xac thuc email") ||
+        normalized.includes("chua xac minh email") ||
+        normalized.includes("vui long xac thuc email") ||
+        normalized.includes("vui long xac minh email") ||
+        normalized.includes("nhap ma otp") ||
+        normalized.includes("ma otp") ||
+        normalized.includes("otp")
+    )
+}
+
+const getAxiosErrorPayload = (error: unknown) => {
+    if (!axios.isAxiosError(error)) return undefined
+
+    return error.response?.data as
+        | {
+            message?: string
+            errors?: string[]
+            error?: string
+            success?: boolean
+            data?: unknown
+        }
+        | undefined
+}
 
 const getAxiosErrorMessage = (error: unknown, fallback: string) => {
-    if (axios.isAxiosError(error)) {
-        const data = error.response?.data as
-            | { message?: string; errors?: string[]; error?: string }
-            | undefined;
+    const data = getAxiosErrorPayload(error)
 
-        return data?.errors?.[0] || data?.message || data?.error || fallback;
+    if (data) {
+        return data.errors?.[0] || data.message || data.error || fallback
     }
 
     if (error instanceof Error) {
-        return error.message || fallback;
+        return error.message || fallback
     }
 
-    return fallback;
-};
+    return fallback
+}
 
 export const loginApi = async (payload: {
-    email: string;
-    password: string;
+    email: string
+    password: string
 }): Promise<AuthData> => {
     try {
         const res = await axiosClient.post<ApiResponse<AuthData>>(
             "/auth/login",
             payload,
-        );
-        return unwrap(res.data);
+        )
+        return unwrap(res.data)
     } catch (error) {
-        throw new Error(
-            getAxiosErrorMessage(error, "Đăng nhập không thành công"),
-        );
+        const message = getAxiosErrorMessage(error, "Đăng nhập không thành công")
+
+        if (isOtpVerificationRequiredMessage(message)) {
+            throw new AuthFlowError(
+                message || "Tài khoản cần xác thực OTP email trước khi đăng nhập",
+                "EMAIL_OTP_REQUIRED",
+                payload.email,
+            )
+        }
+
+        throw new Error(message)
     }
-};
+}
 
 export const googleLoginApi = async (
     payload: GoogleLoginPayload,
@@ -59,14 +106,14 @@ export const googleLoginApi = async (
         const res = await axiosClient.post<ApiResponse<AuthData>>(
             "/auth/google-login",
             payload,
-        );
-        return unwrap(res.data);
+        )
+        return unwrap(res.data)
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(error, "Đăng nhập Google không thành công"),
-        );
+        )
     }
-};
+}
 
 export const registerApi = async (
     payload: RegisterPayload,
@@ -75,23 +122,23 @@ export const registerApi = async (
         const res = await axiosClient.post<ApiResponse<null>>(
             "/auth/register",
             payload,
-        );
+        )
 
         if (!res.data?.success) {
             const msg =
                 res.data?.errors?.[0] ||
                 res.data?.message ||
-                "Đăng ký không thành công";
-            throw new Error(msg);
+                "Đăng ký không thành công"
+            throw new Error(msg)
         }
 
-        return res.data;
+        return res.data
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(error, "Đăng ký không thành công"),
-        );
+        )
     }
-};
+}
 
 export const verifyOtpApi = async (
     payload: VerifyOtpPayload,
@@ -100,23 +147,23 @@ export const verifyOtpApi = async (
         const res = await axiosClient.post<ApiResponse<boolean>>(
             "/auth/verify-otp",
             payload,
-        );
+        )
 
         if (!res.data?.success) {
             const msg =
                 res.data?.errors?.[0] ||
                 res.data?.message ||
-                "Xác minh OTP không thành công";
-            throw new Error(msg);
+                "Xác minh OTP không thành công"
+            throw new Error(msg)
         }
 
-        return res.data;
+        return res.data
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(error, "Xác minh OTP không thành công"),
-        );
+        )
     }
-};
+}
 
 export const resendOtpApi = async (
     payload: ResendOtpPayload,
@@ -125,23 +172,23 @@ export const resendOtpApi = async (
         const res = await axiosClient.post<ApiResponse<boolean>>(
             "/auth/resend-otp",
             payload,
-        );
+        )
 
         if (!res.data?.success) {
             const msg =
                 res.data?.errors?.[0] ||
                 res.data?.message ||
-                "Gửi lại OTP không thành công";
-            throw new Error(msg);
+                "Gửi lại OTP không thành công"
+            throw new Error(msg)
         }
 
-        return res.data;
+        return res.data
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(error, "Gửi lại OTP không thành công"),
-        );
+        )
     }
-};
+}
 
 export const forgotPasswordApi = async (
     payload: ForgotPasswordPayload,
@@ -150,23 +197,23 @@ export const forgotPasswordApi = async (
         const res = await axiosClient.post<ApiResponse<boolean>>(
             "/auth/forgot-password",
             payload,
-        );
+        )
 
         if (!res.data?.success) {
             const msg =
                 res.data?.errors?.[0] ||
                 res.data?.message ||
-                "Không thể gửi mã đặt lại mật khẩu";
-            throw new Error(msg);
+                "Không thể gửi mã đặt lại mật khẩu"
+            throw new Error(msg)
         }
 
-        return res.data;
+        return res.data
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(error, "Không thể gửi mã đặt lại mật khẩu"),
-        );
+        )
     }
-};
+}
 
 export const resetPasswordApi = async (
     payload: ResetPasswordPayload,
@@ -175,23 +222,23 @@ export const resetPasswordApi = async (
         const res = await axiosClient.post<ApiResponse<boolean>>(
             "/auth/reset-password",
             payload,
-        );
+        )
 
         if (!res.data?.success) {
             const msg =
                 res.data?.errors?.[0] ||
                 res.data?.message ||
-                "Đặt lại mật khẩu không thành công";
-            throw new Error(msg);
+                "Đặt lại mật khẩu không thành công"
+            throw new Error(msg)
         }
 
-        return res.data;
+        return res.data
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(error, "Đặt lại mật khẩu không thành công"),
-        );
+        )
     }
-};
+}
 
 export const refreshTokenApi = async (
     refreshToken: string,
@@ -202,43 +249,43 @@ export const refreshTokenApi = async (
             {
                 refreshToken,
             },
-        );
-        return unwrap(res.data);
+        )
+        return unwrap(res.data)
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(
                 error,
                 "Làm mới phiên đăng nhập không thành công",
             ),
-        );
+        )
     }
-};
+}
 
 export const logoutAllApi = async (): Promise<ApiResponse<boolean>> => {
     try {
         const res = await axiosClient.post<ApiResponse<boolean>>(
             "/auth/logout-all",
             {},
-        );
+        )
 
         if (!res.data?.success) {
             const msg =
                 res.data?.errors?.[0] ||
                 res.data?.message ||
-                "Đăng xuất khỏi tất cả thiết bị không thành công";
-            throw new Error(msg);
+                "Đăng xuất khỏi tất cả thiết bị không thành công"
+            throw new Error(msg)
         }
 
-        return res.data;
+        return res.data
     } catch (error) {
         throw new Error(
             getAxiosErrorMessage(
                 error,
                 "Đăng xuất khỏi tất cả thiết bị không thành công",
             ),
-        );
+        )
     }
-};
+}
 
 export const authService = {
     async logout(refreshToken: string) {
@@ -248,25 +295,25 @@ export const authService = {
                 {
                     refreshToken,
                 },
-            );
+            )
 
             if (!res.data?.success) {
                 const msg =
                     res.data?.errors?.[0] ||
                     res.data?.message ||
-                    "Đăng xuất không thành công";
-                throw new Error(msg);
+                    "Đăng xuất không thành công"
+                throw new Error(msg)
             }
 
-            return res.data;
+            return res.data
         } catch (error) {
             throw new Error(
                 getAxiosErrorMessage(error, "Đăng xuất không thành công"),
-            );
+            )
         }
     },
 
     async logoutAll() {
-        return logoutAllApi();
+        return logoutAllApi()
     },
-};
+}

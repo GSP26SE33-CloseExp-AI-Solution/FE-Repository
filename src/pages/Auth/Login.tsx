@@ -1,77 +1,98 @@
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react";
-import { GoogleLogin, type CredentialResponse } from "@react-oauth/google";
+import { useState, useEffect } from "react"
+import { useLocation, useNavigate, Link } from "react-router-dom"
+import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
+import { GoogleLogin, type CredentialResponse } from "@react-oauth/google"
 
-import { useAuth } from "@/hooks/useAuth";
-import { useAuthContext } from "@/contexts/AuthContext";
-import { showError, showSuccess } from "@/utils/toast";
-import Logo from "@/assets/logo.png";
+import { useAuth } from "@/hooks/useAuth"
+import { useAuthContext } from "@/contexts/AuthContext"
+import { showError, showInfo, showSuccess } from "@/utils/toast"
+import { AuthFlowError } from "@/types/auth.types"
+import Logo from "@/assets/logo.png"
 
 const Login = () => {
-    const { login, googleLogin, loading } = useAuth();
-    const { user, initialized } = useAuthContext();
-    const navigate = useNavigate();
-    const location = useLocation();
-    const redirectTo = location.state?.redirectTo || "/redirect";
+    const { login, googleLogin, loading } = useAuth()
+    const { user, initialized } = useAuthContext()
+    const navigate = useNavigate()
+    const location = useLocation()
+    const redirectTo = location.state?.redirectTo || "/redirect"
 
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [showPassword, setShowPassword] = useState(false);
+    const [email, setEmail] = useState(
+        location.state?.verifiedEmail || "",
+    )
+    const [password, setPassword] = useState("")
+    const [showPassword, setShowPassword] = useState(false)
 
     useEffect(() => {
         if (initialized && user) {
-            navigate(redirectTo, { replace: true });
+            navigate(redirectTo, { replace: true })
         }
-    }, [initialized, user, navigate, redirectTo]);
+    }, [initialized, user, navigate, redirectTo])
 
     const onSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (loading) return;
+        e.preventDefault()
+        if (loading) return
 
-        if (!email.trim() || !password.trim()) {
-            showError("Vui lòng nhập đầy đủ email và mật khẩu");
-            return;
+        const normalizedEmail = email.trim()
+
+        if (!normalizedEmail || !password.trim()) {
+            showError("Vui lòng nhập đầy đủ email và mật khẩu")
+            return
         }
 
         try {
-            await login(email.trim(), password);
-            showSuccess("Đăng nhập thành công");
+            await login(normalizedEmail, password)
+            showSuccess("Đăng nhập thành công")
         } catch (error) {
+            if (
+                error instanceof AuthFlowError &&
+                error.code === "EMAIL_OTP_REQUIRED"
+            ) {
+                navigate("/verify-otp", {
+                    replace: true,
+                    state: {
+                        email: error.email ?? normalizedEmail,
+                        redirectTo,
+                        source: "login",
+                    },
+                })
+                showInfo("Email này cần xác thực OTP trước khi vào hệ thống")
+                return
+            }
+
             const message =
-                error instanceof Error ? error.message : "Đăng nhập không thành công";
-            showError(message);
+                error instanceof Error ? error.message : "Đăng nhập không thành công"
+            showError(message)
         }
-    };
+    }
 
     const handleGoogleSuccess = async (
         credentialResponse: CredentialResponse,
     ) => {
-        if (loading) return;
+        if (loading) return
 
-        const idToken = credentialResponse.credential;
+        const idToken = credentialResponse.credential
 
         if (!idToken) {
-            showError("Không lấy được thông tin đăng nhập từ Google");
-            return;
+            showError("Không lấy được thông tin đăng nhập từ Google")
+            return
         }
 
         try {
-            await googleLogin({ idToken });
-            showSuccess("Đăng nhập Google thành công");
+            await googleLogin({ idToken })
+            showSuccess("Đăng nhập Google thành công")
         } catch (error) {
-            console.error("google login error", error);
+            console.error("google login error", error)
             const message =
                 error instanceof Error
                     ? error.message
-                    : "Đăng nhập Google không thành công";
-            showError(message);
+                    : "Đăng nhập Google không thành công"
+            showError(message)
         }
-    };
+    }
 
     const handleGoogleError = () => {
-        showError("Đăng nhập Google không thành công");
-    };
+        showError("Đăng nhập Google không thành công")
+    }
 
     return (
         <div className="eco-animated-bg min-h-screen flex items-center justify-center px-4 relative overflow-hidden">
@@ -217,7 +238,7 @@ const Login = () => {
                 </p>
             </div>
         </div>
-    );
-};
+    )
+}
 
-export default Login;
+export default Login

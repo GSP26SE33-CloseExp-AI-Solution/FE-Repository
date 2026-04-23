@@ -17,7 +17,9 @@ const PrivateRoute = () => {
         return (
             <Navigate
                 to="/"
-                state={{ from: location }}
+                state={{
+                    redirectTo: `${location.pathname}${location.search}${location.hash}`,
+                }}
                 replace
             />
         )

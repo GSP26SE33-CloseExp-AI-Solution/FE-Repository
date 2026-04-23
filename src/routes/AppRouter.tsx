@@ -1,53 +1,54 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 
-import MainLayout from "@/components/layouts/MainLayout";
-import PublicLayout from "@/components/layouts/PublicLayout";
-import PrivateRoute from "@/routes/PrivateRoute";
-import RoleRoute from "@/routes/RoleRoute";
-import RoleRedirect from "@/routes/RoleRedirect";
+import MainLayout from "@/components/layouts/MainLayout"
+import PublicLayout from "@/components/layouts/PublicLayout"
+import PrivateRoute from "@/routes/PrivateRoute"
+import RoleRoute from "@/routes/RoleRoute"
+import RoleRedirect from "@/routes/RoleRedirect"
 
-import Login from "@/pages/Auth/Login";
-import Register from "@/pages/Auth/Register";
-import ForgotPassword from "@/pages/Auth/ForgotPassword";
-import PartnerRegister from "@/pages/Auth/PartnerRegister";
+import Login from "@/pages/Auth/Login"
+import Register from "@/pages/Auth/Register"
+import ForgotPassword from "@/pages/Auth/ForgotPassword"
+import VerifyOtp from "@/pages/Auth/VerifyOtp"
+import PartnerRegister from "@/pages/Auth/PartnerRegister"
 
-import Home from "@/pages/Home/Home";
+import Home from "@/pages/Home/Home"
 
-import CartPage from "@/pages/Vendor/CartPage";
-import CheckoutPage from "@/pages/Vendor/CheckoutPage";
-import PaymentReturnPage from "@/pages/Vendor/PaymentReturnPage";
-import VendorProfile from "@/pages/Vendor/vProfile";
-import MyOrdersPage from "@/pages/Vendor/MyOrdersPage";
-import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage";
+import CartPage from "@/pages/Vendor/CartPage"
+import CheckoutPage from "@/pages/Vendor/CheckoutPage"
+import PaymentReturnPage from "@/pages/Vendor/PaymentReturnPage"
+import VendorProfile from "@/pages/Vendor/vProfile"
+import MyOrdersPage from "@/pages/Vendor/MyOrdersPage"
+import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage"
 
-import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard";
-import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductsLotsPage";
-import ProductWorkflowPage from "@/pages/SupermarketStaff/sProducts/ProductWorkflowPage";
-import ProfilePage from "@/pages/SupermarketStaff/sProfile";
+import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard"
+import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductsLotsPage"
+import ProductWorkflowPage from "@/pages/SupermarketStaff/sProducts/ProductWorkflowPage"
+import ProfilePage from "@/pages/SupermarketStaff/sProfile"
 
-import AdminDashboard from "@/pages/Admin/AdminDashboard";
-import AdminUsers from "@/pages/Admin/AdminUsers";
-import AdminReports from "@/pages/Admin/AdminReports";
-import AdminFeedbacks from "@/pages/Admin/AdminFeedbacks";
-import AdminSettings from "@/pages/Admin/AdminSettings";
-import AdminInternalStaff from "@/pages/Admin/AdminInternalStaff";
-import AdminDelivery from "@/pages/Admin/AdminDelivery";
-import AdminOperations from "@/pages/Admin/AdminOperations";
-import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets";
-import AdminProfile from "@/pages/Admin/AdminProfile";
+import AdminDashboard from "@/pages/Admin/AdminDashboard"
+import AdminUsers from "@/pages/Admin/AdminUsers"
+import AdminReports from "@/pages/Admin/AdminReports"
+import AdminFeedbacks from "@/pages/Admin/AdminFeedbacks"
+import AdminSettings from "@/pages/Admin/AdminSettings"
+import AdminInternalStaff from "@/pages/Admin/AdminInternalStaff"
+import AdminDelivery from "@/pages/Admin/AdminDelivery"
+import AdminOperations from "@/pages/Admin/AdminOperations"
+import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets"
+import AdminProfile from "@/pages/Admin/AdminProfile"
 
-import PackageOrders from "@/pages/PackagingStaff/pOrders";
-import PackageCollect from "@/pages/PackagingStaff/pCollect";
-import PackagePacking from "@/pages/PackagingStaff/pPacking";
-import PackageReports from "@/pages/PackagingStaff/pReports";
-import PackageProfile from "@/pages/PackagingStaff/pProfile";
+import PackageOrders from "@/pages/PackagingStaff/pOrders"
+import PackageCollect from "@/pages/PackagingStaff/pCollect"
+import PackagePacking from "@/pages/PackagingStaff/pPacking"
+import PackageReports from "@/pages/PackagingStaff/pReports"
+import PackageProfile from "@/pages/PackagingStaff/pProfile"
 
-import MarketingProfile from "@/pages/MarketingStaff/mProfile";
-import MarketingPromotions from "@/pages/MarketingStaff/mPromotions";
-import MarketingReports from "@/pages/MarketingStaff/mReports";
+import MarketingProfile from "@/pages/MarketingStaff/mProfile"
+import MarketingPromotions from "@/pages/MarketingStaff/mPromotions"
+import MarketingReports from "@/pages/MarketingStaff/mReports"
 
-import NotFound from "@/pages/Common/NotFound";
-import Forbidden from "@/pages/Common/Forbidden";
+import NotFound from "@/pages/Common/NotFound"
+import Forbidden from "@/pages/Common/Forbidden"
 
 const AppRouter: React.FC = () => {
     return (
@@ -60,6 +61,7 @@ const AppRouter: React.FC = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/verify-otp" element={<VerifyOtp />} />
                 <Route path="/redirect" element={<RoleRedirect />} />
                 <Route path="/forbidden" element={<Forbidden />} />
 
@@ -226,7 +228,7 @@ const AppRouter: React.FC = () => {
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </BrowserRouter>
-    );
-};
+    )
+}
 
-export default AppRouter;
+export default AppRouter

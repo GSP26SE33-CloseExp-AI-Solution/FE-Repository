@@ -72,3 +72,15 @@ export interface ResetPasswordPayload {
 export interface GoogleLoginPayload {
     idToken: string
 }
+
+export class AuthFlowError extends Error {
+    code: string
+    email?: string
+
+    constructor(message: string, code: string, email?: string) {
+        super(message)
+        this.name = "AuthFlowError"
+        this.code = code
+        this.email = email
+    }
+}
