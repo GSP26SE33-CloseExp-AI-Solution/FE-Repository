@@ -604,15 +604,15 @@ const MyOrderDetailPage: React.FC = () => {
                                         <div className="mt-1 text-[13px] font-semibold text-slate-900">
                                             {order.deliveryType === "DELIVERY"
                                                 ? order.deliveryNote ||
-                                                  "Chưa có địa chỉ giao hàng"
+                                                "Chưa có địa chỉ giao hàng"
                                                 : pickupCatalogPoint?.name ||
-                                                  order.collectionPointName ||
-                                                  "Chưa có điểm nhận"}
+                                                order.collectionPointName ||
+                                                "Chưa có điểm nhận"}
                                         </div>
 
                                         {order.deliveryType === "PICKUP" &&
-                                        (pickupCatalogPoint?.address ||
-                                            order.deliveryNote) ? (
+                                            (pickupCatalogPoint?.address ||
+                                                order.deliveryNote) ? (
                                             <div className="mt-2 text-[12px] text-slate-500">
                                                 {pickupCatalogPoint?.address ||
                                                     order.deliveryNote}
@@ -698,9 +698,16 @@ const MyOrderDetailPage: React.FC = () => {
                                     </div>
 
                                     <div className="flex items-center justify-between text-[13px]">
-                                        <span className={muted}>Phí giao / nhận</span>
+                                        <span className={muted}>Phí giao hàng</span>
                                         <span className="font-semibold text-slate-900">
                                             {money(order.deliveryFee || 0)}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[13px]">
+                                        <span className={muted}>Phí dịch vụ</span>
+                                        <span className="font-semibold text-slate-900">
+                                            {money(order.systemUsageFeeAmount || 0)}
                                         </span>
                                     </div>
 

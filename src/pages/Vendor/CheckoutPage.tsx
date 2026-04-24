@@ -158,7 +158,9 @@ const CheckoutPage: React.FC = () => {
     return ctx.deliveryMethodId === "DELIVERY" ? 15000 : 0
   }, [ctx.deliveryMethodId])
 
-  const total = subtotal + deliveryFee
+  const serviceFee = 5000
+
+  const total = subtotal + deliveryFee + serviceFee
 
   const canCheckoutBase = cart.length > 0 && orderContextStorage.isReady(ctx)
   const hasTimeSlot = !!ctx.timeSlotId
@@ -703,12 +705,13 @@ const CheckoutPage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center justify-between text-[13px]">
-                      <span className={muted}>
-                        {ctx.deliveryMethodId === "DELIVERY"
-                          ? "Phí giao hàng"
-                          : "Phí nhận tại điểm tập kết"}
-                      </span>
+                      <span className={muted}>Phí giao hàng</span>
                       <span className="font-semibold text-slate-900">{money(deliveryFee)}</span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[13px]">
+                      <span className={muted}>Phí dịch vụ</span>
+                      <span className="font-semibold text-slate-900">{money(serviceFee)}</span>
                     </div>
 
                     <div className="h-px bg-slate-200" />

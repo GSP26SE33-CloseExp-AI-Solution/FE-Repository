@@ -223,6 +223,7 @@ export type CreateOrderPayload = {
 	discountAmount: number;
 	finalAmount: number;
 	deliveryFee: number;
+	systemUsageFeeAmount?: number;
 	cancelDeadline?: string;
 	orderItems: CreateOrderItemPayload[];
 };
@@ -240,6 +241,7 @@ export type CreateMyOrderPayload = {
 	promotionId?: string | null;
 	deliveryNote?: string;
 	deliveryFee: number;
+	systemUsageFeeAmount?: number;
 	cancelDeadline?: string;
 	orderItems: CreateOrderItemPayload[];
 };
@@ -306,6 +308,7 @@ export type UpdateOrderPayload = {
 	discountAmount: number;
 	finalAmount: number;
 	deliveryFee: number;
+	systemUsageFeeAmount?: number;
 	cancelDeadline?: string;
 	orderItems: UpdateOrderItemPayload[];
 };
@@ -396,6 +399,7 @@ export type OrderDetails = {
 	discountAmount?: number;
 	finalAmount: number;
 	deliveryFee?: number;
+	systemUsageFeeAmount?: number;
 	status?: string;
 	orderDate?: string;
 	addressId?: string | null;
@@ -506,6 +510,7 @@ export type MyOrderItem = {
 	discountAmount: number;
 	finalAmount: number;
 	deliveryFee: number;
+	systemUsageFeeAmount?: number;
 	status: string;
 	orderDate?: string;
 	addressId?: string | null;
