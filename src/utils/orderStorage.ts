@@ -4,8 +4,14 @@ import {
 	LAST_ORDER_KEY,
 	ORDER_CONTEXT_KEY,
 } from "@/constants/storageKeys";
-import type { CartItem, CustomerOrderContext } from "@/types/order.type";
+import type {
+	CartItem,
+	CustomerOrderContext,
+	OrderDetails,
+} from "@/types/order.type";
 import { getAuthSession } from "@/utils/authStorage";
+
+const PENDING_PAYMENT_ORDER_KEY = "pendingPaymentOrder";
 
 const safeParse = <T>(raw: string | null, fallback: T): T => {
 	try {
@@ -176,6 +182,23 @@ export const lastOrderStorage = {
 	},
 };
 
+export const pendingPaymentOrderStorage = {
+	get() {
+		return safeParse<OrderDetails | null>(
+			localStorage.getItem(PENDING_PAYMENT_ORDER_KEY),
+			null,
+		);
+	},
+
+	set(order: OrderDetails) {
+		localStorage.setItem(PENDING_PAYMENT_ORDER_KEY, JSON.stringify(order));
+	},
+
+	clear() {
+		localStorage.removeItem(PENDING_PAYMENT_ORDER_KEY);
+	},
+};
+
 export const money = (value: number) => `${value.toLocaleString("vi-VN")} đ`;
 
 export const googleMapsUrl = (lat: number, lng: number) =>
@@ -192,7 +215,7 @@ export const getAuthenticatedUserId = () => {
 		user.id ??
 		user.userID ??
 		user[
-			"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+		"http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
 		];
 
 	return typeof candidate === "string" ? candidate : "";

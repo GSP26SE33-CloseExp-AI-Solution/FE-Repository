@@ -16,24 +16,25 @@ import {
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
 import { supermarketService } from "@/services/supermarket.service"
-import type { OrderDetails, PaginationResult, RefundDetails } from "@/types/order.type"
+import type {
+    OrderDetails,
+    PaginationResult,
+    RefundDetails,
+} from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
 import { lastOrderStorage, money } from "@/utils/orderStorage"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
 
-const panel =
-    "rounded-[24px] border border-slate-200/70 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
-
 const primaryBtn =
-    "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
+    "inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-sky-700 active:scale-[0.99]"
 
 const secondaryBtn =
-    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]"
+    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.99]"
 
 const filterBtn =
-    "inline-flex items-center justify-center rounded-full border px-3.5 py-2 text-[12px] font-semibold transition"
+    "inline-flex items-center justify-center rounded-xl border px-3.5 py-2 text-[12px] font-semibold transition active:scale-[0.99]"
 
 type OrderFilterKey =
     | "ALL"
@@ -89,6 +90,15 @@ const ORDER_STATUS_META: Record<
     },
 }
 
+const FILTER_OPTIONS: Array<{ key: OrderFilterKey; label: string }> = [
+    { key: "ALL", label: "Tất cả" },
+    { key: "PENDING", label: "Chờ xác nhận" },
+    { key: "PROCESSING", label: "Đang chuẩn bị" },
+    { key: "SHIPPING", label: "Đang giao" },
+    { key: "COMPLETED", label: "Hoàn tất" },
+    { key: "CANCELED", label: "Đã hủy / lỗi" },
+]
+
 const formatDateTime = (value?: string) => {
     if (!value) return "--"
 
@@ -127,13 +137,14 @@ const MyOrdersPage: React.FC = () => {
     const [error, setError] = useState("")
     const [keyword, setKeyword] = useState("")
     const [filter, setFilter] = useState<OrderFilterKey>("ALL")
-    /** Catalog điểm nhận từ GET /api/Orders/collection-points (public) */
     const [pickupCatalog, setPickupCatalog] = useState<PickupPoint[]>([])
-    const [refundByOrderId, setRefundByOrderId] = useState<Record<string, RefundDetails>>({})
+    const [refundByOrderId, setRefundByOrderId] = useState<
+        Record<string, RefundDetails>
+    >({})
 
     const breadcrumbs = useMemo(
         () => getBreadcrumbsByPath(location.pathname),
-        [location.pathname]
+        [location.pathname],
     )
 
     useEffect(() => {
@@ -144,11 +155,14 @@ const MyOrdersPage: React.FC = () => {
                 setLoading(true)
                 setError("")
 
-                console.log("OrdersPage.fetchMyOrders -> params:", { page, pageSize })
+                console.log("OrdersPage.fetchMyOrders -> params:", {
+                    page,
+                    pageSize,
+                })
 
                 const [pagedRes, allRes]: [
                     PaginationResult<OrderDetails>,
-                    PaginationResult<OrderDetails>
+                    PaginationResult<OrderDetails>,
                 ] = await Promise.all([
                     orderService.getMyOrders({
                         pageNumber: page,
@@ -161,7 +175,10 @@ const MyOrdersPage: React.FC = () => {
                 ])
 
                 console.log("OrdersPage.fetchMyOrders -> paged response:", pagedRes)
-                console.log("OrdersPage.fetchMyOrders -> full response for stats:", allRes)
+                console.log(
+                    "OrdersPage.fetchMyOrders -> full response for stats:",
+                    allRes,
+                )
 
                 if (!mounted) return
 
@@ -173,12 +190,20 @@ const MyOrdersPage: React.FC = () => {
                     pageNumber: 1,
                     pageSize: 1000,
                 })
+
                 const next: Record<string, RefundDetails> = {}
+
                 for (const r of refundsRes.items || []) {
                     const cur = next[r.orderId]
-                    if (!cur || new Date(r.createdAt).getTime() > new Date(cur.createdAt).getTime())
+                    if (
+                        !cur ||
+                        new Date(r.createdAt).getTime() >
+                        new Date(cur.createdAt).getTime()
+                    ) {
                         next[r.orderId] = r
+                    }
                 }
+
                 setRefundByOrderId(next)
             } catch (e: any) {
                 console.error("OrdersPage.fetchMyOrders -> error:", e)
@@ -189,7 +214,8 @@ const MyOrdersPage: React.FC = () => {
                 setTotalResult(0)
                 setRefundByOrderId({})
                 setError(
-                    e?.response?.data?.message || "Không thể tải danh sách đơn hàng."
+                    e?.response?.data?.message ||
+                    "Không thể tải danh sách đơn hàng.",
                 )
             } finally {
                 if (mounted) setLoading(false)
@@ -205,6 +231,7 @@ const MyOrdersPage: React.FC = () => {
 
     useEffect(() => {
         let cancelled = false
+
         void (async () => {
             try {
                 const pts = await supermarketService.getPickupPoints()
@@ -213,17 +240,20 @@ const MyOrdersPage: React.FC = () => {
                 if (!cancelled) setPickupCatalog([])
             }
         })()
+
         return () => {
             cancelled = true
         }
     }, [])
 
     const pickupById = useMemo(() => {
-        const m = new Map<string, PickupPoint>()
+        const map = new Map<string, PickupPoint>()
+
         for (const p of pickupCatalog) {
-            m.set(p.pickupPointId.toLowerCase(), p)
+            map.set(p.pickupPointId.toLowerCase(), p)
         }
-        return m
+
+        return map
     }, [pickupCatalog])
 
     const filteredOrders = useMemo(() => {
@@ -248,7 +278,7 @@ const MyOrdersPage: React.FC = () => {
                 catalogPickup?.name?.toLowerCase().includes(kw) ||
                 catalogPickup?.address?.toLowerCase().includes(kw) ||
                 order.orderItems?.some((item) =>
-                    item.productName?.toLowerCase().includes(kw)
+                    item.productName?.toLowerCase().includes(kw),
                 )
 
             return matchFilter && matchKeyword
@@ -259,9 +289,12 @@ const MyOrdersPage: React.FC = () => {
         return {
             total: totalResult,
             processing: allOrders.filter((o) =>
-                ["Pending", "Paid", "ReadyToShip", "DeliveredWaitConfirm"].includes(
-                    o.status || ""
-                )
+                [
+                    "Pending",
+                    "Paid",
+                    "ReadyToShip",
+                    "DeliveredWaitConfirm",
+                ].includes(o.status || ""),
             ).length,
             completed: allOrders.filter((o) => o.status === "Completed").length,
         }
@@ -270,9 +303,9 @@ const MyOrdersPage: React.FC = () => {
     const totalPages = Math.max(1, Math.ceil(totalResult / pageSize))
 
     return (
-        <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
-            <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-5 lg:px-6">
-                <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
+        <div className="min-h-screen bg-slate-50">
+            <main className="mx-auto w-full max-w-[1120px] px-4 py-6 sm:px-5 lg:px-6">
+                <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
                     <button
                         type="button"
                         onClick={() => navigate("/")}
@@ -286,10 +319,9 @@ const MyOrdersPage: React.FC = () => {
                             <ChevronRight className="h-3.5 w-3.5" />
                             <span
                                 className={cn(
-                                    "transition",
                                     index === breadcrumbs.length - 1
                                         ? "font-medium text-slate-800"
-                                        : "text-slate-500"
+                                        : "text-slate-500",
                                 )}
                             >
                                 {crumb}
@@ -298,71 +330,68 @@ const MyOrdersPage: React.FC = () => {
                     ))}
                 </div>
 
-                <section className={cn(panel, "overflow-hidden")}>
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.10),transparent_35%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_30%)]" />
-                        <div className="relative flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
-                            <div className="flex items-start gap-4">
-                                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[20px] bg-slate-900 text-white shadow-sm">
-                                    <ReceiptText size={20} />
+                <section className="mb-5 rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                                <ReceiptText size={20} />
+                            </div>
+
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+                                    Đơn hàng của tôi
+                                </h1>
+                                <p className="mt-1 max-w-2xl text-[13px] leading-6 text-slate-500">
+                                    Theo dõi đơn đã đặt, trạng thái xử lý và
+                                    thông tin giao nhận.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2 sm:flex sm:items-center">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                    Tổng đơn
                                 </div>
-
-                                <div>
-                                    <h1 className="text-[22px] font-black tracking-tight text-slate-900">
-                                        Đơn hàng của tôi
-                                    </h1>
-                                    <p className="mt-1 max-w-2xl text-[13px] leading-5 text-slate-600">
-                                        Theo dõi tất cả đơn đã đặt, trạng thái xử lý và thông tin nhận hàng.
-                                    </p>
-
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700">
-                                            <ShoppingBag size={13} />
-                                            Tổng đơn: {stats.total}
-                                        </div>
-                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700">
-                                            <Clock3 size={13} />
-                                            Đang xử lý: {stats.processing}
-                                        </div>
-                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700">
-                                            <PackageCheck size={13} />
-                                            Hoàn tất: {stats.completed}
-                                        </div>
-                                    </div>
+                                <div className="mt-0.5 text-[14px] font-bold text-slate-900">
+                                    {stats.total}
                                 </div>
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={() => navigate("/")}
-                                className={secondaryBtn}
-                            >
-                                Tiếp tục mua sắm
-                            </button>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                    Xử lý
+                                </div>
+                                <div className="mt-0.5 text-[14px] font-bold text-slate-900">
+                                    {stats.processing}
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                    Hoàn tất
+                                </div>
+                                <div className="mt-0.5 text-[14px] font-bold text-slate-900">
+                                    {stats.completed}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </section>
 
-                <section className={cn(panel, "mt-5 p-4 sm:p-5")}>
+                <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                         <div className="flex flex-wrap gap-2">
-                            {[
-                                { key: "ALL", label: "Tất cả" },
-                                { key: "PENDING", label: "Chờ xác nhận" },
-                                { key: "PROCESSING", label: "Đang chuẩn bị" },
-                                { key: "SHIPPING", label: "Đang giao / chờ xác nhận" },
-                                { key: "COMPLETED", label: "Hoàn tất" },
-                                { key: "CANCELED", label: "Đã hủy / lỗi" },
-                            ].map((item) => (
+                            {FILTER_OPTIONS.map((item) => (
                                 <button
                                     key={item.key}
                                     type="button"
-                                    onClick={() => setFilter(item.key as OrderFilterKey)}
+                                    onClick={() => setFilter(item.key)}
                                     className={cn(
                                         filterBtn,
                                         filter === item.key
-                                            ? "border-slate-900 bg-slate-900 text-white"
-                                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                                            ? "border-sky-200 bg-sky-50 text-sky-700 ring-1 ring-sky-100"
+                                            : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
                                     )}
                                 >
                                     {item.label}
@@ -375,209 +404,268 @@ const MyOrdersPage: React.FC = () => {
                             <input
                                 value={keyword}
                                 onChange={(e) => setKeyword(e.target.value)}
-                                placeholder="Tìm theo mã đơn hoặc sản phẩm"
-                                className="h-11 w-full rounded-2xl border border-slate-200 bg-white pl-10 pr-4 text-[13px] text-slate-900 outline-none transition focus:border-slate-300"
+                                placeholder="Tìm mã đơn, sản phẩm, điểm nhận..."
+                                className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-[13px] text-slate-900 outline-none transition focus:border-sky-200 focus:ring-2 focus:ring-sky-50"
                             />
                         </div>
                     </div>
                 </section>
 
-                <div className="mt-5">
-                    {loading ? (
-                        <div className={cn(panel, "p-6")}>
-                            <div className="flex items-center gap-3 text-[13px] text-slate-600">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Đang tải danh sách đơn hàng...
-                            </div>
+                {loading ? (
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center gap-3 text-[13px] text-slate-600">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Đang tải danh sách đơn hàng...
                         </div>
-                    ) : error ? (
-                        <div className={cn(panel, "p-6")}>
-                            <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
-                                <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
-                                <div>
-                                    <div className="text-[13px] font-semibold text-rose-800">
-                                        Không tải được đơn hàng
-                                    </div>
-                                    <p className="mt-1 text-[11px] leading-5 text-rose-700">{error}</p>
+                    </section>
+                ) : error ? (
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                            <AlertCircle
+                                size={16}
+                                className="mt-0.5 shrink-0 text-rose-600"
+                            />
+                            <div>
+                                <div className="text-[13px] font-semibold text-rose-800">
+                                    Không tải được đơn hàng
                                 </div>
-                            </div>
-                        </div>
-                    ) : !filteredOrders.length ? (
-                        <div className={cn(panel, "p-8")}>
-                            <div className="mx-auto max-w-md text-center">
-                                <div className="mx-auto grid h-14 w-14 place-items-center rounded-[20px] bg-slate-100 text-slate-700">
-                                    <ShoppingBag size={22} />
-                                </div>
-
-                                <h2 className="mt-4 text-lg font-bold text-slate-900">
-                                    Chưa có đơn hàng phù hợp
-                                </h2>
-                                <p className="mt-2 text-[13px] leading-5 text-slate-500">
-                                    Bạn chưa có đơn nào hoặc bộ lọc hiện tại chưa tìm thấy kết quả phù hợp.
+                                <p className="mt-1 text-[12px] leading-5 text-rose-700">
+                                    {error}
                                 </p>
-
-                                <button
-                                    type="button"
-                                    onClick={() => navigate("/")}
-                                    className={cn(primaryBtn, "mt-5")}
-                                >
-                                    Mua sắm ngay
-                                </button>
                             </div>
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {filteredOrders.map((order) => {
-                                const meta = getOrderMeta(order.status)
-                                const isDelivery = order.deliveryType === "DELIVERY"
-                                const catalogPickup =
-                                    !isDelivery && order.collectionId
-                                        ? pickupById.get(
-                                              String(order.collectionId).toLowerCase()
-                                          )
-                                        : undefined
+                    </section>
+                ) : !filteredOrders.length ? (
+                    <section className="rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+                        <div className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-slate-100 text-slate-500">
+                            <ShoppingBag size={22} />
+                        </div>
 
-                                return (
-                                    <article key={order.orderId} className={cn(panel, "p-4 sm:p-5")}>
-                                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <div className="text-[16px] font-black text-slate-900">
-                                                        {order.orderCode || order.orderId}
-                                                    </div>
-                                                    <span
-                                                        className={cn(
-                                                            "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                                                            meta.className
-                                                        )}
-                                                    >
-                                                        {meta.label}
+                        <h2 className="mt-4 text-lg font-bold text-slate-950">
+                            Chưa có đơn hàng phù hợp
+                        </h2>
+
+                        <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-slate-500">
+                            Bạn chưa có đơn nào hoặc bộ lọc hiện tại chưa tìm
+                            thấy kết quả phù hợp.
+                        </p>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate("/")}
+                            className={cn(primaryBtn, "mt-5")}
+                        >
+                            Mua sắm ngay
+                        </button>
+                    </section>
+                ) : (
+                    <div className="space-y-3">
+                        {filteredOrders.map((order) => {
+                            const meta = getOrderMeta(order.status)
+                            const isDelivery = order.deliveryType === "DELIVERY"
+                            const catalogPickup =
+                                !isDelivery && order.collectionId
+                                    ? pickupById.get(
+                                        String(
+                                            order.collectionId,
+                                        ).toLowerCase(),
+                                    )
+                                    : undefined
+
+                            return (
+                                <article
+                                    key={order.orderId}
+                                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
+                                >
+                                    <div className="grid gap-4 p-4 lg:grid-cols-[1fr_240px] lg:items-start">
+                                        <div className="min-w-0">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <div className="text-[15px] font-bold text-slate-950">
+                                                    {order.orderCode ||
+                                                        order.orderId}
+                                                </div>
+
+                                                <span
+                                                    className={cn(
+                                                        "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                                                        meta.className,
+                                                    )}
+                                                >
+                                                    {meta.label}
+                                                </span>
+
+                                                {refundByOrderId[
+                                                    order.orderId
+                                                ] ? (
+                                                    <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+                                                        Refund:{" "}
+                                                        {
+                                                            refundByOrderId[
+                                                                order.orderId
+                                                            ].status
+                                                        }
                                                     </span>
-                                                    {refundByOrderId[order.orderId] ? (
-                                                        <span className="inline-flex rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
-                                                            Refund: {refundByOrderId[order.orderId].status}
-                                                        </span>
-                                                    ) : null}
-                                                </div>
+                                                ) : null}
+                                            </div>
 
-                                                <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-slate-500">
-                                                    <div>Đặt lúc: {formatDateTime(order.orderDate || order.createdAt)}</div>
-                                                    <div>Khung giờ: {order.timeSlotDisplay || "--"}</div>
+                                            <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-slate-500">
+                                                <div>
+                                                    Đặt lúc:{" "}
+                                                    {formatDateTime(
+                                                        order.orderDate ||
+                                                        order.createdAt,
+                                                    )}
                                                 </div>
+                                                <div>
+                                                    Khung giờ:{" "}
+                                                    {order.timeSlotDisplay ||
+                                                        "--"}
+                                                </div>
+                                            </div>
 
-                                                <div className="mt-4 rounded-[18px] border border-slate-200 bg-slate-50/70 p-3.5">
-                                                    <div className="flex items-start gap-3">
-                                                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-slate-900 shadow-sm">
-                                                            {isDelivery ? <Truck size={16} /> : <MapPin size={16} />}
+                                            <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-sky-700 ring-1 ring-slate-200">
+                                                        {isDelivery ? (
+                                                            <Truck size={16} />
+                                                        ) : (
+                                                            <MapPin size={16} />
+                                                        )}
+                                                    </div>
+
+                                                    <div className="min-w-0">
+                                                        <div className="text-[13px] font-bold text-slate-950">
+                                                            {isDelivery
+                                                                ? "Giao tận nơi"
+                                                                : "Nhận tại điểm tập kết"}
                                                         </div>
 
-                                                        <div className="min-w-0">
-                                                            <div className="text-[13px] font-bold text-slate-900">
-                                                                {isDelivery ? "Giao tận nơi" : "Nhận tại điểm tập kết"}
-                                                            </div>
-                                                            <div className="mt-1 text-[12px] leading-5 text-slate-600">
-                                                                {isDelivery ? (
-                                                                    order.deliveryNote ||
-                                                                    "Chưa có địa chỉ giao hàng"
-                                                                ) : (
-                                                                    <>
-                                                                        <div className="font-medium text-slate-800">
-                                                                            {catalogPickup?.name ||
-                                                                                order.collectionPointName ||
-                                                                                "Chưa có điểm nhận"}
-                                                                        </div>
-                                                                        {catalogPickup?.address ||
+                                                        <div className="mt-1 text-[12px] leading-5 text-slate-500">
+                                                            {isDelivery ? (
+                                                                order.deliveryNote ||
+                                                                "Chưa có địa chỉ giao hàng"
+                                                            ) : (
+                                                                <>
+                                                                    <div className="font-semibold text-slate-800">
+                                                                        {catalogPickup?.name ||
+                                                                            order.collectionPointName ||
+                                                                            "Chưa có điểm nhận"}
+                                                                    </div>
+                                                                    {catalogPickup?.address ||
                                                                         order.deliveryNote ? (
-                                                                            <div className="mt-0.5 text-slate-600">
-                                                                                {catalogPickup?.address ||
-                                                                                    order.deliveryNote}
-                                                                            </div>
-                                                                        ) : null}
-                                                                    </>
-                                                                )}
-                                                            </div>
+                                                                        <div className="mt-0.5">
+                                                                            {catalogPickup?.address ||
+                                                                                order.deliveryNote}
+                                                                        </div>
+                                                                    ) : null}
+                                                                </>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
+                                            </div>
 
-                                                {!!order.orderItems?.length && (
-                                                    <div className="mt-4 space-y-2">
-                                                        {order.orderItems.slice(0, 2).map((item) => (
+                                            {!!order.orderItems?.length && (
+                                                <div className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                                                    {order.orderItems
+                                                        .slice(0, 2)
+                                                        .map((item) => (
                                                             <div
-                                                                key={item.orderItemId}
-                                                                className="flex items-center justify-between gap-3 rounded-[16px] border border-slate-200 bg-white px-3.5 py-3"
+                                                                key={
+                                                                    item.orderItemId
+                                                                }
+                                                                className="grid gap-2 px-3 py-3 sm:grid-cols-[1fr_auto] sm:items-center"
                                                             >
                                                                 <div className="min-w-0">
-                                                                    <div className="truncate text-[13px] font-semibold text-slate-900">
-                                                                        {item.productName || item.lotId}
+                                                                    <div className="truncate text-[13px] font-semibold text-slate-950">
+                                                                        {item.productName ||
+                                                                            item.lotId}
                                                                     </div>
-                                                                    <div className="mt-1 text-[11px] text-slate-500">
-                                                                        {money(item.unitPrice)} × {item.quantity}
+                                                                    <div className="mt-1 text-[12px] text-slate-500">
+                                                                        {money(
+                                                                            item.unitPrice,
+                                                                        )}{" "}
+                                                                        ×{" "}
+                                                                        {
+                                                                            item.quantity
+                                                                        }
                                                                     </div>
                                                                 </div>
 
-                                                                <div className="shrink-0 text-[13px] font-bold text-slate-900">
+                                                                <div className="text-right text-[13px] font-bold text-slate-950">
                                                                     {money(
                                                                         item.lineTotal ??
                                                                         item.totalPrice ??
-                                                                        item.unitPrice * item.quantity
+                                                                        item.unitPrice *
+                                                                        item.quantity,
                                                                     )}
                                                                 </div>
                                                             </div>
                                                         ))}
 
-                                                        {order.orderItems.length > 2 ? (
-                                                            <div className="text-[12px] font-medium text-slate-500">
-                                                                +{order.orderItems.length - 2} sản phẩm khác
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex w-full shrink-0 flex-col gap-3 lg:w-[240px] lg:items-end">
-                                                <div className="w-full rounded-[18px] border border-slate-200 bg-white p-4 text-right">
-                                                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                                                        Tổng thanh toán
-                                                    </div>
-                                                    <div className="mt-1 text-xl font-black tracking-tight text-rose-600">
-                                                        {money(order.finalAmount)}
-                                                    </div>
-                                                    <div className="mt-1 text-[11px] text-slate-500">
-                                                        {order.orderItems?.length
-                                                            ? `${order.orderItems.length} sản phẩm`
-                                                            : "Mở chi tiết để xem sản phẩm"}
-                                                    </div>
+                                                    {order.orderItems.length >
+                                                        2 ? (
+                                                        <div className="px-3 py-2 text-[12px] font-medium text-slate-500">
+                                                            +
+                                                            {order.orderItems
+                                                                .length -
+                                                                2}{" "}
+                                                            sản phẩm khác
+                                                        </div>
+                                                    ) : null}
                                                 </div>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        lastOrderStorage.set(order)
-                                                        navigate(`/orders/${order.orderId}`)
-                                                    }}
-                                                    className={cn(primaryBtn, "w-full")}
-                                                >
-                                                    Xem chi tiết đơn
-                                                </button>
-                                            </div>
+                                            )}
                                         </div>
-                                    </article>
-                                )
-                            })}
-                        </div>
-                    )}
-                </div>
+
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 lg:text-right">
+                                            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                                Tổng thanh toán
+                                            </div>
+
+                                            <div className="mt-1 text-xl font-black tracking-tight text-rose-600">
+                                                {money(order.finalAmount)}
+                                            </div>
+
+                                            <div className="mt-1 text-[12px] text-slate-500">
+                                                {order.orderItems?.length
+                                                    ? `${order.orderItems.length} sản phẩm`
+                                                    : "Mở chi tiết để xem sản phẩm"}
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    lastOrderStorage.set(order)
+                                                    navigate(
+                                                        `/orders/${order.orderId}`,
+                                                    )
+                                                }}
+                                                className={cn(
+                                                    primaryBtn,
+                                                    "mt-4 w-full",
+                                                )}
+                                            >
+                                                Xem chi tiết đơn
+                                            </button>
+                                        </div>
+                                    </div>
+                                </article>
+                            )
+                        })}
+                    </div>
+                )}
 
                 {totalPages > 1 ? (
                     <div className="mt-5 flex items-center justify-center gap-3">
                         <button
                             type="button"
                             disabled={page <= 1}
-                            onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                            onClick={() =>
+                                setPage((prev) => Math.max(1, prev - 1))
+                            }
                             className={cn(
                                 secondaryBtn,
-                                page <= 1 && "cursor-not-allowed opacity-50"
+                                page <= 1 && "cursor-not-allowed opacity-50",
                             )}
                         >
                             Trang trước
@@ -590,10 +678,15 @@ const MyOrdersPage: React.FC = () => {
                         <button
                             type="button"
                             disabled={page >= totalPages}
-                            onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+                            onClick={() =>
+                                setPage((prev) =>
+                                    Math.min(totalPages, prev + 1),
+                                )
+                            }
                             className={cn(
                                 secondaryBtn,
-                                page >= totalPages && "cursor-not-allowed opacity-50"
+                                page >= totalPages &&
+                                "cursor-not-allowed opacity-50",
                             )}
                         >
                             Trang sau

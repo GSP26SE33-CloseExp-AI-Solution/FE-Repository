@@ -1,271 +1,140 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import {
-    AlertCircle,
     ArrowRight,
     ChevronRight,
-    MapPin,
     Minus,
-    PackageCheck,
     Plus,
     ShoppingBag,
     ShoppingCart,
     Trash2,
-    Truck,
-} from "lucide-react";
+} from "lucide-react"
 
-import type {
-    CartItem,
-    CustomerOrderContext,
-    DeliveryMethodId,
-} from "@/types/order.type";
+import type { CartItem, CustomerOrderContext } from "@/types/order.type"
 import {
     cartStorage,
-    googleMapsUrl,
     money,
     orderContextStorage,
-} from "@/utils/orderStorage";
-import { getBreadcrumbsByPath } from "@/constants/breadcrumbs";
+} from "@/utils/orderStorage"
+import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
-    classes.filter(Boolean).join(" ");
+    classes.filter(Boolean).join(" ")
 
-const panel =
-    "rounded-[24px] border border-slate-200/70 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]";
-const softPanel = "rounded-[20px] border border-slate-200/70 bg-slate-50/70";
-const ghostBtn =
-    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]";
-const dangerBtn =
-    "inline-flex items-center justify-center rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2 text-[13px] font-semibold text-rose-700 transition hover:bg-rose-100 active:scale-[0.99]";
 const primaryBtn =
-    "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]";
+    "inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-sky-700 active:scale-[0.99]"
+const secondaryBtn =
+    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.99]"
+const textBtn =
+    "inline-flex items-center justify-center rounded-xl px-3 py-2 text-[13px] font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
 const qtyBtn =
-    "grid h-9 w-9 place-items-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50 active:scale-[0.98]";
-
-const DELIVERY_COPY: Record<DeliveryMethodId, { title: string; sub: string }> =
-    {
-        DELIVERY: {
-            title: "Giao tận nơi",
-            sub: "Đơn sẽ được giao đến địa chỉ bạn đã chọn ở trang chủ",
-        },
-        PICKUP: {
-            title: "Nhận tại điểm tập kết",
-            sub: "Bạn sẽ đến điểm nhận hàng cố định bạn đã chọn ở trang chủ",
-        },
-    };
-
-const ORDER_STATUS_META = {
-    Pending: {
-        label: "Chờ xử lý",
-        className: "border-amber-200 bg-amber-50 text-amber-700",
-    },
-    Paid: {
-        label: "Đã thanh toán, đang xử lý",
-        className: "border-sky-200 bg-sky-50 text-sky-700",
-    },
-    ReadyToShip: {
-        label: "Sẵn sàng giao",
-        className: "border-violet-200 bg-violet-50 text-violet-700",
-    },
-    DeliveredWaitConfirm: {
-        label: "Đã giao, chờ xác nhận",
-        className: "border-indigo-200 bg-indigo-50 text-indigo-700",
-    },
-    Completed: {
-        label: "Hoàn tất",
-        className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    },
-    Canceled: {
-        label: "Đã hủy",
-        className: "border-rose-200 bg-rose-50 text-rose-700",
-    },
-    Refunded: {
-        label: "Đã hoàn tiền",
-        className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
-    },
-    Failed: {
-        label: "Đơn giao không thành công",
-        className: "border-rose-200 bg-rose-50 text-rose-700",
-    },
-} as const;
+    "grid h-8 w-8 place-items-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 active:scale-[0.98]"
 
 const CartPage: React.FC = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
+    const navigate = useNavigate()
+    const location = useLocation()
 
-    const [items, setItems] = useState<CartItem[]>(() => cartStorage.get());
+    const [items, setItems] = useState<CartItem[]>(() => cartStorage.get())
     const [ctx, setCtx] = useState<CustomerOrderContext>(() =>
         orderContextStorage.get(),
-    );
+    )
 
     useEffect(() => {
-        const syncCart = () => setItems(cartStorage.get());
-        const syncCtx = () => setCtx(orderContextStorage.get());
+        const syncCart = () => setItems(cartStorage.get())
+        const syncCtx = () => setCtx(orderContextStorage.get())
 
-        window.addEventListener("cart:updated", syncCart as EventListener);
+        window.addEventListener("cart:updated", syncCart as EventListener)
         window.addEventListener(
             "order-context:updated",
             syncCtx as EventListener,
-        );
-        window.addEventListener("focus", syncCart);
-        window.addEventListener("focus", syncCtx);
+        )
+        window.addEventListener("focus", syncCart)
+        window.addEventListener("focus", syncCtx)
 
         return () => {
             window.removeEventListener(
                 "cart:updated",
                 syncCart as EventListener,
-            );
+            )
             window.removeEventListener(
                 "order-context:updated",
                 syncCtx as EventListener,
-            );
-            window.removeEventListener("focus", syncCart);
-            window.removeEventListener("focus", syncCtx);
-        };
-    }, []);
+            )
+            window.removeEventListener("focus", syncCart)
+            window.removeEventListener("focus", syncCtx)
+        }
+    }, [])
 
     const subtotal = useMemo(
         () => items.reduce((sum, item) => sum + item.price * item.qty, 0),
         [items],
-    );
+    )
 
     const totalQty = useMemo(
         () => items.reduce((sum, item) => sum + item.qty, 0),
         [items],
-    );
-
-    const deliveryFee = useMemo(() => {
-        if (!ctx.deliveryMethodId) return 0;
-        return ctx.deliveryMethodId === "DELIVERY" ? 15000 : 0;
-    }, [ctx.deliveryMethodId]);
-
-    const total = subtotal + deliveryFee;
+    )
 
     const isContextReady = useMemo(
         () => orderContextStorage.isContextSufficientForShopping(ctx),
         [ctx],
-    );
-
-    const resolvedCollectionId =
-        orderContextStorage.getResolvedCollectionId(ctx);
-    const resolvedCollectionName =
-        orderContextStorage.getResolvedCollectionName(ctx);
-    const resolvedCollectionAddress =
-        orderContextStorage.getResolvedCollectionAddress(ctx);
-
-    const updateQty = (lotId: string, nextQty: number) => {
-        const target = items.find((item) => item.lotId === lotId);
-        if (!target) return;
-
-        if (nextQty <= 0) {
-            const next = items.filter((item) => item.lotId !== lotId);
-            setItems(next);
-            cartStorage.set(next);
-            return;
-        }
-
-        const qty = Math.max(1, Math.min(99, nextQty));
-        const next = items.map((item) =>
-            item.lotId === lotId ? { ...item, qty } : item,
-        );
-        setItems(next);
-        cartStorage.set(next);
-    };
-
-    const removeItem = (lotId: string) => {
-        const next = items.filter((item) => item.lotId !== lotId);
-        setItems(next);
-        cartStorage.set(next);
-    };
-
-    const clearCart = () => {
-        setItems([]);
-        cartStorage.clear();
-    };
-
-    const handleCheckout = () => {
-        if (items.length === 0) return;
-
-        if (!isContextReady) {
-            navigate("/");
-            return;
-        }
-
-        navigate("/checkout");
-    };
-
-    const deliverySummary = useMemo(() => {
-        if (ctx.deliveryMethodId === "DELIVERY") {
-            return {
-                icon: <Truck size={16} className="text-slate-900" />,
-                title: DELIVERY_COPY.DELIVERY.title,
-                subtitle: DELIVERY_COPY.DELIVERY.sub,
-                lines: [
-                    ctx.addressText || "Chưa có địa chỉ giao hàng",
-                    typeof ctx.lat === "number" && typeof ctx.lng === "number"
-                        ? `${ctx.lat.toFixed(6)}, ${ctx.lng.toFixed(6)}`
-                        : "",
-                ].filter(Boolean),
-                map:
-                    typeof ctx.lat === "number" && typeof ctx.lng === "number"
-                        ? googleMapsUrl(ctx.lat, ctx.lng)
-                        : "",
-                isReady:
-                    !!ctx.addressText &&
-                    typeof ctx.lat === "number" &&
-                    typeof ctx.lng === "number",
-            };
-        }
-
-        if (ctx.deliveryMethodId === "PICKUP") {
-            return {
-                icon: <PackageCheck size={16} className="text-slate-900" />,
-                title: DELIVERY_COPY.PICKUP.title,
-                subtitle: DELIVERY_COPY.PICKUP.sub,
-                lines: [
-                    resolvedCollectionName || "Chưa chọn điểm nhận",
-                    resolvedCollectionAddress || "",
-                    resolvedCollectionId
-                        ? `Mã điểm nhận: ${resolvedCollectionId}`
-                        : "",
-                ].filter(Boolean),
-                map:
-                    typeof ctx.pickupLat === "number" &&
-                    typeof ctx.pickupLng === "number"
-                        ? googleMapsUrl(ctx.pickupLat, ctx.pickupLng)
-                        : "",
-                isReady: !!resolvedCollectionId,
-            };
-        }
-
-        return {
-            icon: <MapPin size={16} className="text-slate-900" />,
-            title: "Chưa thiết lập giao nhận",
-            subtitle: "Bạn cần chọn phương thức nhận hàng trước khi checkout",
-            lines: [
-                "Quay về trang chủ để chọn giao tận nơi hoặc nhận tại điểm hẹn.",
-            ],
-            map: "",
-            isReady: false,
-        };
-    }, [
-        ctx,
-        resolvedCollectionAddress,
-        resolvedCollectionId,
-        resolvedCollectionName,
-    ]);
-
-    const previewOrderStatus = ORDER_STATUS_META.Pending;
+    )
 
     const breadcrumbs = useMemo(
         () => getBreadcrumbsByPath(location.pathname),
         [location.pathname],
-    );
+    )
+
+    const updateQty = (lotId: string, nextQty: number) => {
+        const target = items.find((item) => item.lotId === lotId)
+        if (!target) return
+
+        if (nextQty <= 0) {
+            const next = items.filter((item) => item.lotId !== lotId)
+            setItems(next)
+            cartStorage.set(next)
+            return
+        }
+
+        const qty = Math.max(1, Math.min(99, nextQty))
+        const next = items.map((item) =>
+            item.lotId === lotId ? { ...item, qty } : item,
+        )
+
+        setItems(next)
+        cartStorage.set(next)
+    }
+
+    const removeItem = (lotId: string) => {
+        const next = items.filter((item) => item.lotId !== lotId)
+        setItems(next)
+        cartStorage.set(next)
+    }
+
+    const clearCart = () => {
+        if (!items.length) return
+        const ok = window.confirm("Bạn muốn xóa toàn bộ giỏ hàng?")
+        if (!ok) return
+
+        setItems([])
+        cartStorage.clear()
+    }
+
+    const handleCheckout = () => {
+        if (items.length === 0) return
+
+        if (!isContextReady) {
+            navigate("/")
+            return
+        }
+
+        navigate("/checkout")
+    }
 
     return (
-        <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
-            <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-5 lg:px-6">
-                <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
+        <div className="min-h-screen bg-slate-50">
+            <main className="mx-auto w-full max-w-[1120px] px-4 py-6 sm:px-5 lg:px-6">
+                <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
                     <button
                         type="button"
                         onClick={() => navigate("/")}
@@ -279,7 +148,6 @@ const CartPage: React.FC = () => {
                             <ChevronRight className="h-3.5 w-3.5" />
                             <span
                                 className={cn(
-                                    "transition",
                                     index === breadcrumbs.length - 1
                                         ? "font-medium text-slate-800"
                                         : "text-slate-500",
@@ -291,373 +159,244 @@ const CartPage: React.FC = () => {
                     ))}
                 </div>
 
-                <section className={cn(panel, "overflow-hidden")}>
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.10),transparent_35%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_30%)]" />
-                        <div className="relative flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
-                            <div className="flex items-start gap-4">
-                                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[20px] bg-slate-900 text-white shadow-sm">
-                                    <ShoppingCart size={20} />
+                <section className="mb-5 rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                                <ShoppingCart size={20} />
+                            </div>
+
+                            <div>
+                                <h1 className="text-2xl font-bold tracking-tight text-slate-950">
+                                    Giỏ hàng
+                                </h1>
+                                <p className="mt-1 max-w-2xl text-[13px] leading-6 text-slate-500">
+                                    Kiểm tra sản phẩm trước khi checkout. Phí
+                                    giao hàng, phí dịch vụ và mã giảm giá sẽ
+                                    được tính ở bước tiếp theo.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                    Sản phẩm
                                 </div>
-
-                                <div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h1 className="text-[22px] font-black tracking-tight text-slate-900">
-                                            Giỏ hàng của bạn
-                                        </h1>
-                                        <span
-                                            className={cn(
-                                                "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                                                previewOrderStatus.className,
-                                            )}
-                                        >
-                                            {previewOrderStatus.label}
-                                        </span>
-                                    </div>
-
-                                    <p className="mt-1 max-w-2xl text-[13px] leading-5 text-slate-600">
-                                        Kiểm tra lại sản phẩm, phương thức nhận
-                                        hàng và tổng tiền trước khi chuyển sang
-                                        checkout.
-                                    </p>
-
-                                    <div className="mt-3 flex flex-wrap gap-2">
-                                        <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700">
-                                            <ShoppingBag size={13} />
-                                            Bạn đang có {totalQty} sản phẩm
-                                        </div>
-                                    </div>
+                                <div className="mt-0.5 text-[14px] font-bold text-slate-900">
+                                    {totalQty}
                                 </div>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => navigate("/")}
-                                    className={ghostBtn}
-                                >
-                                    Tiếp tục mua sắm
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={clearCart}
-                                    disabled={items.length === 0}
-                                    className={cn(
-                                        dangerBtn,
-                                        items.length === 0 &&
-                                            "cursor-not-allowed opacity-50",
-                                    )}
-                                >
-                                    Xóa toàn bộ
-                                </button>
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                                <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                                    Tạm tính
+                                </div>
+                                <div className="mt-0.5 text-[14px] font-bold text-slate-900">
+                                    {money(subtotal)}
+                                </div>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <div className="mt-5 grid gap-5 xl:grid-cols-12">
-                    <section className="xl:col-span-8">
-                        {items.length === 0 ? (
-                            <div className={cn(panel, "p-7 sm:p-8")}>
-                                <div className="mx-auto max-w-md text-center">
-                                    <div className="mx-auto grid h-14 w-14 place-items-center rounded-[20px] bg-slate-100 text-slate-700">
-                                        <ShoppingCart size={22} />
-                                    </div>
+                {items.length === 0 ? (
+                    <section className="rounded-2xl border border-slate-200 bg-white px-6 py-14 text-center shadow-sm">
+                        <div className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-slate-100 text-slate-500">
+                            <ShoppingBag size={22} />
+                        </div>
 
-                                    <h2 className="mt-4 text-lg font-bold text-slate-900">
-                                        Giỏ hàng đang trống
+                        <h2 className="mt-4 text-lg font-bold text-slate-950">
+                            Giỏ hàng đang trống
+                        </h2>
+
+                        <p className="mx-auto mt-2 max-w-md text-[13px] leading-6 text-slate-500">
+                            Bạn chưa có sản phẩm nào trong giỏ. Quay về trang
+                            chủ để chọn các mặt hàng phù hợp nhé.
+                        </p>
+
+                        <button
+                            type="button"
+                            onClick={() => navigate("/")}
+                            className={cn(primaryBtn, "mt-5 gap-2")}
+                        >
+                            Mua sắm ngay
+                            <ArrowRight size={14} />
+                        </button>
+                    </section>
+                ) : (
+                    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                                <div>
+                                    <h2 className="text-[15px] font-bold text-slate-950">
+                                        Sản phẩm trong giỏ
                                     </h2>
-                                    <p className="mt-2 text-[13px] leading-5 text-slate-500">
-                                        Bạn chưa có sản phẩm nào trong giỏ. Quay
-                                        về trang chủ để chọn các mặt hàng phù
-                                        hợp nhé.
+                                    <p className="mt-0.5 text-[12px] text-slate-500">
+                                        {items.length} mặt hàng, {totalQty} sản
+                                        phẩm.
                                     </p>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => navigate("/")}
-                                        className={cn(primaryBtn, "mt-5 gap-2")}
-                                    >
-                                        Mua sắm ngay
-                                        <ArrowRight size={14} />
-                                    </button>
                                 </div>
+
+                                <button
+                                    type="button"
+                                    onClick={clearCart}
+                                    className="rounded-lg px-3 py-2 text-[12px] font-semibold text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                >
+                                    Xóa tất cả
+                                </button>
                             </div>
-                        ) : (
-                            <div className="space-y-3">
+
+                            <div className="divide-y divide-slate-100">
                                 {items.map((item) => {
-                                    const lineTotal = item.price * item.qty;
+                                    const lineTotal = item.price * item.qty
 
                                     return (
                                         <article
                                             key={item.lotId}
-                                            className={cn(
-                                                panel,
-                                                "overflow-hidden p-3.5 sm:p-4",
-                                            )}
+                                            className="grid gap-3 px-4 py-3.5 transition hover:bg-slate-50/70 md:grid-cols-[1fr_auto_auto_36px] md:items-center"
                                         >
-                                            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                                                <div className="flex min-w-0 gap-4">
-                                                    <div className="h-20 w-20 shrink-0 overflow-hidden rounded-[18px] border border-slate-200 bg-slate-100">
-                                                        {item.imageUrl ? (
-                                                            <img
-                                                                src={
-                                                                    item.imageUrl
-                                                                }
-                                                                alt={item.name}
-                                                                className="h-full w-full object-cover"
+                                            <div className="flex min-w-0 gap-3">
+                                                <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-100">
+                                                    {item.imageUrl ? (
+                                                        <img
+                                                            src={item.imageUrl}
+                                                            alt={item.name}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="grid h-full w-full place-items-center text-slate-400">
+                                                            <ShoppingBag
+                                                                size={18}
                                                             />
-                                                        ) : (
-                                                            <div className="grid h-full w-full place-items-center text-slate-400">
-                                                                <ShoppingBag
-                                                                    size={20}
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="min-w-0">
-                                                        <div className="flex flex-wrap items-center gap-2">
-                                                            <h3 className="line-clamp-2 text-[15px] font-bold text-slate-900">
-                                                                {item.name}
-                                                            </h3>
-
-                                                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[10px] font-semibold text-slate-600">
-                                                                Lot
-                                                            </span>
                                                         </div>
-
-                                                        <div className="mt-2 text-[11px] text-slate-500">
-                                                            <span className="font-medium text-slate-700">
-                                                                Mã lô:
-                                                            </span>{" "}
-                                                            {item.lotId}
-                                                        </div>
-
-                                                        <div className="mt-1 text-[11px] text-slate-500">
-                                                            <span className="font-medium text-slate-700">
-                                                                Mã sản phẩm:
-                                                            </span>{" "}
-                                                            {item.productId}
-                                                        </div>
-
-                                                        <div className="mt-3 flex flex-wrap items-end gap-x-3 gap-y-1">
-                                                            <div className="text-lg font-black tracking-tight text-rose-600">
-                                                                {money(
-                                                                    item.price,
-                                                                )}
-                                                            </div>
-                                                            <div className="text-[11px] font-medium text-slate-500">
-                                                                / đơn vị đặt
-                                                                hàng
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                                                    )}
                                                 </div>
 
-                                                <div className="flex flex-col items-stretch gap-3 sm:items-end">
+                                                <div className="min-w-0">
+                                                    <h3 className="line-clamp-2 text-[14px] font-semibold leading-5 text-slate-950">
+                                                        {item.name}
+                                                    </h3>
+
+                                                    <div className="mt-1 text-[12px] font-semibold text-rose-600">
+                                                        {money(item.price)}
+                                                        <span className="ml-1 font-normal text-slate-400">
+                                                            / đơn vị
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="mt-1 line-clamp-1 text-[11px] text-slate-400">
+                                                        Lô: {item.lotId}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center justify-between gap-3 md:justify-center">
+                                                <span className="text-[12px] font-medium text-slate-500 md:hidden">
+                                                    Số lượng
+                                                </span>
+
+                                                <div className="inline-flex items-center rounded-xl border border-slate-200 bg-white p-1">
                                                     <button
                                                         type="button"
                                                         onClick={() =>
-                                                            removeItem(
+                                                            updateQty(
                                                                 item.lotId,
+                                                                item.qty - 1,
                                                             )
                                                         }
-                                                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-[13px] font-semibold text-rose-700 transition hover:bg-rose-100"
+                                                        className={qtyBtn}
+                                                        aria-label="Giảm số lượng"
                                                     >
-                                                        <Trash2 size={14} />
-                                                        Xóa
+                                                        <Minus size={14} />
                                                     </button>
 
-                                                    <div className="inline-flex items-center gap-2 rounded-[18px] border border-slate-200 bg-slate-50 p-1.5">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                updateQty(
-                                                                    item.lotId,
-                                                                    item.qty -
-                                                                        1,
-                                                                )
-                                                            }
-                                                            className={qtyBtn}
-                                                            aria-label="Giảm số lượng"
-                                                        >
-                                                            <Minus size={15} />
-                                                        </button>
-
-                                                        <div className="grid min-w-[52px] place-items-center text-[13px] font-bold text-slate-900">
-                                                            {item.qty}
-                                                        </div>
-
-                                                        <button
-                                                            type="button"
-                                                            onClick={() =>
-                                                                updateQty(
-                                                                    item.lotId,
-                                                                    item.qty +
-                                                                        1,
-                                                                )
-                                                            }
-                                                            className={qtyBtn}
-                                                            aria-label="Tăng số lượng"
-                                                        >
-                                                            <Plus size={15} />
-                                                        </button>
+                                                    <div className="grid min-w-[38px] place-items-center text-[13px] font-bold text-slate-950">
+                                                        {item.qty}
                                                     </div>
 
-                                                    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-right">
-                                                        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                                                            Thành tiền
-                                                        </div>
-                                                        <div className="mt-1 text-base font-black text-slate-900">
-                                                            {money(lineTotal)}
-                                                        </div>
-                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            updateQty(
+                                                                item.lotId,
+                                                                item.qty + 1,
+                                                            )
+                                                        }
+                                                        className={qtyBtn}
+                                                        aria-label="Tăng số lượng"
+                                                    >
+                                                        <Plus size={14} />
+                                                    </button>
                                                 </div>
                                             </div>
+
+                                            <div className="flex items-center justify-between md:min-w-[98px] md:block md:text-right">
+                                                <span className="text-[12px] font-medium text-slate-500 md:hidden">
+                                                    Thành tiền
+                                                </span>
+                                                <div className="text-[14px] font-bold text-slate-950">
+                                                    {money(lineTotal)}
+                                                </div>
+                                            </div>
+
+                                            <div className="flex justify-end">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        removeItem(item.lotId)
+                                                    }
+                                                    className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                                                    aria-label="Xóa sản phẩm"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </article>
-                                    );
+                                    )
                                 })}
                             </div>
-                        )}
-                    </section>
+                        </section>
 
-                    <aside className="xl:col-span-4">
-                        <div className="sticky top-[88px] space-y-3">
-                            <section className={cn(panel, "p-4 sm:p-5")}>
-                                <div className="flex items-center justify-between gap-3">
+                        <aside className="lg:sticky lg:top-[88px] lg:self-start">
+                            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                            Tóm tắt đơn hàng
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                            Tóm tắt
                                         </div>
-                                        <h2 className="mt-1 text-lg font-black text-slate-900">
-                                            Thanh toán
+                                        <h2 className="mt-1 text-lg font-bold text-slate-950">
+                                            Giỏ hàng
                                         </h2>
                                     </div>
 
-                                    <div className="rounded-xl bg-slate-100 px-3 py-2 text-right">
-                                        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                            Tổng món hàng
-                                        </div>
-                                        <div className="text-[13px] font-bold text-slate-900">
-                                            {totalQty}
-                                        </div>
+                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                                        <ShoppingBag size={17} />
                                     </div>
                                 </div>
-
-                                <div className={cn(softPanel, "mt-4 p-4")}>
-                                    <div className="flex items-start gap-3">
-                                        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-slate-900 shadow-sm">
-                                            {deliverySummary.icon}
-                                        </div>
-
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div>
-                                                    <h3 className="text-[13px] font-bold text-slate-900">
-                                                        {deliverySummary.title}
-                                                    </h3>
-                                                </div>
-
-                                                {deliverySummary.map ? (
-                                                    <a
-                                                        href={
-                                                            deliverySummary.map
-                                                        }
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50"
-                                                    >
-                                                        <MapPin size={13} />
-                                                        Bản đồ
-                                                    </a>
-                                                ) : null}
-                                            </div>
-
-                                            <div className="mt-3 space-y-1.5 text-[11px] leading-5 text-slate-600">
-                                                {deliverySummary.lines.map(
-                                                    (line, index) => (
-                                                        <div key={index}>
-                                                            {line}
-                                                        </div>
-                                                    ),
-                                                )}
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                onClick={() => navigate("/")}
-                                                className={cn(
-                                                    ghostBtn,
-                                                    "mt-4 w-full",
-                                                )}
-                                            >
-                                                Đổi phương thức / vị trí
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {!isContextReady ? (
-                                    <div className="mt-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
-                                        <AlertCircle
-                                            size={16}
-                                            className="mt-0.5 shrink-0 text-amber-600"
-                                        />
-                                        <div>
-                                            <div className="text-[13px] font-semibold text-amber-800">
-                                                Thiếu thông tin giao nhận
-                                            </div>
-                                            <p className="mt-1 text-[11px] leading-5 text-amber-700">
-                                                Cart hiện chỉ kiểm tra context
-                                                giao/nhận cơ bản. Time slot,
-                                                addressId hoặc thông tin
-                                                checkout chi tiết sẽ hoàn tất ở
-                                                bước checkout.
-                                            </p>
-                                        </div>
-                                    </div>
-                                ) : null}
 
                                 <div className="mt-4 space-y-3">
                                     <div className="flex items-center justify-between text-[13px]">
                                         <span className="text-slate-500">
-                                            Tạm tính
+                                            Tổng sản phẩm
+                                        </span>
+                                        <span className="font-semibold text-slate-900">
+                                            {totalQty}
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center justify-between text-[13px]">
+                                        <span className="text-slate-500">
+                                            Tạm tính hàng hóa
                                         </span>
                                         <span className="font-semibold text-slate-900">
                                             {money(subtotal)}
                                         </span>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-[13px]">
-                                        <span className="text-slate-500">
-                                            {ctx.deliveryMethodId === "DELIVERY"
-                                                ? "Phí giao hàng"
-                                                : "Phí nhận tại điểm hẹn"}
-                                        </span>
-                                        <span className="font-semibold text-slate-900">
-                                            {money(deliveryFee)}
-                                        </span>
-                                    </div>
-
-                                    <div className="h-px bg-slate-200" />
-
-                                    <div className="flex items-end justify-between gap-3">
-                                        <div>
-                                            <div className="text-[13px] font-semibold text-slate-900">
-                                                Tổng thanh toán
-                                            </div>
-                                            <div className="mt-1 text-[11px] text-slate-500">
-                                                Chưa áp dụng mã giảm giá nào
-                                            </div>
-                                        </div>
-
-                                        <div className="text-right">
-                                            <div className="text-xl font-black tracking-tight text-rose-600">
-                                                {money(total)}
-                                            </div>
-                                        </div>
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[12px] leading-5 text-slate-500">
+                                        Phí giao hàng, phí dịch vụ và mã giảm
+                                        giá sẽ được tính ở bước checkout.
                                     </div>
                                 </div>
 
@@ -677,13 +416,34 @@ const CartPage: React.FC = () => {
                                     Tiếp tục đến checkout
                                     <ChevronRight size={14} />
                                 </button>
+
+                                {!isContextReady ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate("/")}
+                                        className={cn(
+                                            secondaryBtn,
+                                            "mt-3 w-full",
+                                        )}
+                                    >
+                                        Chọn phương thức nhận hàng
+                                    </button>
+                                ) : null}
+
+                                <button
+                                    type="button"
+                                    onClick={() => navigate("/")}
+                                    className={cn(textBtn, "mt-2 w-full")}
+                                >
+                                    Tiếp tục mua sắm
+                                </button>
                             </section>
-                        </div>
-                    </aside>
-                </div>
+                        </aside>
+                    </div>
+                )}
             </main>
         </div>
-    );
-};
+    )
+}
 
-export default CartPage;
+export default CartPage

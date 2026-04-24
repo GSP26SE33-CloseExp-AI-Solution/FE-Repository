@@ -13,6 +13,7 @@ import {
     ShoppingBag,
     Truck,
 } from "lucide-react"
+import toast from "react-hot-toast"
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
@@ -20,24 +21,21 @@ import { supermarketService } from "@/services/supermarket.service"
 import type { OrderDetails, RefundDetails } from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
 import { googleMapsUrl, lastOrderStorage, money } from "@/utils/orderStorage"
-import toast from "react-hot-toast"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
 
-const panel =
-    "rounded-[24px] border border-slate-200/70 bg-white shadow-[0_8px_24px_rgba(15,23,42,0.05)]"
-
-const softPanel =
-    "rounded-[20px] border border-slate-200/70 bg-slate-50/70"
-
 const primaryBtn =
-    "inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-slate-800 active:scale-[0.99]"
-
+    "inline-flex items-center justify-center rounded-xl bg-sky-600 px-4 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-sky-700 active:scale-[0.99]"
 const secondaryBtn =
-    "inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-[13px] font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 active:scale-[0.99]"
-
+    "inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-[0.99]"
 const muted = "text-slate-500"
+
+type OrderDetailsWithFees = OrderDetails & {
+    systemUsageFeeAmount?: number
+    serviceFee?: number
+    serviceFeeAmount?: number
+}
 
 const formatDateTime = (value?: string) => {
     if (!value) return "--"
@@ -131,10 +129,8 @@ const MyOrderDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true)
     const [canceling, setCanceling] = useState(false)
     const [error, setError] = useState("")
-    /** Địa chỉ điểm nhận từ GET /api/Orders/collection-points (public), khớp collectionId trên đơn */
-    const [pickupCatalogPoint, setPickupCatalogPoint] = useState<PickupPoint | null>(
-        null
-    )
+    const [pickupCatalogPoint, setPickupCatalogPoint] =
+        useState<PickupPoint | null>(null)
 
     useEffect(() => {
         let mounted = true
@@ -153,11 +149,27 @@ const MyOrderDetailPage: React.FC = () => {
                     pageSize: 20,
                 })
 
-                const fallbackLastOrder = lastOrderStorage.get?.() as OrderDetails | null | undefined
-                console.log("OrderDetailPage.fetchOrderDetails -> fallbackLastOrder:", fallbackLastOrder)
-                console.log("OrderDetailPage.fetchOrderDetails -> fallback orderId match:", fallbackLastOrder?.orderId === res.orderId)
-                console.log("OrderDetailPage.fetchOrderDetails -> api orderItems:", res?.orderItems)
-                console.log("OrderDetailPage.fetchOrderDetails -> fallback orderItems:", fallbackLastOrder?.orderItems)
+                const fallbackLastOrder = lastOrderStorage.get?.() as
+                    | OrderDetails
+                    | null
+                    | undefined
+
+                console.log(
+                    "OrderDetailPage.fetchOrderDetails -> fallbackLastOrder:",
+                    fallbackLastOrder,
+                )
+                console.log(
+                    "OrderDetailPage.fetchOrderDetails -> fallback orderId match:",
+                    fallbackLastOrder?.orderId === res.orderId,
+                )
+                console.log(
+                    "OrderDetailPage.fetchOrderDetails -> api orderItems:",
+                    res?.orderItems,
+                )
+                console.log(
+                    "OrderDetailPage.fetchOrderDetails -> fallback orderItems:",
+                    fallbackLastOrder?.orderItems,
+                )
 
                 const fallbackItems =
                     fallbackLastOrder?.orderId === res.orderId
@@ -173,9 +185,13 @@ const MyOrderDetailPage: React.FC = () => {
                 }
 
                 console.log("OrderDetailPage.fetchOrderDetails -> response:", res)
-                console.log("OrderDetailPage.fetchOrderDetails -> resolvedOrder:", resolvedOrder)
+                console.log(
+                    "OrderDetailPage.fetchOrderDetails -> resolvedOrder:",
+                    resolvedOrder,
+                )
 
                 if (!mounted) return
+
                 setOrder(resolvedOrder)
                 setRefunds(refundsRes.items || [])
             } catch (e: any) {
@@ -185,7 +201,8 @@ const MyOrderDetailPage: React.FC = () => {
                 setOrder(null)
                 setRefunds([])
                 setError(
-                    e?.response?.data?.message || "Không thể tải chi tiết đơn hàng."
+                    e?.response?.data?.message ||
+                    "Không thể tải chi tiết đơn hàng.",
                 )
             } finally {
                 if (mounted) setLoading(false)
@@ -205,7 +222,6 @@ const MyOrderDetailPage: React.FC = () => {
         }
     }, [orderId])
 
-    // Lấy tên + địa chỉ chuẩn từ catalog public (không dùng API admin)
     useEffect(() => {
         if (!order || order.deliveryType !== "PICKUP" || !order.collectionId) {
             setPickupCatalogPoint(null)
@@ -218,10 +234,12 @@ const MyOrderDetailPage: React.FC = () => {
             try {
                 const points = await supermarketService.getPickupPoints()
                 if (cancelled) return
+
                 const target = String(order.collectionId).toLowerCase()
                 const hit = points.find(
-                    (p) => p.pickupPointId.toLowerCase() === target
+                    (p) => p.pickupPointId.toLowerCase() === target,
                 )
+
                 setPickupCatalogPoint(hit ?? null)
             } catch {
                 if (!cancelled) setPickupCatalogPoint(null)
@@ -238,25 +256,29 @@ const MyOrderDetailPage: React.FC = () => {
             getBreadcrumbsByPath(location.pathname, {
                 dynamicLabel: order?.orderCode || "Chi tiết đơn hàng",
             }),
-        [location.pathname, order?.orderCode]
+        [location.pathname, order?.orderCode],
     )
 
     const statusMeta = useMemo(
         () => getOrderStatusMeta(order?.status),
-        [order?.status]
+        [order?.status],
     )
 
     const latestRefund = useMemo(() => {
         if (!refunds.length) return null
+
         return [...refunds].sort(
-            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+            (a, b) =>
+                new Date(b.createdAt).getTime() -
+                new Date(a.createdAt).getTime(),
         )[0]
     }, [refunds])
 
     const canCancelOrder = useMemo(() => {
         if (!order) return false
-        if (order.status !== "Paid") return false
+        if ((order.status || "").toLowerCase() !== "paid") return false
         if (!order.cancelDeadline) return false
+
         return new Date(order.cancelDeadline).getTime() >= Date.now()
     }, [order])
 
@@ -268,9 +290,36 @@ const MyOrderDetailPage: React.FC = () => {
                 item.lineTotal ??
                 item.totalPrice ??
                 item.unitPrice * item.quantity
+
             return sum + line
         }, 0)
     }, [order])
+
+    const serviceFeeAmount = useMemo(() => {
+        if (!order) return 0
+
+        const feeOrder = order as OrderDetailsWithFees
+
+        if (typeof feeOrder.systemUsageFeeAmount === "number") {
+            return feeOrder.systemUsageFeeAmount
+        }
+
+        if (typeof feeOrder.serviceFeeAmount === "number") {
+            return feeOrder.serviceFeeAmount
+        }
+
+        if (typeof feeOrder.serviceFee === "number") {
+            return feeOrder.serviceFee
+        }
+
+        const inferred =
+            (order.finalAmount || 0) -
+            subtotal -
+            (order.deliveryFee || 0) +
+            (order.discountAmount || 0)
+
+        return Math.max(0, inferred)
+    }, [order, subtotal])
 
     const deliveryTypeLabel = useMemo(() => {
         return order?.deliveryType === "DELIVERY"
@@ -284,6 +333,7 @@ const MyOrderDetailPage: React.FC = () => {
         if (order?.deliveryType === "PICKUP" && pickupCatalogPoint) {
             const lat = pickupCatalogPoint.lat
             const lng = pickupCatalogPoint.lng
+
             if (
                 Number.isFinite(lat) &&
                 Number.isFinite(lng) &&
@@ -299,7 +349,7 @@ const MyOrderDetailPage: React.FC = () => {
         if (!order?.deliveryNote) return ""
 
         const latLngMatch = order.deliveryNote.match(
-            /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i
+            /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/i,
         )
 
         if (!latLngMatch) return ""
@@ -308,14 +358,53 @@ const MyOrderDetailPage: React.FC = () => {
         const lng = Number(latLngMatch[2])
 
         if (Number.isNaN(lat) || Number.isNaN(lng)) return ""
+
         return googleMapsUrl(lat, lng)
     }, [order?.deliveryNote, order?.deliveryType, pickupCatalogPoint])
 
+    const handleCancelOrder = async () => {
+        if (!order || !canCancelOrder || canceling) return
+
+        const ok = window.confirm("Bạn chắc chắn muốn hủy đơn hàng này?")
+        if (!ok) return
+
+        const reasonRaw = window.prompt("Nhập lý do hủy đơn hàng (bắt buộc):")
+        if (reasonRaw === null) return
+
+        const reason = reasonRaw.trim()
+        if (!reason) {
+            toast.error("Chưa hủy đơn — cần nhập lý do.")
+            return
+        }
+
+        try {
+            setCanceling(true)
+            await orderService.markCanceled(order.orderId, reason)
+
+            const [nextOrder, nextRefunds] = await Promise.all([
+                orderService.getOrderDetails(order.orderId),
+                orderService.getMyRefunds({
+                    orderId: order.orderId,
+                    pageNumber: 1,
+                    pageSize: 20,
+                }),
+            ])
+
+            setOrder(nextOrder)
+            setRefunds(nextRefunds.items || [])
+            toast.success("Đã hủy đơn hàng.")
+        } catch (e: any) {
+            toast.error(e?.message || "Không thể hủy đơn hàng.")
+        } finally {
+            setCanceling(false)
+        }
+    }
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
-                <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-5 lg:px-6">
-                    <section className={cn(panel, "p-6")}>
+            <div className="min-h-screen bg-slate-50">
+                <main className="mx-auto w-full max-w-[1120px] px-4 py-6 sm:px-5 lg:px-6">
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div className="flex items-center gap-3 text-[13px] text-slate-600">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             Đang tải chi tiết đơn hàng...
@@ -328,16 +417,19 @@ const MyOrderDetailPage: React.FC = () => {
 
     if (error || !order) {
         return (
-            <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
-                <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-5 lg:px-6">
-                    <section className={cn(panel, "p-6")}>
+            <div className="min-h-screen bg-slate-50">
+                <main className="mx-auto w-full max-w-[1120px] px-4 py-6 sm:px-5 lg:px-6">
+                    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div className="flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
-                            <AlertCircle size={16} className="mt-0.5 shrink-0 text-rose-600" />
+                            <AlertCircle
+                                size={16}
+                                className="mt-0.5 shrink-0 text-rose-600"
+                            />
                             <div>
                                 <div className="text-[13px] font-semibold text-rose-800">
                                     Không tải được chi tiết đơn hàng
                                 </div>
-                                <p className="mt-1 text-[11px] leading-5 text-rose-700">
+                                <p className="mt-1 text-[12px] leading-5 text-rose-700">
                                     {error || "Không có dữ liệu đơn hàng."}
                                 </p>
                             </div>
@@ -366,42 +458,10 @@ const MyOrderDetailPage: React.FC = () => {
         )
     }
 
-    const handleCancelOrder = async () => {
-        if (!order || !canCancelOrder || canceling) return
-        const ok = window.confirm("Bạn chắc chắn muốn hủy đơn hàng này?")
-        if (!ok) return
-
-        const reasonRaw = window.prompt("Nhập lý do hủy đơn hàng (bắt buộc):")
-        if (reasonRaw === null) return
-        const reason = reasonRaw.trim()
-        if (!reason) {
-            toast.error("Chưa hủy đơn — cần nhập lý do.")
-            return
-        }
-
-        try {
-            setCanceling(true)
-            await orderService.markCanceled(order.orderId, reason)
-
-            const [nextOrder, nextRefunds] = await Promise.all([
-                orderService.getOrderDetails(order.orderId),
-                orderService.getMyRefunds({ orderId: order.orderId, pageNumber: 1, pageSize: 20 }),
-            ])
-
-            setOrder(nextOrder)
-            setRefunds(nextRefunds.items || [])
-            toast.success("Đã hủy đơn hàng.")
-        } catch (e: any) {
-            toast.error(e?.message || "Không thể hủy đơn hàng.")
-        } finally {
-            setCanceling(false)
-        }
-    }
-
     return (
-        <div className="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#f8fafc_35%,#eef2ff_100%)]">
-            <main className="mx-auto w-full max-w-[1180px] px-4 py-5 sm:px-5 lg:px-6">
-                <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
+        <div className="min-h-screen bg-slate-50">
+            <main className="mx-auto w-full max-w-[1120px] px-4 py-6 sm:px-5 lg:px-6">
+                <div className="mb-4 flex flex-wrap items-center gap-1.5 text-[13px] text-slate-500">
                     <button
                         type="button"
                         onClick={() => navigate("/")}
@@ -415,10 +475,9 @@ const MyOrderDetailPage: React.FC = () => {
                             <ChevronRight className="h-3.5 w-3.5" />
                             <span
                                 className={cn(
-                                    "transition",
                                     index === breadcrumbs.length - 1
                                         ? "font-medium text-slate-800"
-                                        : "text-slate-500"
+                                        : "text-slate-500",
                                 )}
                             >
                                 {crumb}
@@ -427,240 +486,318 @@ const MyOrderDetailPage: React.FC = () => {
                     ))}
                 </div>
 
-                <section className={cn(panel, "overflow-hidden")}>
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(99,102,241,0.10),transparent_35%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.08),transparent_30%)]" />
-                        <div className="relative flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between lg:p-6">
-                            <div className="flex items-start gap-4">
-                                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-[20px] bg-slate-900 text-white shadow-sm">
-                                    <ReceiptText size={20} />
-                                </div>
-
-                                <div>
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <h1 className="text-[22px] font-black tracking-tight text-slate-900">
-                                            Chi tiết đơn hàng
-                                        </h1>
-                                        <span
-                                            className={cn(
-                                                "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                                                statusMeta.className
-                                            )}
-                                        >
-                                            {statusMeta.label}
-                                        </span>
-                                    </div>
-
-                                    <p className="mt-1 text-[13px] leading-5 text-slate-600">
-                                        Mã đơn:{" "}
-                                        <span className="font-semibold text-slate-900">
-                                            {order.orderCode || order.orderId}
-                                        </span>
-                                    </p>
-
-                                    <div className="mt-2 text-[12px] text-slate-500">
-                                        Đặt lúc: {formatDateTime(order.orderDate || order.createdAt)}
-                                    </div>
-                                </div>
+                <section className="mb-5 rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                        <div className="flex items-start gap-3">
+                            <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                                <ReceiptText size={20} />
                             </div>
 
-                            <div className="flex flex-wrap gap-3">
-                                {canCancelOrder ? (
-                                    <button
-                                        type="button"
-                                        onClick={handleCancelOrder}
-                                        disabled={canceling}
-                                        className={secondaryBtn}
+                            <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <span
+                                        className={cn(
+                                            "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+                                            statusMeta.className,
+                                        )}
                                     >
-                                        {canceling ? <Loader2 size={14} className="animate-spin" /> : null}
-                                        Hủy đơn
-                                    </button>
-                                ) : null}
+                                        {statusMeta.label}
+                                    </span>
+                                </div>
+
+                                <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+                                    Chi tiết đơn hàng
+                                </h1>
+
+                                <p className="mt-1 text-[13px] leading-6 text-slate-500">
+                                    Mã đơn:{" "}
+                                    <span className="font-semibold text-slate-900">
+                                        {order.orderCode || order.orderId}
+                                    </span>
+                                </p>
+
+                                <div className="mt-1 text-[12px] text-slate-500">
+                                    Đặt lúc:{" "}
+                                    {formatDateTime(
+                                        order.orderDate || order.createdAt,
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            {canCancelOrder ? (
                                 <button
                                     type="button"
-                                    onClick={() => navigate("/orders")}
+                                    onClick={handleCancelOrder}
+                                    disabled={canceling}
                                     className={secondaryBtn}
                                 >
-                                    <ArrowLeft size={14} />
-                                    Quay lại đơn hàng
+                                    {canceling ? (
+                                        <Loader2
+                                            size={14}
+                                            className="animate-spin"
+                                        />
+                                    ) : null}
+                                    Hủy đơn
                                 </button>
+                            ) : null}
 
-                                <button
-                                    type="button"
-                                    onClick={() => navigate("/")}
-                                    className={primaryBtn}
-                                >
-                                    Tiếp tục mua sắm
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={() => navigate("/orders")}
+                                className={secondaryBtn}
+                            >
+                                <ArrowLeft size={14} />
+                                Quay lại đơn hàng
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => navigate("/")}
+                                className={primaryBtn}
+                            >
+                                Tiếp tục mua sắm
+                            </button>
                         </div>
                     </div>
                 </section>
 
-                <div className="mt-5 grid gap-5 xl:grid-cols-12">
-                    <section className="xl:col-span-8">
-                        <div className="space-y-5">
-                            <section className={cn(panel, "p-4 sm:p-5")}>
-                                <div className="flex items-center gap-3">
-                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700">
-                                        <ShoppingBag size={18} />
+                <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+                    <section className="space-y-4">
+                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                                <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                        Sản phẩm
                                     </div>
-
-                                    <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                            Sản phẩm
-                                        </div>
-                                        <h2 className="mt-1 text-lg font-black text-slate-900">
-                                            Các món trong đơn hàng
-                                        </h2>
-                                    </div>
+                                    <h2 className="mt-1 text-[15px] font-bold text-slate-950">
+                                        Các món trong đơn hàng
+                                    </h2>
                                 </div>
 
-                                <div className="mt-5 space-y-3">
-                                    {order.orderItems?.length ? (
-                                        order.orderItems.map((item) => {
-                                            const lineTotal =
-                                                item.lineTotal ??
-                                                item.totalPrice ??
-                                                item.unitPrice * item.quantity
+                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-50 text-slate-600 ring-1 ring-slate-200">
+                                    <ShoppingBag size={17} />
+                                </div>
+                            </div>
 
-                                            return (
-                                                <article
-                                                    key={item.orderItemId}
-                                                    className="flex items-center justify-between gap-3 rounded-[18px] border border-slate-200 bg-slate-50/70 p-3.5"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="truncate text-[13px] font-semibold text-slate-900">
-                                                            {item.productName || item.lotId}
-                                                        </div>
+                            <div className="divide-y divide-slate-100">
+                                {order.orderItems?.length ? (
+                                    order.orderItems.map((item) => {
+                                        const lineTotal =
+                                            item.lineTotal ??
+                                            item.totalPrice ??
+                                            item.unitPrice * item.quantity
 
-                                                        <div className="mt-1 text-[11px] text-slate-500">
-                                                            Mã lô: {item.lotId}
-                                                        </div>
-
-                                                        <div className="mt-1 text-[11px] text-slate-500">
-                                                            {money(item.unitPrice)} × {item.quantity}
-                                                        </div>
+                                        return (
+                                            <article
+                                                key={item.orderItemId}
+                                                className="grid gap-3 px-4 py-3.5 transition hover:bg-slate-50/70 md:grid-cols-[1fr_auto] md:items-center"
+                                            >
+                                                <div className="min-w-0">
+                                                    <div className="line-clamp-2 text-[14px] font-semibold leading-5 text-slate-950">
+                                                        {item.productName ||
+                                                            item.lotId}
                                                     </div>
 
-                                                    <div className="shrink-0 text-right">
-                                                        <div className="text-[13px] font-bold text-slate-900">
-                                                            {money(lineTotal)}
-                                                        </div>
+                                                    <div className="mt-1 text-[12px] text-slate-500">
+                                                        Mã lô: {item.lotId}
                                                     </div>
-                                                </article>
-                                            )
-                                        })
+
+                                                    <div className="mt-1 text-[12px] text-slate-500">
+                                                        {money(item.unitPrice)} ×{" "}
+                                                        {item.quantity}
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-right text-[14px] font-bold text-slate-950">
+                                                    {money(lineTotal)}
+                                                </div>
+                                            </article>
+                                        )
+                                    })
+                                ) : (
+                                    <div className="p-4 text-[13px] text-slate-500">
+                                        Đơn hàng hiện chưa có dữ liệu sản phẩm để
+                                        hiển thị.
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+
+                        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                        Giao nhận
+                                    </div>
+                                    <h2 className="mt-1 text-[15px] font-bold text-slate-950">
+                                        Thông tin nhận hàng
+                                    </h2>
+                                </div>
+
+                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                                    {order.deliveryType === "DELIVERY" ? (
+                                        <Truck size={17} />
                                     ) : (
-                                        <div className={cn(softPanel, "p-4 text-[13px] text-slate-500")}>
-                                            Đơn hàng hiện chưa có dữ liệu sản phẩm để hiển thị.
-                                        </div>
+                                        <MapPin size={17} />
                                     )}
                                 </div>
-                            </section>
+                            </div>
 
-                            <section className={cn(panel, "p-4 sm:p-5")}>
-                                <div className="flex items-center gap-3">
-                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700">
-                                        {order.deliveryType === "DELIVERY" ? (
-                                            <Truck size={18} />
-                                        ) : (
-                                            <MapPin size={18} />
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <div className="text-[11px] text-slate-500">
+                                        Phương thức
+                                    </div>
+                                    <div className="mt-1 text-[13px] font-semibold text-slate-950">
+                                        {deliveryTypeLabel}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <div className="text-[11px] text-slate-500">
+                                        Khung giờ
+                                    </div>
+                                    <div className="mt-1 text-[13px] font-semibold text-slate-950">
+                                        {order.timeSlotDisplay || "--"}
+                                    </div>
+                                </div>
+
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:col-span-2">
+                                    <div className="text-[11px] text-slate-500">
+                                        {order.deliveryType === "DELIVERY"
+                                            ? "Địa chỉ nhận hàng"
+                                            : "Điểm nhận hàng"}
+                                    </div>
+
+                                    <div className="mt-1 text-[13px] font-semibold leading-5 text-slate-950">
+                                        {order.deliveryType === "DELIVERY"
+                                            ? order.deliveryNote ||
+                                            "Chưa có địa chỉ giao hàng"
+                                            : pickupCatalogPoint?.name ||
+                                            order.collectionPointName ||
+                                            "Chưa có điểm nhận"}
+                                    </div>
+
+                                    {order.deliveryType === "PICKUP" &&
+                                        (pickupCatalogPoint?.address ||
+                                            order.deliveryNote) ? (
+                                        <div className="mt-2 text-[12px] leading-5 text-slate-500">
+                                            {pickupCatalogPoint?.address ||
+                                                order.deliveryNote}
+                                        </div>
+                                    ) : null}
+
+                                    {mapUrl ? (
+                                        <a
+                                            href={mapUrl}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
+                                        >
+                                            <MapPin size={13} />
+                                            Xem trên bản đồ
+                                        </a>
+                                    ) : null}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                        Thời gian
+                                    </div>
+                                    <h2 className="mt-1 text-[15px] font-bold text-slate-950">
+                                        Mốc thời gian đơn hàng
+                                    </h2>
+                                </div>
+
+                                <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-50 text-slate-600 ring-1 ring-slate-200">
+                                    <Clock3 size={17} />
+                                </div>
+                            </div>
+
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <div className="text-[11px] text-slate-500">
+                                        Ngày đặt
+                                    </div>
+                                    <div className="mt-1 text-[13px] font-semibold text-slate-950">
+                                        {formatDateTime(
+                                            order.orderDate || order.createdAt,
                                         )}
                                     </div>
+                                </div>
 
-                                    <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                            Giao nhận
-                                        </div>
-                                        <h2 className="mt-1 text-lg font-black text-slate-900">
-                                            Thông tin nhận hàng
-                                        </h2>
+                                <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <div className="text-[11px] text-slate-500">
+                                        Cập nhật gần nhất
+                                    </div>
+                                    <div className="mt-1 text-[13px] font-semibold text-slate-950">
+                                        {formatDateTime(order.updatedAt)}
                                     </div>
                                 </div>
 
-                                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                    <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">Phương thức</div>
-                                        <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                            {deliveryTypeLabel}
-                                        </div>
-                                    </div>
-
-                                    <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">Khung giờ</div>
-                                        <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                            {order.timeSlotDisplay || "--"}
-                                        </div>
-                                    </div>
-
-                                    <div className={cn(softPanel, "p-4 sm:col-span-2")}>
+                                {order.cancelDeadline ? (
+                                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 sm:col-span-2">
                                         <div className="text-[11px] text-slate-500">
-                                            {order.deliveryType === "DELIVERY"
-                                                ? "Địa chỉ nhận hàng"
-                                                : "Điểm nhận hàng"}
+                                            Hạn hủy đơn
                                         </div>
-
-                                        <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                            {order.deliveryType === "DELIVERY"
-                                                ? order.deliveryNote ||
-                                                "Chưa có địa chỉ giao hàng"
-                                                : pickupCatalogPoint?.name ||
-                                                order.collectionPointName ||
-                                                "Chưa có điểm nhận"}
+                                        <div className="mt-1 text-[13px] font-semibold text-slate-950">
+                                            {formatDateTime(
+                                                order.cancelDeadline,
+                                            )}
                                         </div>
-
-                                        {order.deliveryType === "PICKUP" &&
-                                            (pickupCatalogPoint?.address ||
-                                                order.deliveryNote) ? (
-                                            <div className="mt-2 text-[12px] text-slate-500">
-                                                {pickupCatalogPoint?.address ||
-                                                    order.deliveryNote}
-                                            </div>
-                                        ) : null}
-
-                                        {mapUrl ? (
-                                            <a
-                                                href={mapUrl}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 transition hover:bg-slate-50"
-                                            >
-                                                <MapPin size={13} />
-                                                Xem trên bản đồ
-                                            </a>
-                                        ) : null}
                                     </div>
-                                </div>
-                            </section>
-                        </div>
+                                ) : null}
+                            </div>
+                        </section>
                     </section>
 
-                    <aside className="xl:col-span-4">
-                        <div className="sticky top-[88px] space-y-4">
-                            <section className={cn(panel, "p-4 sm:p-5")}>
-                                <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-900">
-                                    <ShieldCheck className="text-sky-600" size={17} />
-                                    Trạng thái đơn hàng
+                    <aside className="lg:sticky lg:top-[88px] lg:self-start">
+                        <div className="space-y-4">
+                            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                            Trạng thái
+                                        </div>
+                                        <h2 className="mt-1 text-lg font-bold text-slate-950">
+                                            Đơn hàng
+                                        </h2>
+                                    </div>
+
+                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                                        <ShieldCheck size={17} />
+                                    </div>
                                 </div>
 
-                                <div className="mt-4 rounded-xl bg-white/70 p-4 ring-1 ring-slate-100">
-                                    <div className={cn("text-[11px]", muted)}>Trạng thái hiện tại</div>
+                                <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                    <div className="text-[11px] text-slate-500">
+                                        Trạng thái hiện tại
+                                    </div>
+
                                     <div
                                         className={cn(
                                             "mt-2 inline-flex rounded-full border px-3 py-1 text-[12px] font-semibold",
-                                            statusMeta.className
+                                            statusMeta.className,
                                         )}
                                     >
                                         {statusMeta.label}
                                     </div>
+
                                     <div className="mt-2 text-[12px] leading-5 text-slate-500">
                                         {statusMeta.note}
                                     </div>
                                 </div>
 
-                                <div className="mt-3 rounded-xl bg-white/70 p-4 ring-1 ring-slate-100">
-                                    <div className={cn("text-[11px]", muted)}>Thanh toán</div>
+                                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
+                                    <div className="text-[11px] text-emerald-700">
+                                        Thanh toán
+                                    </div>
                                     <div className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-emerald-700">
                                         <CreditCard size={14} />
                                         Đã thanh toán
@@ -668,24 +805,19 @@ const MyOrderDetailPage: React.FC = () => {
                                 </div>
                             </section>
 
-                            <section className={cn(panel, "p-4 sm:p-5")}>
-                                <div className="flex items-center justify-between gap-3">
+                            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                            Tóm tắt thanh toán
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                            Tóm tắt
                                         </div>
-                                        <h2 className="mt-1 text-lg font-black text-slate-900">
+                                        <h2 className="mt-1 text-lg font-bold text-slate-950">
                                             Thanh toán
                                         </h2>
                                     </div>
 
-                                    <div className="rounded-xl bg-slate-100 px-3 py-2 text-right">
-                                        <div className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                            Tổng món
-                                        </div>
-                                        <div className="text-[13px] font-bold text-slate-900">
-                                            {order.orderItems?.length || 0}
-                                        </div>
+                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-50 text-sky-700 ring-1 ring-sky-100">
+                                        <CreditCard size={17} />
                                     </div>
                                 </div>
 
@@ -698,16 +830,20 @@ const MyOrderDetailPage: React.FC = () => {
                                     </div>
 
                                     <div className="flex items-center justify-between text-[13px]">
-                                        <span className={muted}>Phí giao hàng</span>
+                                        <span className={muted}>
+                                            Phí giao hàng
+                                        </span>
                                         <span className="font-semibold text-slate-900">
                                             {money(order.deliveryFee || 0)}
                                         </span>
                                     </div>
 
                                     <div className="flex items-center justify-between text-[13px]">
-                                        <span className={muted}>Phí dịch vụ</span>
+                                        <span className={muted}>
+                                            Phí dịch vụ
+                                        </span>
                                         <span className="font-semibold text-slate-900">
-                                            {money(order.systemUsageFeeAmount || 0)}
+                                            {money(serviceFeeAmount)}
                                         </span>
                                     </div>
 
@@ -722,8 +858,11 @@ const MyOrderDetailPage: React.FC = () => {
 
                                     <div className="flex items-end justify-between gap-3">
                                         <div>
-                                            <div className="text-[13px] font-semibold text-slate-900">
+                                            <div className="text-[13px] font-semibold text-slate-950">
                                                 Tổng thanh toán
+                                            </div>
+                                            <div className="mt-0.5 text-[11px] text-slate-500">
+                                                Đã bao gồm phí dịch vụ
                                             </div>
                                         </div>
 
@@ -736,74 +875,47 @@ const MyOrderDetailPage: React.FC = () => {
                                 </div>
                             </section>
 
-                            <section className={cn(panel, "p-4 sm:p-5")}>
-                                <div className="flex items-center gap-3">
-                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700">
-                                        <Clock3 size={18} />
-                                    </div>
-
+                            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <h2 className="mt-1 text-lg font-black text-slate-900">
-                                            Thời gian đặt hàng
-                                        </h2>
-                                    </div>
-                                </div>
-
-                                <div className="mt-5 space-y-3">
-                                    <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">Ngày đặt</div>
-                                        <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                            {formatDateTime(order.orderDate || order.createdAt)}
+                                        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                            Hoàn tiền
                                         </div>
-                                    </div>
-
-                                    <div className={cn(softPanel, "p-4")}>
-                                        <div className="text-[11px] text-slate-500">Cập nhật gần nhất</div>
-                                        <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                            {formatDateTime(order.updatedAt)}
-                                        </div>
-                                    </div>
-
-                                    {order.cancelDeadline ? (
-                                        <div className={cn(softPanel, "p-4")}>
-                                            <div className="text-[11px] text-slate-500">Hạn hủy đơn</div>
-                                            <div className="mt-1 text-[13px] font-semibold text-slate-900">
-                                                {formatDateTime(order.cancelDeadline)}
-                                            </div>
-                                        </div>
-                                    ) : null}
-                                </div>
-                            </section>
-
-                            <section className={cn(panel, "p-4 sm:p-5")}>
-                                <div className="flex items-center gap-3">
-                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-100 text-slate-700">
-                                        <CreditCard size={18} />
-                                    </div>
-                                    <div>
-                                        <h2 className="mt-1 text-lg font-black text-slate-900">
+                                        <h2 className="mt-1 text-lg font-bold text-slate-950">
                                             Tiến trình hoàn tiền
                                         </h2>
                                     </div>
+
+                                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-slate-50 text-slate-600 ring-1 ring-slate-200">
+                                        <CreditCard size={17} />
+                                    </div>
                                 </div>
 
-                                <div className="mt-5">
+                                <div className="mt-4">
                                     {latestRefund ? (
-                                        <div className={cn(softPanel, "p-4")}>
-                                            <div className="text-[11px] text-slate-500">Trạng thái mới nhất</div>
-                                            <div className="mt-1 text-[13px] font-semibold text-slate-900">
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                            <div className="text-[11px] text-slate-500">
+                                                Trạng thái mới nhất
+                                            </div>
+                                            <div className="mt-1 text-[13px] font-semibold text-slate-950">
                                                 {latestRefund.status}
                                             </div>
-                                            <div className="mt-2 text-[12px] text-slate-600">
-                                                Số tiền: {money(latestRefund.amount)} - {latestRefund.reason}
+                                            <div className="mt-2 text-[12px] leading-5 text-slate-600">
+                                                Số tiền:{" "}
+                                                {money(latestRefund.amount)} -{" "}
+                                                {latestRefund.reason}
                                             </div>
                                             <div className="mt-2 text-[11px] text-slate-500">
-                                                Tạo lúc: {formatDateTime(latestRefund.createdAt)}
+                                                Tạo lúc:{" "}
+                                                {formatDateTime(
+                                                    latestRefund.createdAt,
+                                                )}
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className={cn(softPanel, "p-4 text-[13px] text-slate-500")}>
-                                            Chưa có yêu cầu hoàn tiền cho đơn hàng này.
+                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-[13px] leading-5 text-slate-500">
+                                            Chưa có yêu cầu hoàn tiền cho đơn
+                                            hàng này.
                                         </div>
                                     )}
                                 </div>
