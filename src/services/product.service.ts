@@ -4,17 +4,22 @@ import type {
     GetMySupermarketProductsQuery,
     GetProductsQuery,
     ProductDetailDto,
+    ProductEnumOptionDto,
     ProductListResult,
     ProductResponseDto,
-    UpdateProductRequestDto,
+    ProductUpdatePayload,
 } from "@/types/product.type"
 
-const unwrap = <T,>(response: ApiResponse<T>): T => {
+const unwrap = <T,>(response?: ApiResponse<T> | null): T => {
+    if (!response) {
+        throw new Error("Không nhận được phản hồi từ máy chủ")
+    }
+
     if (!response.success) {
         const message =
             response.errors?.filter(Boolean).join(", ") ||
             response.message ||
-            "Request failed"
+            "Yêu cầu thất bại"
 
         throw new Error(message)
     }
@@ -24,12 +29,15 @@ const unwrap = <T,>(response: ApiResponse<T>): T => {
 
 export const productService = {
     async getProducts(query?: GetProductsQuery): Promise<ProductListResult> {
-        const response = await axiosClient.get<ApiResponse<ProductListResult>>("/Products", {
-            params: {
-                pageNumber: query?.pageNumber ?? 1,
-                pageSize: query?.pageSize ?? 20,
+        const response = await axiosClient.get<ApiResponse<ProductListResult>>(
+            "/Products",
+            {
+                params: {
+                    pageNumber: query?.pageNumber ?? 1,
+                    pageSize: query?.pageSize ?? 20,
+                },
             },
-        })
+        )
 
         return unwrap(response.data)
     },
@@ -68,16 +76,46 @@ export const productService = {
         return unwrap(response.data)
     },
 
+    async getExpiryStatuses(): Promise<ProductEnumOptionDto[]> {
+        const response = await axiosClient.get<ApiResponse<ProductEnumOptionDto[]>>(
+            "/Products/expiry-statuses",
+        )
+
+        return unwrap(response.data)
+    },
+
+    async getWeightTypes(): Promise<ProductEnumOptionDto[]> {
+        const response = await axiosClient.get<ApiResponse<ProductEnumOptionDto[]>>(
+            "/Products/weight-types",
+        )
+
+        return unwrap(response.data)
+    },
+
     async updateProduct(
         productId: string,
-        payload: UpdateProductRequestDto,
-    ): Promise<string> {
+        payload: ProductUpdatePayload,
+    ): Promise<ApiResponse<string>> {
+        console.log("[productService.updateProduct] -> productId:", productId)
+        console.log("[productService.updateProduct] -> payload:", payload)
+
         const response = await axiosClient.put<ApiResponse<string>>(
             `/Products/${productId}`,
             payload,
         )
 
-        return unwrap(response.data)
+        console.log("[productService.updateProduct] -> raw response:", response.data)
+
+        if (!response.data?.success) {
+            const message =
+                response.data?.errors?.filter(Boolean).join(", ") ||
+                response.data?.message ||
+                "Không thể cập nhật sản phẩm"
+
+            throw new Error(message)
+        }
+
+        return response.data
     },
 
     async deleteProduct(productId: string): Promise<string> {

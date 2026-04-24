@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import {
     ArrowUpRight,
     Bot,
@@ -8,6 +8,7 @@ import {
     ClipboardList,
     Loader2,
     Package,
+    RefreshCcw,
     Sparkles,
     Store,
     Tag,
@@ -17,9 +18,9 @@ import toast from "react-hot-toast"
 
 import axiosClient from "@/utils/axiosClient"
 import { authStorage } from "@/utils/authStorage"
+import { productLotService } from "@/services/product-lot.service"
 import type { ApiResponse } from "@/types/api.types"
-
-import ProductEditModal from "./sProductEditModal"
+import type { ProductLotItem } from "@/types/product-lot.type"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")
@@ -33,53 +34,13 @@ type WorkflowSummaryDto = {
     totalCount: number
 }
 
-type ProductLotItem = {
-    lotId: string
-    productId: string
-    expiryDate?: string
-    manufactureDate?: string
-    quantity?: number
-    weight?: number
-    status?: string
-    unitId?: string
-    unitName?: string
-    unitType?: string
-    originalUnitPrice?: number
-    suggestedUnitPrice?: number
-    finalUnitPrice?: number
-    productName?: string
-    brand?: string
-    category?: string
-    barcode?: string
-    isFreshFood?: boolean
-    supermarketId?: string
-    supermarketName?: string
-    mainImageUrl?: string
-    totalImages?: number
-    productImages?: Array<{
-        productImageId?: string
-        productId?: string
-        imageUrl?: string
-        createdAt?: string
-    }>
-    expiryStatus?: number
-    daysRemaining?: number
-    hoursRemaining?: number
-    expiryStatusText?: string
-    ingredients?: string[]
-    nutritionFacts?: Record<string, string>
-    createdAt?: string
-    createdBy?: string
-    publishedBy?: string
-    publishedAt?: string
-}
-
-type PagedLotsResult = {
-    items: ProductLotItem[]
-    totalResult: number
-    page: number
-    pageSize: number
-}
+type LotStatusValue =
+    | "DRAFT"
+    | "VERIFIED"
+    | "PRICED"
+    | "PUBLISHED"
+    | "EXPIRED"
+    | "UNKNOWN"
 
 type StatCardProps = {
     title: string
@@ -88,14 +49,148 @@ type StatCardProps = {
     icon: React.ReactNode
 }
 
+type MiniPanelProps = {
+    title: string
+    subtitle?: string
+    children: React.ReactNode
+    rightNode?: React.ReactNode
+}
+
+const unwrap = <T,>(response?: ApiResponse<T> | null): T => {
+    if (!response) {
+        throw new Error("Không nhận được phản hồi từ máy chủ")
+    }
+
+    if (!response.success) {
+        const message =
+            response.errors?.filter(Boolean).join(", ") ||
+            response.message ||
+            "Yêu cầu thất bại"
+
+        throw new Error(message)
+    }
+
+    return response.data
+}
+
+const normalizeLotStatus = (status?: string | number | null): LotStatusValue => {
+    const normalized = String(status ?? "").trim().toLowerCase()
+
+    if (normalized === "0" || normalized === "draft") return "DRAFT"
+    if (normalized === "1" || normalized === "verified") return "VERIFIED"
+    if (
+        normalized === "2" ||
+        normalized === "priced" ||
+        normalized === "priceconfirmed"
+    ) {
+        return "PRICED"
+    }
+    if (normalized === "3" || normalized === "published") return "PUBLISHED"
+    if (normalized === "4" || normalized === "expired") return "EXPIRED"
+
+    return "UNKNOWN"
+}
+
+const formatNumber = (value?: number | null) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return "0"
+    return value.toLocaleString("vi-VN")
+}
+
+const formatMoney = (value?: number | null) => {
+    if (typeof value !== "number" || Number.isNaN(value)) return "—"
+    return `${value.toLocaleString("vi-VN")} đ`
+}
+
+const formatDate = (value?: string | null) => {
+    if (!value) return "—"
+
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return "—"
+
+    return date.toLocaleDateString("vi-VN")
+}
+
+const formatRelativeDateVN = (value?: string | null) => {
+    if (!value) return "Vừa cập nhật"
+
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return "Vừa cập nhật"
+
+    const diffMs = Date.now() - date.getTime()
+    const diffMinutes = Math.max(0, Math.floor(diffMs / 60000))
+    const diffHours = Math.floor(diffMinutes / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMinutes < 60) return `${diffMinutes || 1} phút trước`
+    if (diffHours < 24) return `${diffHours} giờ trước`
+
+    return `${diffDays} ngày trước`
+}
+
+const getLotUpdatedAt = (lot: ProductLotItem) =>
+    lot.publishedAt || lot.createdAt || lot.expiryDate || ""
+
+const isLotExpired = (lot: ProductLotItem) => {
+    if (lot.expiryStatus === 5) return true
+
+    if (typeof lot.daysRemaining === "number") {
+        return lot.daysRemaining < 0
+    }
+
+    if (!lot.expiryDate) return false
+
+    const expiry = new Date(lot.expiryDate)
+    if (Number.isNaN(expiry.getTime())) return false
+
+    return expiry.getTime() < Date.now()
+}
+
+const isLotNearExpiry = (lot: ProductLotItem) => {
+    if (isLotExpired(lot)) return false
+
+    if ([1, 2, 3].includes(Number(lot.expiryStatus))) return true
+
+    if (typeof lot.daysRemaining === "number") {
+        return lot.daysRemaining >= 0 && lot.daysRemaining <= 7
+    }
+
+    return false
+}
+
+const getExpiryText = (lot: ProductLotItem) => {
+    if (typeof lot.daysRemaining === "number") {
+        if (lot.daysRemaining < 0) return "Đã hết hạn"
+        if (lot.daysRemaining === 0) return "Hết hạn hôm nay"
+        return `Còn ${lot.daysRemaining} ngày`
+    }
+
+    if (typeof lot.hoursRemaining === "number") {
+        return `Còn ${lot.hoursRemaining} giờ`
+    }
+
+    return lot.expiryStatusText || "—"
+}
+
+const getPerformanceLabel = ({
+    publishedLots,
+    nearExpiryLots,
+    expiredLots,
+}: {
+    publishedLots: number
+    nearExpiryLots: number
+    expiredLots: number
+}) => {
+    if (expiredLots > 0) return "Cần xử lý"
+    if (nearExpiryLots >= 5) return "Cần chú ý"
+    if (publishedLots >= 20) return "Tốt"
+    if (publishedLots >= 8) return "Ổn định"
+
+    return "Đang khởi động"
+}
+
 const StatCard: React.FC<StatCardProps> = ({ title, value, hint, icon }) => {
     return (
-        <div
-            className={cn(
-                "rounded-2xl border border-slate-200 bg-white",
-                "p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md",
-            )}
-        >
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
             <div className="flex items-start justify-between gap-3">
                 <div>
                     <p className="text-xs font-medium text-slate-500">{title}</p>
@@ -111,13 +206,6 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, hint, icon }) => {
             </div>
         </div>
     )
-}
-
-type MiniPanelProps = {
-    title: string
-    subtitle?: string
-    children: React.ReactNode
-    rightNode?: React.ReactNode
 }
 
 const MiniPanel: React.FC<MiniPanelProps> = ({
@@ -144,158 +232,157 @@ const MiniPanel: React.FC<MiniPanelProps> = ({
     )
 }
 
-const unwrap = <T,>(response: ApiResponse<T>): T => {
-    if (!response.success) {
-        const message =
-            response.errors?.filter(Boolean).join(", ") ||
-            response.message ||
-            "Request failed"
-        throw new Error(message)
-    }
-
-    return response.data
-}
-
-const normalizeLotStatus = (status?: string | null) => {
-    const normalized = (status || "").trim().toLowerCase()
-
-    if (normalized === "draft") return "DRAFT"
-    if (normalized === "verified") return "VERIFIED"
-    if (normalized === "priced" || normalized === "priceconfirmed") return "PRICED"
-    if (normalized === "published") return "PUBLISHED"
-    if (normalized === "expired") return "EXPIRED"
-
-    return "UNKNOWN"
-}
-
-const formatRelativeDateVN = (value?: string) => {
-    if (!value) return "Vừa cập nhật"
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return "Vừa cập nhật"
-
-    const diffMs = Date.now() - date.getTime()
-    const diffMinutes = Math.max(0, Math.floor(diffMs / 60000))
-    const diffHours = Math.floor(diffMinutes / 60)
-    const diffDays = Math.floor(diffHours / 24)
-
-    if (diffMinutes < 60) return `${diffMinutes || 1} phút trước`
-    if (diffHours < 24) return `${diffHours} giờ trước`
-    return `${diffDays} ngày trước`
-}
-
 const SupermarketDashboard: React.FC = () => {
     const session = authStorage.get()
+
     const supermarketId =
         session?.user?.marketStaffInfo?.supermarket?.supermarketId ?? ""
+
     const supermarketName =
         session?.user?.marketStaffInfo?.supermarket?.name ?? "Siêu thị của bạn"
 
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [workflowSummary, setWorkflowSummary] = useState<WorkflowSummaryDto | null>(null)
     const [lots, setLots] = useState<ProductLotItem[]>([])
+    const [lotTotal, setLotTotal] = useState(0)
 
-    const loadDashboard = async () => {
-        if (!supermarketId) {
-            setWorkflowSummary(null)
-            setLots([])
-            setLoading(false)
-            return
-        }
+    const loadDashboard = useCallback(
+        async (silent = false) => {
+            if (!supermarketId) {
+                setWorkflowSummary(null)
+                setLots([])
+                setLotTotal(0)
+                setLoading(false)
+                return
+            }
 
-        setLoading(true)
+            if (silent) {
+                setRefreshing(true)
+            } else {
+                setLoading(true)
+            }
 
-        try {
-            const [workflowResponse, lotsResponse] = await Promise.all([
-                axiosClient.get<ApiResponse<WorkflowSummaryDto>>(
-                    `/Products/workflow-summary/${supermarketId}`,
-                ),
-                axiosClient.get<ApiResponse<PagedLotsResult>>("/Products/my-supermarket/lots", {
-                    params: {
+            try {
+                const [workflowResponse, lotsResponse] = await Promise.all([
+                    axiosClient.get<ApiResponse<WorkflowSummaryDto>>(
+                        `/Products/workflow-summary/${supermarketId}`,
+                    ),
+                    productLotService.getMySupermarketLots({
                         pageNumber: 1,
-                        pageSize: 100,
-                    },
-                }),
-            ])
+                        pageSize: 200,
+                    }),
+                ])
 
-            setWorkflowSummary(unwrap(workflowResponse.data))
-            setLots(unwrap(lotsResponse.data).items || [])
-        } catch (error) {
-            console.error("SupermarketDashboard.loadDashboard -> error:", error)
-            toast.error("Không tải được dashboard siêu thị")
-            setWorkflowSummary(null)
-            setLots([])
-        } finally {
-            setLoading(false)
-        }
-    }
+                const nextWorkflowSummary = unwrap(workflowResponse.data)
+                const nextLots = Array.isArray(lotsResponse.items)
+                    ? lotsResponse.items
+                    : []
+
+                setWorkflowSummary(nextWorkflowSummary)
+                setLots(nextLots)
+                setLotTotal(
+                    typeof lotsResponse.totalResult === "number"
+                        ? lotsResponse.totalResult
+                        : nextLots.length,
+                )
+            } catch (error) {
+                console.error("SupermarketDashboard.loadDashboard -> error:", error)
+                toast.error("Không tải được dashboard siêu thị")
+                setWorkflowSummary(null)
+                setLots([])
+                setLotTotal(0)
+            } finally {
+                setLoading(false)
+                setRefreshing(false)
+            }
+        },
+        [supermarketId],
+    )
 
     useEffect(() => {
         void loadDashboard()
-    }, [supermarketId])
+    }, [loadDashboard])
 
     const stats = useMemo(() => {
         const publishedLots = lots.filter(
             (item) => normalizeLotStatus(item.status) === "PUBLISHED",
         ).length
 
+        const pricedLots = lots.filter(
+            (item) => normalizeLotStatus(item.status) === "PRICED",
+        ).length
+
+        const draftLots = lots.filter(
+            (item) => normalizeLotStatus(item.status) === "DRAFT",
+        ).length
+
         const aiSuggestedLots = lots.filter(
             (item) =>
-                typeof item.suggestedUnitPrice === "number" && item.suggestedUnitPrice > 0,
+                typeof item.suggestedUnitPrice === "number" &&
+                item.suggestedUnitPrice > 0,
         ).length
 
-        const nearExpiryLots = lots.filter(
-            (item) => item.expiryStatus === 3 || item.expiryStatus === 4,
-        ).length
+        const nearExpiryLots = lots.filter(isLotNearExpiry).length
+        const expiredLots = lots.filter(isLotExpired).length
 
-        const expiringTodayLots = lots.filter((item) => item.expiryStatus === 4).length
+        const pendingWorkflowTasks =
+            (workflowSummary?.draftCount ?? 0) +
+            (workflowSummary?.verifiedCount ?? 0) +
+            (workflowSummary?.pricedCount ?? 0)
 
-        const pendingTasks =
-            (workflowSummary?.draftCount || 0) +
-            (workflowSummary?.verifiedCount || 0) +
-            (workflowSummary?.pricedCount || 0) +
-            expiringTodayLots
-
-        const totalWorkflow =
-            workflowSummary?.totalCount ??
-            workflowSummary?.draftCount ??
-            0
-
-        const performanceLabel =
-            publishedLots >= 20 ? "Tốt" : publishedLots >= 8 ? "Ổn định" : "Cần đẩy mạnh"
+        const pendingTasks = pendingWorkflowTasks + nearExpiryLots + expiredLots
 
         return {
+            totalLots: lotTotal,
+            loadedLots: lots.length,
             publishedLots,
+            pricedLots,
+            draftLots,
             aiSuggestedLots,
             nearExpiryLots,
-            expiringTodayLots,
+            expiredLots,
+            pendingWorkflowTasks,
             pendingTasks,
-            totalWorkflow,
-            performanceLabel,
+            workflowTotal: workflowSummary?.totalCount ?? 0,
+            workflowPublished: workflowSummary?.publishedCount ?? 0,
+            performanceLabel: getPerformanceLabel({
+                publishedLots,
+                nearExpiryLots,
+                expiredLots,
+            }),
         }
-    }, [lots, workflowSummary])
+    }, [lots, lotTotal, workflowSummary])
 
     const trendData = useMemo(() => {
-        const dayLabels = ["T1", "T2", "T3", "T4", "T5", "T6", "T7"]
-        const today = new Date()
-        const buckets = dayLabels.map((label) => ({
-            label,
-            value: 0,
-        }))
+        const now = new Date()
+
+        const buckets = Array.from({ length: 7 }, (_, index) => {
+            const date = new Date(now)
+            date.setDate(now.getDate() - (6 - index))
+
+            return {
+                key: date.toISOString().slice(0, 10),
+                label: date.toLocaleDateString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                }),
+                value: 0,
+            }
+        })
 
         lots.forEach((lot) => {
-            if (!lot.createdAt) return
-            const createdAt = new Date(lot.createdAt)
-            if (Number.isNaN(createdAt.getTime())) return
+            const rawDate = lot.createdAt || lot.publishedAt
+            if (!rawDate) return
 
-            const diffDays = Math.floor(
-                (today.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
-            )
+            const date = new Date(rawDate)
+            if (Number.isNaN(date.getTime())) return
 
-            if (diffDays >= 0 && diffDays < 7) {
-                const bucketIndex = 6 - diffDays
-                if (buckets[bucketIndex]) {
-                    buckets[bucketIndex].value += 1
-                }
+            const key = date.toISOString().slice(0, 10)
+            const bucket = buckets.find((item) => item.key === key)
+
+            if (bucket) {
+                bucket.value += 1
             }
         })
 
@@ -303,80 +390,103 @@ const SupermarketDashboard: React.FC = () => {
 
         return buckets.map((item) => ({
             ...item,
-            heightPercent: Math.max(12, Math.round((item.value / maxValue) * 100)),
+            heightPercent: item.value > 0
+                ? Math.max(14, Math.round((item.value / maxValue) * 100))
+                : 6,
         }))
     }, [lots])
 
     const priorityItems = useMemo(() => {
-        const items = []
+        const items: Array<{
+            title: string
+            text: string
+            tone: "rose" | "amber" | "emerald" | "slate"
+        }> = []
 
-        if ((workflowSummary?.pricedCount || 0) > 0) {
+        if (stats.expiredLots > 0) {
             items.push({
-                title: "Xem lại các lot đã chốt giá",
-                text: `${workflowSummary?.pricedCount || 0} workflow đang ở bước priced, có thể cần publish tiếp.`,
+                title: "Xử lý lô đã hết hạn",
+                text: `Có ${stats.expiredLots} lô đã hết hạn. Nên kiểm tra và ẩn/ngừng bán nếu cần.`,
+                tone: "rose",
             })
         }
 
         if (stats.nearExpiryLots > 0) {
             items.push({
-                title: "Ưu tiên xử lý lô sắp hết hạn",
-                text: `Hiện có ${stats.nearExpiryLots} lot ở trạng thái cận hạn hoặc hết hạn hôm nay.`,
+                title: "Ưu tiên lô sắp hết hạn",
+                text: `Có ${stats.nearExpiryLots} lô đang gần hạn. Nên kiểm tra giá bán và tồn kho.`,
+                tone: "amber",
             })
         }
 
-        if ((workflowSummary?.draftCount || 0) > 0) {
+        if ((workflowSummary?.pricedCount ?? 0) > 0) {
             items.push({
-                title: "Hoàn tất các sản phẩm còn ở draft",
-                text: `${workflowSummary?.draftCount || 0} workflow vẫn còn ở bước draft.`,
+                title: "Publish sản phẩm đã chốt giá",
+                text: `${workflowSummary?.pricedCount ?? 0} sản phẩm đang ở trạng thái Priced trong workflow.`,
+                tone: "emerald",
+            })
+        }
+
+        if ((workflowSummary?.draftCount ?? 0) > 0) {
+            items.push({
+                title: "Hoàn tất sản phẩm nháp",
+                text: `${workflowSummary?.draftCount ?? 0} sản phẩm còn ở Draft, cần xác minh để đi tiếp.`,
+                tone: "slate",
             })
         }
 
         if (items.length === 0) {
             items.push({
-                title: "Chưa có đầu việc nổi bật",
-                text: "Hiện chưa thấy mục nào cần ưu tiên gấp từ dữ liệu lot/workflow.",
+                title: "Chưa có đầu việc gấp",
+                text: "Dữ liệu hiện tại chưa phát hiện lô cận hạn hoặc workflow cần xử lý ngay.",
+                tone: "emerald",
             })
         }
 
-        return items.slice(0, 3)
-    }, [workflowSummary, stats.nearExpiryLots])
+        return items.slice(0, 4)
+    }, [stats.expiredLots, stats.nearExpiryLots, workflowSummary])
+
+    const recentLots = useMemo(() => {
+        return [...lots]
+            .sort((a, b) => {
+                const timeA = new Date(getLotUpdatedAt(a) || 0).getTime()
+                const timeB = new Date(getLotUpdatedAt(b) || 0).getTime()
+
+                return timeB - timeA
+            })
+            .slice(0, 6)
+    }, [lots])
 
     const recentActivities = useMemo(() => {
-        const sorted = [...lots]
-            .sort((a, b) => {
-                const timeA = new Date(b.createdAt || b.publishedAt || 0).getTime()
-                const timeB = new Date(a.createdAt || a.publishedAt || 0).getTime()
-                return timeA - timeB
-            })
-            .slice(0, 5)
-
-        if (sorted.length === 0) {
+        if (recentLots.length === 0) {
             return [
                 {
                     title: "Chưa có hoạt động gần đây",
+                    subtitle: "Chưa tìm thấy dữ liệu lô hàng từ API hiện tại.",
                     time: "Vừa cập nhật",
                 },
             ]
         }
 
-        return sorted.map((item) => {
+        return recentLots.map((item) => {
             const status = normalizeLotStatus(item.status)
+            const productName = item.productName || "Một lô sản phẩm"
 
-            let title = `Lot ${item.productName || item.lotId} vừa được cập nhật`
-            if (status === "PUBLISHED") {
-                title = `${item.productName || "Một lot sản phẩm"} đã được publish`
-            } else if (status === "PRICED") {
-                title = `${item.productName || "Một lot sản phẩm"} đã được chốt giá`
-            } else if (status === "DRAFT") {
-                title = `${item.productName || "Một lot sản phẩm"} đang ở bước draft`
-            }
+            let title = `${productName} vừa được cập nhật`
+            if (status === "PUBLISHED") title = `${productName} đang bán`
+            if (status === "PRICED") title = `${productName} đã chốt giá`
+            if (status === "DRAFT") title = `${productName} đang ở bản nháp`
+            if (isLotExpired(item)) title = `${productName} đã hết hạn`
 
             return {
                 title,
-                time: formatRelativeDateVN(item.publishedAt || item.createdAt),
+                subtitle: `${item.category || "Chưa có danh mục"} • ${formatMoney(
+                    item.finalUnitPrice ?? item.sellingUnitPrice ?? item.suggestedUnitPrice,
+                )}`,
+                time: formatRelativeDateVN(getLotUpdatedAt(item)),
             }
         })
-    }, [lots])
+    }, [recentLots])
 
     if (loading) {
         return (
@@ -407,84 +517,101 @@ const SupermarketDashboard: React.FC = () => {
                             </h1>
 
                             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                                Theo dõi nhanh tình trạng sản phẩm, workflow, lot gần hết hạn và
-                                các mục nên ưu tiên xử lý của {supermarketName}.
+                                Theo dõi tình trạng lô hàng, workflow sản phẩm, gợi ý giá AI và
+                                các việc cần ưu tiên của {supermarketName}.
                             </p>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:min-w-[400px]">
-                            {[
-                                {
-                                    label: "Gợi ý giá AI",
-                                    value: `${stats.aiSuggestedLots} lot`,
-                                    icon: <Bot size={15} />,
-                                },
-                                {
-                                    label: "Sắp hết hạn",
-                                    value: `${stats.nearExpiryLots} lot`,
-                                    icon: <CircleAlert size={15} />,
-                                },
-                                {
-                                    label: "Đã publish",
-                                    value: `${stats.publishedLots} lot`,
-                                    icon: <Tag size={15} />,
-                                },
-                                {
-                                    label: "Tình trạng",
-                                    value: stats.performanceLabel,
-                                    icon: <TrendingUp size={15} />,
-                                },
-                            ].map((item) => (
-                                <div
-                                    key={item.label}
-                                    className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
-                                >
-                                    <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-700">
-                                        {item.icon}
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 lg:min-w-[430px]">
+                                {[
+                                    {
+                                        label: "Tổng lô",
+                                        value: `${formatNumber(stats.totalLots)} lot`,
+                                        icon: <Package size={15} />,
+                                    },
+                                    {
+                                        label: "Gợi ý AI",
+                                        value: `${formatNumber(stats.aiSuggestedLots)} lot`,
+                                        icon: <Bot size={15} />,
+                                    },
+                                    {
+                                        label: "Cận hạn",
+                                        value: `${formatNumber(stats.nearExpiryLots)} lot`,
+                                        icon: <CircleAlert size={15} />,
+                                    },
+                                    {
+                                        label: "Tình trạng",
+                                        value: stats.performanceLabel,
+                                        icon: <TrendingUp size={15} />,
+                                    },
+                                ].map((item) => (
+                                    <div
+                                        key={item.label}
+                                        className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"
+                                    >
+                                        <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-white text-slate-700">
+                                            {item.icon}
+                                        </div>
+                                        <p className="text-[11px] font-medium text-slate-500">
+                                            {item.label}
+                                        </p>
+                                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                                            {item.value}
+                                        </p>
                                     </div>
-                                    <p className="text-[11px] font-medium text-slate-500">
-                                        {item.label}
-                                    </p>
-                                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                                        {item.value}
-                                    </p>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => void loadDashboard(true)}
+                                disabled={refreshing}
+                                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                <RefreshCcw
+                                    className={cn(
+                                        "h-4 w-4",
+                                        refreshing ? "animate-spin" : "",
+                                    )}
+                                />
+                                Làm mới
+                            </button>
                         </div>
                     </div>
                 </section>
 
                 <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <StatCard
-                        title="Sản phẩm đang hiển thị"
-                        value={String(stats.publishedLots)}
-                        hint="Các lot đang ở trạng thái published."
-                        icon={<Package size={20} />}
+                        title="Lot đang bán"
+                        value={formatNumber(stats.publishedLots)}
+                        hint="Đếm từ danh sách lot có trạng thái Published."
+                        icon={<Tag size={20} />}
                     />
                     <StatCard
-                        title="Gợi ý giá AI"
-                        value={String(stats.aiSuggestedLots)}
-                        hint="Các lot hiện có suggestedUnitPrice."
-                        icon={<Sparkles size={20} />}
+                        title="Workflow cần xử lý"
+                        value={formatNumber(stats.pendingWorkflowTasks)}
+                        hint="Draft + Verified + Priced từ workflow summary."
+                        icon={<ClipboardList size={20} />}
                     />
                     <StatCard
                         title="Lô sắp hết hạn"
-                        value={String(stats.nearExpiryLots)}
-                        hint="Các lot cận hạn hoặc hết hạn hôm nay."
+                        value={formatNumber(stats.nearExpiryLots)}
+                        hint="Bao gồm hết hạn hôm nay, sắp hết hạn và hạn ngắn."
                         icon={<CalendarClock size={20} />}
                     />
                     <StatCard
-                        title="Tác vụ cần xử lý"
-                        value={String(stats.pendingTasks)}
-                        hint="Tổng draft, verified, priced và lot hết hạn hôm nay."
-                        icon={<ClipboardList size={20} />}
+                        title="Lô đã hết hạn"
+                        value={formatNumber(stats.expiredLots)}
+                        hint="Các lô có expiryStatus Expired hoặc quá hạn."
+                        icon={<CircleAlert size={20} />}
                     />
                 </section>
 
                 <section className="grid grid-cols-1 gap-5 xl:grid-cols-[1.2fr_0.8fr]">
                     <MiniPanel
                         title="Xu hướng tạo lot"
-                        subtitle="Nhóm theo createdAt trong 7 ngày gần đây từ dữ liệu lot hiện có."
+                        subtitle="Tính theo createdAt/publishedAt của tối đa 200 lot gần nhất."
                         rightNode={
                             <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-medium text-slate-500">
                                 <ChartColumn size={13} />
@@ -495,13 +622,21 @@ const SupermarketDashboard: React.FC = () => {
                         <div className="flex h-[220px] items-end gap-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 p-4">
                             {trendData.map((item) => (
                                 <div
-                                    key={item.label}
+                                    key={item.key}
                                     className="flex flex-1 flex-col items-center gap-2"
                                 >
-                                    <div
-                                        className="w-full rounded-t-xl rounded-b-sm bg-slate-300"
-                                        style={{ height: `${item.heightPercent}%` }}
-                                    />
+                                    <div className="flex min-h-[120px] w-full items-end">
+                                        <div
+                                            className={cn(
+                                                "w-full rounded-t-xl rounded-b-sm transition-all",
+                                                item.value > 0
+                                                    ? "bg-emerald-400"
+                                                    : "bg-slate-200",
+                                            )}
+                                            style={{ height: `${item.heightPercent}%` }}
+                                            title={`${item.value} lot`}
+                                        />
+                                    </div>
                                     <span className="text-[10px] font-medium text-slate-400">
                                         {item.label}
                                     </span>
@@ -512,13 +647,22 @@ const SupermarketDashboard: React.FC = () => {
 
                     <MiniPanel
                         title="Nhắc việc ưu tiên"
-                        subtitle="Suy ra từ workflow summary và các lot gần hết hạn."
+                        subtitle="Suy ra từ workflow summary và danh sách lot của siêu thị."
                     >
                         <div className="space-y-2.5">
                             {priorityItems.map((item) => (
                                 <div
                                     key={item.title}
-                                    className="rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3"
+                                    className={cn(
+                                        "rounded-xl border px-3.5 py-3",
+                                        item.tone === "rose"
+                                            ? "border-rose-200 bg-rose-50"
+                                            : item.tone === "amber"
+                                                ? "border-amber-200 bg-amber-50"
+                                                : item.tone === "emerald"
+                                                    ? "border-emerald-200 bg-emerald-50"
+                                                    : "border-slate-200 bg-slate-50",
+                                    )}
                                 >
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
@@ -543,7 +687,7 @@ const SupermarketDashboard: React.FC = () => {
                 <section className="grid grid-cols-1 gap-5 xl:grid-cols-2">
                     <MiniPanel
                         title="Tình trạng workflow sản phẩm"
-                        subtitle="Dữ liệu thật từ /api/Products/workflow-summary/{supermarketId}."
+                        subtitle="Dữ liệu từ workflow summary theo siêu thị hiện tại."
                     >
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
                             {[
@@ -576,7 +720,7 @@ const SupermarketDashboard: React.FC = () => {
                                         {item.label}
                                     </p>
                                     <p className="mt-2 text-xl font-bold text-slate-900">
-                                        {item.value}
+                                        {formatNumber(item.value)}
                                     </p>
                                 </div>
                             ))}
@@ -587,27 +731,24 @@ const SupermarketDashboard: React.FC = () => {
                                 {
                                     label: "Draft",
                                     value: workflowSummary?.draftCount ?? 0,
-                                    total: workflowSummary?.totalCount ?? 0,
                                 },
                                 {
                                     label: "Verified",
                                     value: workflowSummary?.verifiedCount ?? 0,
-                                    total: workflowSummary?.totalCount ?? 0,
                                 },
                                 {
                                     label: "Priced",
                                     value: workflowSummary?.pricedCount ?? 0,
-                                    total: workflowSummary?.totalCount ?? 0,
                                 },
                                 {
                                     label: "Published",
                                     value: workflowSummary?.publishedCount ?? 0,
-                                    total: workflowSummary?.totalCount ?? 0,
                                 },
                             ].map((item) => {
+                                const total = workflowSummary?.totalCount ?? 0
                                 const percent =
-                                    item.total > 0
-                                        ? Math.max(6, Math.round((item.value / item.total) * 100))
+                                    total > 0
+                                        ? Math.max(6, Math.round((item.value / total) * 100))
                                         : 0
 
                                 return (
@@ -615,12 +756,12 @@ const SupermarketDashboard: React.FC = () => {
                                         <div className="flex items-center justify-between text-xs">
                                             <span className="text-slate-500">{item.label}</span>
                                             <span className="font-medium text-slate-700">
-                                                {item.value}
+                                                {formatNumber(item.value)}
                                             </span>
                                         </div>
                                         <div className="h-2 rounded-full bg-slate-100">
                                             <div
-                                                className="h-2 rounded-full bg-slate-300"
+                                                className="h-2 rounded-full bg-emerald-400"
                                                 style={{ width: `${percent}%` }}
                                             />
                                         </div>
@@ -632,15 +773,18 @@ const SupermarketDashboard: React.FC = () => {
 
                     <MiniPanel
                         title="Hoạt động gần đây"
-                        subtitle="Tạo từ dữ liệu createdAt / publishedAt của lot."
+                        subtitle="Từ createdAt / publishedAt của lot trả về từ API."
                     >
                         <div className="divide-y divide-slate-100 rounded-2xl border border-slate-200">
                             {recentActivities.map((item, index) => (
                                 <div key={index} className="flex items-start gap-3 px-4 py-3">
-                                    <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-300" />
+                                    <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-emerald-400" />
                                     <div className="min-w-0">
                                         <p className="text-sm leading-6 text-slate-800">
                                             {item.title}
+                                        </p>
+                                        <p className="text-xs leading-5 text-slate-500">
+                                            {item.subtitle}
                                         </p>
                                         <p className="mt-0.5 text-[11px] text-slate-400">
                                             {item.time}
@@ -651,6 +795,75 @@ const SupermarketDashboard: React.FC = () => {
                         </div>
                     </MiniPanel>
                 </section>
+
+                <MiniPanel
+                    title="Lô cần chú ý"
+                    subtitle="Ưu tiên hiển thị lô đã hết hạn hoặc sắp hết hạn."
+                    rightNode={
+                        <div className="text-[11px] font-medium text-slate-500">
+                            Đang đọc {formatNumber(stats.loadedLots)} / {formatNumber(stats.totalLots)} lot
+                        </div>
+                    }
+                >
+                    <div className="overflow-hidden rounded-2xl border border-slate-200">
+                        <div className="grid grid-cols-[minmax(0,1.2fr)_110px_110px_120px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                            <div>Sản phẩm</div>
+                            <div>Trạng thái</div>
+                            <div>Hạn dùng</div>
+                            <div className="text-right">Giá bán</div>
+                        </div>
+
+                        {recentLots.length === 0 ? (
+                            <div className="px-4 py-8 text-center text-sm text-slate-500">
+                                Chưa có dữ liệu lô hàng.
+                            </div>
+                        ) : (
+                            recentLots
+                                .filter((lot) => isLotNearExpiry(lot) || isLotExpired(lot))
+                                .slice(0, 5)
+                                .map((lot) => (
+                                    <div
+                                        key={lot.lotId}
+                                        className="grid grid-cols-[minmax(0,1.2fr)_110px_110px_120px] gap-3 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0"
+                                    >
+                                        <div className="min-w-0">
+                                            <div className="truncate font-semibold text-slate-900">
+                                                {lot.productName || "—"}
+                                            </div>
+                                            <div className="mt-0.5 truncate text-xs text-slate-500">
+                                                {lot.brand || lot.category || lot.barcode || "—"}
+                                            </div>
+                                        </div>
+
+                                        <div className="text-xs font-medium text-slate-600">
+                                            {normalizeLotStatus(lot.status)}
+                                        </div>
+
+                                        <div
+                                            className={cn(
+                                                "text-xs font-semibold",
+                                                isLotExpired(lot)
+                                                    ? "text-rose-600"
+                                                    : isLotNearExpiry(lot)
+                                                        ? "text-amber-600"
+                                                        : "text-slate-500",
+                                            )}
+                                        >
+                                            {getExpiryText(lot)}
+                                        </div>
+
+                                        <div className="text-right text-sm font-semibold text-emerald-700">
+                                            {formatMoney(
+                                                lot.finalUnitPrice ??
+                                                lot.sellingUnitPrice ??
+                                                lot.suggestedUnitPrice,
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                        )}
+                    </div>
+                </MiniPanel>
             </div>
         </div>
     )

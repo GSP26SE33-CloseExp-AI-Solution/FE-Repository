@@ -2,7 +2,6 @@ import React from "react"
 import {
     Camera,
     CheckCircle2,
-    Image as ImageIcon,
     Loader2,
     Sparkles,
     Trash2,
@@ -18,7 +17,6 @@ import type {
     WorkflowAnalyzeImageResultDto,
     WorkflowNextAction,
 } from "@/types/product-ai-workflow.type"
-import { CATEGORY_OPTIONS } from "@/types/product-ai-workflow.type"
 import {
     CheckboxField,
     cn,
@@ -28,6 +26,21 @@ import {
     SelectField,
     TextareaField,
 } from "./WorkflowShared"
+
+type ProductCategoryOption = {
+    categoryId: string
+    label: string
+    value: string
+    isFreshFood: boolean
+}
+
+type ProductUnitOption = {
+    unitId: string
+    label: string
+    value: string
+    unitType?: string
+    unitSymbol?: string
+}
 
 type Props = {
     mode: ProductWorkflowMode
@@ -43,6 +56,8 @@ type Props = {
     fileInputRef: React.RefObject<HTMLInputElement | null>
     videoRef: React.RefObject<HTMLVideoElement | null>
     canvasRef: React.RefObject<HTMLCanvasElement | null>
+    categoryOptions: ProductCategoryOption[]
+    unitOptions: ProductUnitOption[]
     onChooseReference: (product: ExistingProductSummaryDto) => void
     onChange: (next: ProductFormState) => void
     onSubmit: () => void
@@ -87,6 +102,8 @@ const WorkflowProductStep: React.FC<Props> = ({
     fileInputRef,
     videoRef,
     canvasRef,
+    categoryOptions,
+    unitOptions,
     onChooseReference,
     onChange,
     onSubmit,
@@ -100,7 +117,10 @@ const WorkflowProductStep: React.FC<Props> = ({
     onFileChange,
 }) => {
     const canSubmit = Boolean(
-        form.name.trim() && form.categoryName.trim() && form.barcode.trim(),
+        form.name.trim() &&
+        form.categoryName.trim() &&
+        form.barcode.trim() &&
+        form.unitId.trim(),
     )
 
     const showOcrStep = mode === "CREATE_NEW_PRODUCT" && nextAction === "CREATE_PRODUCT"
@@ -109,22 +129,22 @@ const WorkflowProductStep: React.FC<Props> = ({
         mode === "VERIFY_OWN_PRODUCT"
             ? "Bước 2: Xác nhận sản phẩm nội bộ"
             : mode === "CREATE_PRIVATE_PRODUCT"
-                ? "Bước 2: Tạo private product từ dữ liệu tham khảo"
+                ? "Bước 2: Tạo sản phẩm riêng từ dữ liệu tham khảo"
                 : "Bước 2: Tạo sản phẩm mới"
 
     const description =
         mode === "VERIFY_OWN_PRODUCT"
-            ? "Bạn chỉ xác nhận product của chính siêu thị hiện tại."
+            ? "Bạn chỉ xác nhận sản phẩm của chính siêu thị hiện tại."
             : mode === "CREATE_PRIVATE_PRODUCT"
-                ? "Sản phẩm từ siêu thị khác chỉ dùng để điền sẵn thông tin. Sau khi lưu, product mới vẫn là của siêu thị hiện tại."
-                : "Barcode chưa có trong hệ thống, nên bây giờ mới tới bước OCR ảnh hoặc nhập tay thông tin sản phẩm."
+                ? "Sản phẩm từ siêu thị khác chỉ dùng để điền sẵn thông tin. Sau khi lưu, sản phẩm mới vẫn thuộc siêu thị hiện tại."
+                : "Mã vạch chưa có trong hệ thống, bạn có thể dùng OCR ảnh hoặc nhập tay thông tin sản phẩm."
 
     return (
         <div className="space-y-5">
             {mode === "CREATE_PRIVATE_PRODUCT" && externalProducts.length > 0 ? (
                 <SectionCard
                     title="Sản phẩm tham khảo"
-                    description="Chọn 1 sản phẩm cùng barcode để đổ sẵn thông tin vào form."
+                    description="Chọn một sản phẩm cùng mã vạch để điền sẵn thông tin."
                 >
                     <div className="space-y-3">
                         {externalProducts.map((item) => {
@@ -143,7 +163,7 @@ const WorkflowProductStep: React.FC<Props> = ({
                                     )}
                                 >
                                     <div className="text-sm font-semibold text-slate-900">
-                                        {item.name || "Sản phẩm chưa có tên"}
+                                        {item.name || "Chưa có tên sản phẩm"}
                                     </div>
 
                                     <div className="mt-1 text-xs text-slate-500">
@@ -152,7 +172,7 @@ const WorkflowProductStep: React.FC<Props> = ({
                                     </div>
 
                                     <div className="mt-1 text-xs text-slate-500">
-                                        Barcode: {item.barcode || "—"}
+                                        Mã vạch: {item.barcode || "—"}
                                     </div>
 
                                     <div className="mt-1 text-xs text-slate-500">
@@ -175,8 +195,8 @@ const WorkflowProductStep: React.FC<Props> = ({
 
             {showOcrStep ? (
                 <SectionCard
-                    title="Bước OCR ảnh sản phẩm"
-                    description="Chỉ xuất hiện khi barcode chưa có sản phẩm phù hợp trong hệ thống."
+                    title="Phân tích ảnh sản phẩm"
+                    description="Chỉ xuất hiện khi hệ thống chưa có sản phẩm phù hợp với mã vạch này."
                 >
                     <div className="flex flex-wrap gap-2">
                         <button
@@ -194,7 +214,7 @@ const WorkflowProductStep: React.FC<Props> = ({
                             className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
                         >
                             <UploadCloud className="h-4 w-4" />
-                            Upload ảnh
+                            Tải ảnh lên
                         </button>
 
                         <button
@@ -300,17 +320,17 @@ const WorkflowProductStep: React.FC<Props> = ({
                     {analyzeResult ? (
                         <div className="mt-4 space-y-4">
                             <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                                OCR đã điền sẵn một phần thông tin. Bạn kiểm tra lại rồi xác nhận.
+                                Hệ thống đã điền sẵn một phần thông tin. Bạn kiểm tra lại trước khi xác nhận.
                             </div>
 
                             <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
                                 <div className="mb-3 text-sm font-semibold text-slate-900">
-                                    Dữ liệu AI đọc được
+                                    Dữ liệu hệ thống đọc được
                                 </div>
 
                                 <div className="space-y-3 text-sm text-slate-600">
                                     <InfoRow
-                                        label="Tên"
+                                        label="Tên sản phẩm"
                                         value={
                                             analyzeResult.extractedInfo?.name ||
                                             analyzeResult.barcodeLookupInfo?.productName ||
@@ -334,7 +354,7 @@ const WorkflowProductStep: React.FC<Props> = ({
                                         }
                                     />
                                     <InfoRow
-                                        label="Barcode"
+                                        label="Mã vạch"
                                         value={
                                             analyzeResult.extractedInfo?.barcode ||
                                             analyzeResult.barcodeLookupInfo?.barcode ||
@@ -368,31 +388,39 @@ const WorkflowProductStep: React.FC<Props> = ({
                                     <InfoRow
                                         label="Thành phần"
                                         value={
-                                            stringifyIngredients(analyzeResult.extractedInfo?.ingredients) !==
-                                                "—"
-                                                ? stringifyIngredients(analyzeResult.extractedInfo?.ingredients)
-                                                : stringifyIngredients(analyzeResult.barcodeLookupInfo?.ingredients)
+                                            stringifyIngredients(
+                                                analyzeResult.extractedInfo?.ingredients,
+                                            ) !== "—"
+                                                ? stringifyIngredients(
+                                                    analyzeResult.extractedInfo?.ingredients,
+                                                )
+                                                : stringifyIngredients(
+                                                    analyzeResult.barcodeLookupInfo?.ingredients,
+                                                )
                                         }
                                     />
                                     <InfoRow
-                                        label="Dinh dưỡng"
+                                        label="Thông tin dinh dưỡng"
                                         value={
-                                            stringifyNutritionFacts(analyzeResult.extractedInfo?.nutritionFacts) !==
-                                                "—"
+                                            stringifyNutritionFacts(
+                                                analyzeResult.extractedInfo?.nutritionFacts,
+                                            ) !== "—"
                                                 ? stringifyNutritionFacts(
-                                                    analyzeResult.extractedInfo?.nutritionFacts,
+                                                    analyzeResult.extractedInfo
+                                                        ?.nutritionFacts,
                                                 )
                                                 : stringifyNutritionFacts(
-                                                    analyzeResult.barcodeLookupInfo?.nutritionFacts,
+                                                    analyzeResult.barcodeLookupInfo
+                                                        ?.nutritionFacts,
                                                 )
                                         }
                                     />
                                     <InfoRow
-                                        label="AI confidence"
+                                        label="Độ tin cậy AI"
                                         value={formatConfidence(analyzeResult.confidence)}
                                     />
                                     <InfoRow
-                                        label="AI skipped"
+                                        label="AI có bỏ qua xử lý không"
                                         value={
                                             typeof analyzeResult.aiSkipped === "boolean"
                                                 ? analyzeResult.aiSkipped
@@ -402,7 +430,7 @@ const WorkflowProductStep: React.FC<Props> = ({
                                         }
                                     />
                                     <InfoRow
-                                        label="OCR image url"
+                                        label="Đường dẫn ảnh phân tích"
                                         value={analyzeResult.imageUrl || "—"}
                                     />
                                 </div>
@@ -410,7 +438,7 @@ const WorkflowProductStep: React.FC<Props> = ({
                         </div>
                     ) : (
                         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Bạn có thể OCR ảnh trước rồi chỉnh lại form bên dưới, hoặc bỏ qua OCR và nhập tay toàn bộ.
+                            Bạn có thể phân tích ảnh trước rồi chỉnh lại form bên dưới, hoặc bỏ qua và nhập tay toàn bộ.
                         </div>
                     )}
                 </SectionCard>
@@ -428,14 +456,51 @@ const WorkflowProductStep: React.FC<Props> = ({
                         value={form.brand}
                         onChange={(value) => onChange({ ...form, brand: value })}
                     />
+
                     <SelectField
                         label="Danh mục *"
-                        value={form.categoryName}
-                        onChange={(value) => onChange({ ...form, categoryName: value })}
-                        options={CATEGORY_OPTIONS}
+                        value={form.categoryId}
+                        onChange={(value) => {
+                            const selected = categoryOptions.find(
+                                (item) => item.categoryId === String(value),
+                            )
+
+                            onChange({
+                                ...form,
+                                categoryId: selected?.categoryId || "",
+                                categoryName: selected?.label || "",
+                                isFreshFood: selected?.isFreshFood ?? false,
+                            })
+                        }}
+                        options={categoryOptions.map((item) => ({
+                            label: `${item.label}${item.isFreshFood ? " • Tươi sống" : ""}`,
+                            value: item.categoryId,
+                        }))}
                     />
+
+                    <SelectField
+                        label="Đơn vị *"
+                        value={form.unitId}
+                        onChange={(value) =>
+                            onChange({
+                                ...form,
+                                unitId: String(value),
+                            })
+                        }
+                        options={unitOptions.map((item) => ({
+                            label: item.label,
+                            value: item.unitId,
+                        }))}
+                    />
+
                     <Field
-                        label="Barcode *"
+                        label="Loại thực phẩm"
+                        value={form.isFreshFood ? "Tươi sống" : "Không tươi sống"}
+                        readOnly
+                    />
+
+                    <Field
+                        label="Mã vạch *"
                         value={form.barcode}
                         onChange={(value) => onChange({ ...form, barcode: value })}
                     />
@@ -468,7 +533,7 @@ const WorkflowProductStep: React.FC<Props> = ({
 
                     <div className="md:col-span-2">
                         <TextareaField
-                            label="Thành phần dinh dưỡng"
+                            label="Thông tin dinh dưỡng"
                             value={form.nutritionFacts}
                             onChange={(value) => onChange({ ...form, nutritionFacts: value })}
                         />
@@ -504,7 +569,7 @@ const WorkflowProductStep: React.FC<Props> = ({
 
                     <div className="md:col-span-2">
                         <CheckboxField
-                            label="Dùng manual fallback cho bước tạo/xác nhận product"
+                            label="Sử dụng chế độ nhập tay thủ công cho bước tạo / xác nhận sản phẩm"
                             checked={form.isManualFallback}
                             onChange={(checked) =>
                                 onChange({ ...form, isManualFallback: checked })
@@ -540,7 +605,7 @@ const WorkflowProductStep: React.FC<Props> = ({
                         )}
                         {mode === "VERIFY_OWN_PRODUCT"
                             ? "Xác nhận sản phẩm"
-                            : "Tạo product"}
+                            : "Tạo sản phẩm"}
                     </button>
                 </div>
             </SectionCard>

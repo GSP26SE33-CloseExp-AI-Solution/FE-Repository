@@ -19,13 +19,24 @@ import {
     TextareaField,
     cn,
 } from "./WorkflowShared"
+import { mapProductStateLabel } from "@/mappers/product-ai.mapper"
+
+type ProductUnitOption = {
+    unitId: string
+    label: string
+    value: string
+    unitType?: string
+    unitSymbol?: string
+}
 
 type Props = {
     ownProduct: ExistingProductSummaryDto | null
     createdProduct: WorkflowCreateProductResultDto | null
+    selectedUnit?: ProductUnitOption
     form: LotFormState
     loading: boolean
     createdLot: WorkflowCreateAndPublishLotResultDto | null
+    isFreshFood?: boolean
     onChange: (next: LotFormState) => void
     onBack: () => void
     onSubmit: () => void
@@ -48,12 +59,49 @@ const stringifyNutritionFacts = (value?: Record<string, string> | null) => {
         .join(" | ")
 }
 
+const formatUnit = (name?: string | null, symbol?: string | null) => {
+    const safeName = name?.trim() || "—"
+    const safeSymbol = symbol?.trim() || ""
+
+    if (safeName === "—") return "—"
+    return safeSymbol ? `${safeName} (${safeSymbol})` : safeName
+}
+
+const normalizeUnitType = (value?: string | null) => {
+    const normalized = value?.trim().toLowerCase() || ""
+
+    if (
+        normalized.includes("variable") ||
+        normalized.includes("weight") ||
+        normalized.includes("mass") ||
+        normalized.includes("kg") ||
+        normalized.includes("gram") ||
+        normalized.includes("khối lượng")
+    ) {
+        return "VARIABLE"
+    }
+
+    if (
+        normalized.includes("fixed") ||
+        normalized.includes("piece") ||
+        normalized.includes("unit") ||
+        normalized.includes("cố định") ||
+        normalized.includes("số lượng")
+    ) {
+        return "FIXED"
+    }
+
+    return "UNKNOWN"
+}
+
 const WorkflowLotStep: React.FC<Props> = ({
     ownProduct,
     createdProduct,
+    selectedUnit,
     form,
     loading,
     createdLot,
+    isFreshFood = false,
     onChange,
     onBack,
     onSubmit,
@@ -62,38 +110,70 @@ const WorkflowLotStep: React.FC<Props> = ({
     const effectiveProductName =
         createdProduct?.name || ownProduct?.name || "Chưa có tên sản phẩm"
 
-    const hasQuantityOrWeight =
-        (typeof form.quantity === "number" && form.quantity > 0) ||
-        (typeof form.weight === "number" && form.weight > 0)
+    const effectiveBarcode = createdProduct?.barcode || ownProduct?.barcode || "—"
+    const effectiveBrand = createdProduct?.brand || ownProduct?.brand || "—"
+    const effectiveCategory = createdProduct?.category || ownProduct?.category || "—"
+    const effectiveManufacturer =
+        createdProduct?.manufacturer || ownProduct?.manufacturer || "—"
+    
+    const stockLot = createdLot?.stockLot
+    const pricing = createdLot?.pricingSuggestion
+
+    const effectiveUnit = formatUnit(
+        stockLot?.unitName || createdProduct?.unitName || selectedUnit?.label,
+        stockLot?.unitSymbol || createdProduct?.unitSymbol || selectedUnit?.unitSymbol,
+    )
+
+    const effectiveUnitType = normalizeUnitType(
+        stockLot?.unitType || createdProduct?.unitType || selectedUnit?.unitType,
+    )
+
+    const quantityValid = typeof form.quantity === "number" && form.quantity > 0
+    const weightValid = typeof form.weight === "number" && form.weight > 0
+
+    const requiredAmountValid =
+        effectiveUnitType === "VARIABLE"
+            ? weightValid
+            : effectiveUnitType === "FIXED"
+                ? quantityValid
+                : quantityValid || weightValid
+
+    const amountHint =
+        effectiveUnitType === "VARIABLE"
+            ? "Đơn vị theo khối lượng nên cần nhập khối lượng."
+            : effectiveUnitType === "FIXED"
+                ? "Đơn vị cố định nên cần nhập số lượng."
+                : "Chưa xác định được loại đơn vị, bạn có thể nhập số lượng hoặc khối lượng."
 
     const canSubmit = Boolean(
         effectiveProductId &&
         form.expiryDate &&
         typeof form.originalUnitPrice === "number" &&
         form.originalUnitPrice > 0 &&
-        hasQuantityOrWeight &&
+        requiredAmountValid &&
         (form.acceptedSuggestion ||
             (typeof form.finalUnitPrice === "number" && form.finalUnitPrice > 0)),
     )
 
-    const stockLot = createdLot?.stockLot
-    const pricing = createdLot?.pricingSuggestion
-    const confidence =
-        typeof stockLot?.pricingConfidence === "number"
-            ? stockLot.pricingConfidence
-            : typeof pricing?.confidence === "number"
-                ? pricing.confidence
-                : null
-
     return (
         <div className="space-y-5">
             <SectionCard
-                title="Bước 3: Tạo lot + định giá + publish"
-                description="Bước này chỉ dùng product thuộc siêu thị hiện tại."
+                title="Bước 3: Tạo lô hàng, định giá và đăng bán"
+                description="Bước này chỉ dùng sản phẩm thuộc siêu thị hiện tại."
             >
-                <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="Product ID" value={effectiveProductId} readOnly />
+                <div className="mb-5 grid gap-4 md:grid-cols-2">
+                    <Field label="Mã sản phẩm" value={effectiveProductId} readOnly />
                     <Field label="Tên sản phẩm" value={effectiveProductName} readOnly />
+                    <Field label="Mã vạch" value={effectiveBarcode} readOnly />
+                    <Field label="Thương hiệu" value={effectiveBrand} readOnly />
+                    <Field label="Danh mục" value={effectiveCategory} readOnly />
+                    <Field label="Đơn vị" value={effectiveUnit} readOnly />
+                    <Field
+                        label="Loại thực phẩm"
+                        value={isFreshFood ? "Tươi sống" : "Thông thường"}
+                        readOnly
+                    />
+                    <Field label="Nhà sản xuất" value={effectiveManufacturer} readOnly />
 
                     <DateField
                         label="Hạn sử dụng *"
@@ -108,16 +188,20 @@ const WorkflowLotStep: React.FC<Props> = ({
                     />
 
                     <NumberField
-                        label="Số lượng"
+                        label={effectiveUnitType === "FIXED" ? "Số lượng *" : "Số lượng"}
                         value={form.quantity}
                         onChange={(value) => onChange({ ...form, quantity: value })}
                     />
 
                     <NumberField
-                        label="Khối lượng"
+                        label={effectiveUnitType === "VARIABLE" ? "Khối lượng *" : "Khối lượng"}
                         value={form.weight}
                         onChange={(value) => onChange({ ...form, weight: value })}
                     />
+
+                    <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        {amountHint}
+                    </div>
 
                     <CurrencyField
                         label="Giá gốc *"
@@ -126,14 +210,14 @@ const WorkflowLotStep: React.FC<Props> = ({
                     />
 
                     <CurrencyField
-                        label="Giá cuối mong muốn"
+                        label="Giá bán mong muốn"
                         value={form.finalUnitPrice}
                         onChange={(value) => onChange({ ...form, finalUnitPrice: value })}
                     />
 
                     <div className="md:col-span-2">
                         <TextareaField
-                            label="Ghi chú giá"
+                            label="Ghi chú về giá"
                             value={form.priceFeedback}
                             onChange={(value) => onChange({ ...form, priceFeedback: value })}
                         />
@@ -141,14 +225,14 @@ const WorkflowLotStep: React.FC<Props> = ({
 
                     <div className="md:col-span-2 grid gap-4 md:grid-cols-2">
                         <CheckboxField
-                            label="Chấp nhận suggested price của AI"
+                            label="Dùng giá gợi ý từ hệ thống"
                             checked={form.acceptedSuggestion}
                             onChange={(checked) =>
                                 onChange({ ...form, acceptedSuggestion: checked })
                             }
                         />
                         <CheckboxField
-                            label="Dùng manual fallback cho bước lot/pricing"
+                            label="Dùng dữ liệu nhập tay thay cho dữ liệu hệ thống"
                             checked={form.isManualFallback}
                             onChange={(checked) =>
                                 onChange({ ...form, isManualFallback: checked })
@@ -182,7 +266,7 @@ const WorkflowLotStep: React.FC<Props> = ({
                         ) : (
                             <CheckCircle2 className="h-4 w-4" />
                         )}
-                        Tạo lot + định giá + publish
+                        Tạo lô hàng, định giá và đăng bán
                     </button>
                 </div>
             </SectionCard>
@@ -190,51 +274,71 @@ const WorkflowLotStep: React.FC<Props> = ({
             {createdLot ? (
                 <SectionCard
                     title="Kết quả vừa tạo"
-                    description="Thông tin lot sau khi hoàn tất workflow."
+                    description="Thông tin lô hàng sau khi hoàn tất đăng bán sản phẩm."
                 >
                     <div className="space-y-3 text-sm text-slate-600">
-                        <InfoRow label="Lot ID" value={stockLot?.lotId || createdLot.lotId} />
-                        <InfoRow label="Product ID" value={createdLot.productId} />
+                        <InfoRow label="Mã lô hàng" value={stockLot?.lotId || createdLot.lotId} />
+                        <InfoRow label="Mã sản phẩm" value={createdLot.productId} />
+                        <InfoRow label="Giai đoạn" value={createdLot.phase || "—"} />
                         <InfoRow
                             label="Tên sản phẩm"
                             value={stockLot?.productName || effectiveProductName}
                         />
                         <InfoRow
-                            label="Danh mục sản phẩm"
-                            value={createdLot.productCategory || "—"}
+                            label="Mã vạch sản phẩm"
+                            value={stockLot?.productBarcode || effectiveBarcode}
                         />
                         <InfoRow
-                            label="Đã resolve giá trước publish"
+                            label="Thương hiệu sản phẩm"
+                            value={stockLot?.productBrand || effectiveBrand}
+                        />
+                        <InfoRow
+                            label="Ảnh sản phẩm"
+                            value={stockLot?.productImageUrl || "—"}
+                        />
+                        <InfoRow
+                            label="Danh mục sản phẩm"
+                            value={createdLot.productCategory || effectiveCategory}
+                        />
+                        <InfoRow label="Đơn vị" value={effectiveUnit} />
+                        <InfoRow
+                            label="Loại thực phẩm"
+                            value={isFreshFood ? "Tươi sống" : "Thông thường"}
+                        />
+                        <InfoRow
+                            label="Thông tin dinh dưỡng"
+                            value={stringifyNutritionFacts(createdLot.productNutritionFacts)}
+                        />
+                        <InfoRow
+                            label="Nguồn dữ liệu"
                             value={
-                                typeof createdLot.pricingSuggestionResolvedBeforePublish === "boolean"
-                                    ? createdLot.pricingSuggestionResolvedBeforePublish
-                                        ? "Có"
-                                        : "Không"
+                                typeof createdLot.isManualFallback === "boolean"
+                                    ? createdLot.isManualFallback
+                                        ? "Nhập tay"
+                                        : "Hệ thống"
                                     : "—"
                             }
                         />
                         <InfoRow
-                            label="Giá AI đề xuất"
+                            label="Trạng thái lô hàng"
+                            value={mapProductStateLabel(stockLot?.status)}
+                        />
+                        <InfoRow
+                            label="Giá hệ thống đề xuất"
                             value={formatCurrencyVN(pricing?.suggestedPrice)}
                         />
                         <InfoRow
                             label="Giá gốc"
-                            value={formatCurrencyVN(stockLot?.originalPrice ?? pricing?.originalPrice)}
+                            value={formatCurrencyVN(
+                                stockLot?.originalPrice ?? pricing?.originalPrice,
+                            )}
                         />
                         <InfoRow
                             label="Giá bán cuối"
                             value={formatCurrencyVN(stockLot?.finalPrice)}
                         />
                         <InfoRow
-                            label="Độ tin cậy định giá"
-                            value={
-                                typeof confidence === "number"
-                                    ? `${Math.round(confidence * 100)}%`
-                                    : "—"
-                            }
-                        />
-                        <InfoRow
-                            label="Số ngày tới hạn"
+                            label="Số ngày còn lại trước hạn sử dụng"
                             value={
                                 typeof stockLot?.daysToExpiry === "number"
                                     ? String(stockLot.daysToExpiry)
@@ -242,6 +346,14 @@ const WorkflowLotStep: React.FC<Props> = ({
                                         ? String(pricing.daysToExpiry)
                                         : "—"
                             }
+                        />
+                        <InfoRow
+                            label="Hạn sử dụng"
+                            value={formatDateTimeVN(stockLot?.expiryDate)}
+                        />
+                        <InfoRow
+                            label="Ngày sản xuất"
+                            value={formatDateTimeVN(stockLot?.manufactureDate)}
                         />
                         <InfoRow
                             label="Số lượng"
@@ -260,97 +372,16 @@ const WorkflowLotStep: React.FC<Props> = ({
                             }
                         />
                         <InfoRow
-                            label="Tạo bởi"
-                            value={stockLot?.createdBy || "—"}
+                            label="Thời điểm tạo"
+                            value={formatDateTimeVN(stockLot?.createdAt)}
                         />
+                        <InfoRow label="Người tạo" value={stockLot?.createdBy || "—"} />
+                        <InfoRow label="Người đăng bán" value={stockLot?.publishedBy || "—"} />
                         <InfoRow
-                            label="Đăng bán bởi"
-                            value={stockLot?.publishedBy || "—"}
-                        />
-                        <InfoRow
-                            label="Đăng bán lúc"
+                            label="Thời điểm đăng bán"
                             value={formatDateTimeVN(stockLot?.publishedAt)}
                         />
                     </div>
-
-                    {createdLot.productNutritionFacts ? (
-                        <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-4">
-                            <div className="mb-2 text-sm font-semibold text-sky-800">
-                                Thành phần dinh dưỡng của sản phẩm
-                            </div>
-                            <div className="text-sm leading-6 text-sky-700">
-                                {stringifyNutritionFacts(createdLot.productNutritionFacts)}
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {typeof pricing?.minMarketPrice === "number" ||
-                        typeof pricing?.avgMarketPrice === "number" ||
-                        typeof pricing?.maxMarketPrice === "number" ? (
-                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
-                            <div className="mb-3 text-sm font-semibold text-slate-800">
-                                Tham chiếu giá thị trường
-                            </div>
-
-                            <div className="space-y-3 text-sm text-slate-600">
-                                <InfoRow
-                                    label="Giá thấp nhất"
-                                    value={formatCurrencyVN(pricing?.minMarketPrice)}
-                                />
-                                <InfoRow
-                                    label="Giá trung bình"
-                                    value={formatCurrencyVN(pricing?.avgMarketPrice)}
-                                />
-                                <InfoRow
-                                    label="Giá cao nhất"
-                                    value={formatCurrencyVN(pricing?.maxMarketPrice)}
-                                />
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {pricing?.marketPriceSources?.length ? (
-                        <div className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-4">
-                            <div className="mb-2 text-sm font-semibold text-indigo-800">
-                                Nguồn giá tham khảo
-                            </div>
-
-                            <div className="space-y-3">
-                                {pricing.marketPriceSources.map((source, index) => (
-                                    <div
-                                        key={`${source.storeName || "source"}-${index}`}
-                                        className="rounded-lg border border-indigo-100 bg-white/70 px-3 py-3 text-sm text-indigo-900"
-                                    >
-                                        <div className="font-medium">
-                                            {source.storeName || "Không rõ cửa hàng"}
-                                        </div>
-                                        <div className="mt-1 text-indigo-700">
-                                            Giá: {formatCurrencyVN(source.price)}
-                                        </div>
-                                        <div className="mt-1 text-xs text-indigo-600">
-                                            Nguồn: {source.source || "—"}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {pricing?.reasons?.length ? (
-                        <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
-                            <div className="mb-2 text-sm font-semibold text-amber-800">
-                                Lý do AI gợi ý giá
-                            </div>
-                            <ul className="space-y-2 text-sm text-amber-700">
-                                {pricing.reasons.map((reason, index) => (
-                                    <li key={`${reason}-${index}`} className="flex gap-2">
-                                        <span>•</span>
-                                        <span>{reason}</span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    ) : null}
                 </SectionCard>
             ) : null}
         </div>

@@ -1,3 +1,9 @@
+import type {
+    ExpiryStatusValue,
+    ProductNutritionFacts,
+    ProductWeightTypeValue,
+} from "./product.type"
+
 export type ProductLotImageItem = {
     productImageId?: string
     productId?: string
@@ -13,33 +19,44 @@ export type ProductLotItem = {
     quantity?: number | null
     weight?: number | null
     status?: string | null
+
     unitId?: string | null
     unitName?: string | null
     unitType?: string | null
+    unitSymbol?: string | null
+
     originalUnitPrice?: number | null
     suggestedUnitPrice?: number | null
     finalUnitPrice?: number | null
+    sellingUnitPrice?: number | null
+
     productName?: string | null
     brand?: string | null
     category?: string | null
     barcode?: string | null
     isFreshFood?: boolean | null
+
     supermarketId?: string | null
     supermarketName?: string | null
+
     mainImageUrl?: string | null
     totalImages?: number | null
     productImages?: ProductLotImageItem[] | null
-    expiryStatus?: number | null
+
+    expiryStatus?: ExpiryStatusValue | null
+    expiryStatusText?: string | null
     daysRemaining?: number | null
     hoursRemaining?: number | null
-    expiryStatusText?: string | null
+
+    // FE-safe optional fields
+    daysToExpiry?: number | null
     ingredients?: string[] | null
-    nutritionFacts?: Record<string, string> | null
+    nutritionFacts?: ProductNutritionFacts | null
+
     createdAt?: string | null
     createdBy?: string | null
     publishedBy?: string | null
     publishedAt?: string | null
-    sellingUnitPrice?: number | null
 }
 
 export type ProductLotListResult = {
@@ -50,8 +67,8 @@ export type ProductLotListResult = {
 }
 
 export type GetMySupermarketLotsQuery = {
-    expiryStatus?: number
-    weightType?: number
+    expiryStatus?: ExpiryStatusValue
+    weightType?: ProductWeightTypeValue
     isFreshFood?: boolean
     searchTerm?: string
     category?: string

@@ -1,13 +1,18 @@
 import React from "react"
 import { CheckCircle2, Image as ImageIcon } from "lucide-react"
 
-import type { LocalImageFile, ProductWorkflowState } from "@/types/product-ai-workflow.type"
-import { InfoRow, SectionCard } from "./WorkflowShared"
+import type {
+    LocalImageFile,
+    ProductWorkflowState,
+} from "@/types/product-ai-workflow.type"
+import type { UnitOption } from "@/types/unit.type"
 import { mapProductStateLabel } from "@/mappers/product-ai.mapper"
+import { InfoRow, SectionCard } from "./WorkflowShared"
 
 type Props = {
     workflow: ProductWorkflowState
     images: LocalImageFile[]
+    unitOptions?: UnitOption[]
 }
 
 const stringifyNutritionFacts = (value?: Record<string, string> | null) => {
@@ -22,7 +27,15 @@ const formatMoney = (value?: number | null) => {
     return `${value.toLocaleString("vi-VN")} đ`
 }
 
-const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
+const formatUnit = (name?: string | null, symbol?: string | null, fallback?: string | null) => {
+    const safeName = name?.trim() || fallback?.trim() || "—"
+    const safeSymbol = symbol?.trim() || ""
+
+    if (safeName === "—") return "—"
+    return safeSymbol ? `${safeName} (${safeSymbol})` : safeName
+}
+
+const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions = [] }) => {
     const previewImage =
         images[0]?.preview ||
         workflow.createdLot?.stockLot?.productImageUrl ||
@@ -48,23 +61,45 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
         workflow.createdLot?.stockLot?.productName ||
         workflow.createdProduct?.name ||
         workflow.ownProduct?.name ||
+        workflow.productForm.name ||
         "—"
 
     const activeProductCategory =
         workflow.createdLot?.productCategory ||
         workflow.createdProduct?.category ||
         workflow.ownProduct?.category ||
+        workflow.productForm.categoryName ||
         "—"
+
+    const selectedUnit = unitOptions.find(
+        (item) => item.unitId === workflow.productForm.unitId,
+    )
+
+    const activeUnit = formatUnit(
+        workflow.createdLot?.stockLot?.unitName ||
+        workflow.createdProduct?.unitName ||
+        workflow.identifyResult?.unitName ||
+        selectedUnit?.label,
+        workflow.createdLot?.stockLot?.unitSymbol ||
+        workflow.createdProduct?.unitSymbol ||
+        workflow.identifyResult?.unitSymbol ||
+        selectedUnit?.unitSymbol,
+        selectedUnit?.label || workflow.productForm.unitId,
+    )
 
     const activeManufacturer =
         workflow.createdProduct?.manufacturer ||
         workflow.ownProduct?.manufacturer ||
+        workflow.productForm.manufacturer ||
         "—"
 
     const finalNutritionFacts =
         stringifyNutritionFacts(workflow.createdLot?.productNutritionFacts) !== "—"
             ? stringifyNutritionFacts(workflow.createdLot?.productNutritionFacts)
             : workflow.productForm.nutritionFacts || "—"
+
+    const activeProductStatus =
+        workflow.createdProduct?.status ?? workflow.ownProduct?.status ?? null
 
     return (
         <div className="space-y-5">
@@ -73,7 +108,7 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                     <div className="flex h-[280px] items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50">
                         <img
                             src={previewImage}
-                            alt={workflow.productForm.name || "Preview"}
+                            alt={workflow.productForm.name || "Xem trước"}
                             className="h-full w-full object-contain"
                         />
                     </div>
@@ -89,14 +124,15 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
 
             <SectionCard title="Tóm tắt quy trình">
                 <div className="space-y-3 text-sm text-slate-600">
-                    <InfoRow label="Step" value={workflow.step} />
-                    <InfoRow label="Mode" value={workflow.mode || "—"} />
-                    <InfoRow label="Phase" value={workflow.phase || "—"} />
-                    <InfoRow label="NextAction" value={workflow.nextAction || "—"} />
-                    <InfoRow label="Barcode" value={workflow.barcode || "—"} />
-                    <InfoRow label="OCR confidence" value={ocrConfidence} />
+                    <InfoRow label="Bước hiện tại" value={workflow.step} />
+                    <InfoRow label="Chế độ" value={workflow.mode || "—"} />
+                    <InfoRow label="Giai đoạn" value={workflow.phase || "—"} />
+                    <InfoRow label="Hành động tiếp theo" value={workflow.nextAction || "—"} />
+                    <InfoRow label="Mã vạch" value={workflow.barcode || "—"} />
+                    <InfoRow label="Đơn vị" value={activeUnit} />
+                    <InfoRow label="Độ tin cậy OCR" value={ocrConfidence} />
                     <InfoRow
-                        label="Product ID"
+                        label="Mã sản phẩm"
                         value={
                             workflow.createdProduct?.productId ||
                             workflow.ownProduct?.productId ||
@@ -104,7 +140,7 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                         }
                     />
                     <InfoRow
-                        label="Lot ID"
+                        label="Mã lô"
                         value={
                             workflow.createdLot?.stockLot?.lotId ||
                             workflow.createdLot?.lotId ||
@@ -112,27 +148,26 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                         }
                     />
                     <InfoRow
-                        label="Create lot trực tiếp"
+                        label="Cho phép tạo lô trực tiếp"
                         value={workflow.canCreateLotDirectly ? "Có" : "Không"}
                     />
                     <InfoRow
-                        label="Cần xác nhận product"
+                        label="Yêu cầu xác nhận sản phẩm"
                         value={workflow.requiresVerification ? "Có" : "Không"}
                     />
                 </div>
             </SectionCard>
 
             {(workflow.ownProduct || workflow.createdProduct || workflow.createdLot) ? (
-                <SectionCard title="Sản phẩm đang thao tác">
+                <SectionCard title="Thông tin sản phẩm">
                     <div className="space-y-3 text-sm text-slate-600">
-                        <InfoRow label="Tên" value={activeProductName} />
+                        <InfoRow label="Tên sản phẩm" value={activeProductName} />
                         <InfoRow
                             label="Trạng thái"
-                            value={mapProductStateLabel(
-                                workflow.createdProduct?.status || workflow.ownProduct?.status,
-                            )}
+                            value={mapProductStateLabel(activeProductStatus)}
                         />
                         <InfoRow label="Danh mục" value={activeProductCategory} />
+                        <InfoRow label="Đơn vị" value={activeUnit} />
                         <InfoRow label="Nhà sản xuất" value={activeManufacturer} />
                     </div>
                 </SectionCard>
@@ -141,7 +176,7 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
             {workflow.referenceProduct ? (
                 <SectionCard title="Sản phẩm tham khảo">
                     <div className="space-y-3 text-sm text-slate-600">
-                        <InfoRow label="Tên" value={workflow.referenceProduct.name || "—"} />
+                        <InfoRow label="Tên sản phẩm" value={workflow.referenceProduct.name || "—"} />
                         <InfoRow
                             label="Thương hiệu"
                             value={workflow.referenceProduct.brand || "—"}
@@ -151,7 +186,7 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                             value={workflow.referenceProduct.category || "—"}
                         />
                         <InfoRow
-                            label="Barcode"
+                            label="Mã vạch"
                             value={workflow.referenceProduct.barcode || "—"}
                         />
                         <InfoRow
@@ -163,10 +198,10 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
             ) : null}
 
             {workflow.analyzeResult ? (
-                <SectionCard title="Dữ liệu AI đọc được">
+                <SectionCard title="Dữ liệu AI phân tích">
                     <div className="space-y-3 text-sm text-slate-600">
                         <InfoRow
-                            label="Tên"
+                            label="Tên sản phẩm"
                             value={
                                 workflow.analyzeResult.extractedInfo?.name ||
                                 workflow.analyzeResult.barcodeLookupInfo?.productName ||
@@ -190,7 +225,7 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                             }
                         />
                         <InfoRow
-                            label="Barcode"
+                            label="Mã vạch"
                             value={
                                 workflow.analyzeResult.extractedInfo?.barcode ||
                                 workflow.analyzeResult.barcodeLookupInfo?.barcode ||
@@ -206,12 +241,12 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                     <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
                         <div className="mb-2 flex items-center gap-2 font-semibold">
                             <CheckCircle2 className="h-4 w-4" />
-                            Workflow đã xong
+                            Hoàn thành quy trình
                         </div>
 
                         <div className="space-y-3">
                             <InfoRow
-                                label="Lot"
+                                label="Mã lô"
                                 value={
                                     workflow.createdLot.stockLot?.lotId ||
                                     workflow.createdLot.lotId
@@ -226,13 +261,20 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                                 value={workflow.createdLot.productCategory || "—"}
                             />
                             <InfoRow
-                                label="Giá AI đề xuất"
+                                label="Đơn vị"
+                                value={formatUnit(
+                                    workflow.createdLot.stockLot?.unitName,
+                                    workflow.createdLot.stockLot?.unitSymbol,
+                                )}
+                            />
+                            <InfoRow
+                                label="Giá đề xuất"
                                 value={formatMoney(
                                     workflow.createdLot.pricingSuggestion?.suggestedPrice,
                                 )}
                             />
                             <InfoRow
-                                label="Giá cuối"
+                                label="Giá bán cuối"
                                 value={formatMoney(workflow.createdLot.stockLot?.finalPrice)}
                             />
                             <InfoRow
@@ -240,7 +282,7 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                                 value={pricingConfidence}
                             />
                             <InfoRow
-                                label="Đã resolve giá trước publish"
+                                label="Đã xử lý giá trước khi đăng"
                                 value={
                                     typeof workflow.createdLot
                                         .pricingSuggestionResolvedBeforePublish === "boolean"
@@ -252,11 +294,11 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images }) => {
                                 }
                             />
                             <InfoRow
-                                label="Tạo lot bởi"
+                                label="Người tạo lô"
                                 value={workflow.createdLot.stockLot?.createdBy || "—"}
                             />
                             <InfoRow
-                                label="Nutrition facts"
+                                label="Thông tin dinh dưỡng"
                                 value={finalNutritionFacts}
                             />
                         </div>

@@ -22,8 +22,8 @@ import MyOrdersPage from "@/pages/Vendor/MyOrdersPage"
 import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage"
 
 import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard"
-import ProductsLotsPage from "@/pages/SupermarketStaff/sProducts/ProductsLotsPage"
-import ProductWorkflowPage from "@/pages/SupermarketStaff/sProducts/ProductWorkflowPage"
+import ProductsLotsPage from "@/pages/SupermarketStaff/sLotsPageTable"
+import ProductWorkflowPage from "@/pages/SupermarketStaff/sWorkflowPage"
 import ProfilePage from "@/pages/SupermarketStaff/sProfile"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"

@@ -1,11 +1,5 @@
-import React, {
-    DragEvent,
-    MouseEvent as ReactMouseEvent,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-} from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import type { DragEvent, MouseEvent as ReactMouseEvent } from "react"
 import {
     Camera,
     CameraOff,
@@ -28,7 +22,7 @@ import {
     MultiFormatReader,
     RGBLuminanceSource,
 } from "@zxing/library"
-import { BrowserMultiFormatReader, type IScannerControls } from "@zxing/browser"
+import { BrowserMultiFormatReader } from "@zxing/browser"
 
 import { cn, SectionCard } from "./WorkflowShared"
 
@@ -478,7 +472,7 @@ const WorkflowScanStep: React.FC<Props> = ({
     onIdentify,
 }) => {
     const videoRef = useRef<HTMLVideoElement | null>(null)
-    const controlsRef = useRef<IScannerControls | null>(null)
+    const cameraStreamRef = useRef<MediaStream | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
     const previewContainerRef = useRef<HTMLDivElement | null>(null)
 
@@ -560,12 +554,12 @@ const WorkflowScanStep: React.FC<Props> = ({
 
     const stopCamera = () => {
         try {
-            controlsRef.current?.stop()
+            cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
         } catch (error) {
-            console.error("WorkflowScanStep.stopCamera -> controls.stop error:", error)
+            console.error("WorkflowScanStep.stopCamera -> stream stop error:", error)
         }
 
-        controlsRef.current = null
+        cameraStreamRef.current = null
         setCameraEnabled(false)
 
         if (videoRef.current) {
@@ -629,14 +623,12 @@ const WorkflowScanStep: React.FC<Props> = ({
             clearUploadedPreview()
             stopCamera()
 
-            const reader = new BrowserMultiFormatReader()
-
             const advancedConstraints = [
                 { focusMode: "continuous" },
                 { exposureMode: "continuous" },
             ] as unknown as MediaTrackConstraintSet[]
 
-            const constraints: MediaStreamConstraints = {
+            const stream = await navigator.mediaDevices.getUserMedia({
                 audio: false,
                 video: {
                     facingMode: { ideal: facingModeToUse },
@@ -644,24 +636,11 @@ const WorkflowScanStep: React.FC<Props> = ({
                     height: { ideal: 1080 },
                     advanced: advancedConstraints,
                 },
-            }
+            })
 
-            const controls = await reader.decodeFromConstraints(
-                constraints,
-                videoEl,
-                (result, error) => {
-                    if (result) {
-                        void handleDetected(result.getText())
-                        return
-                    }
+            cameraStreamRef.current = stream
+            videoEl.srcObject = stream
 
-                    if (error) {
-                        return
-                    }
-                },
-            )
-
-            controlsRef.current = controls
             setCameraEnabled(true)
             setCameraFacingMode(facingModeToUse)
             setScanStatus("SCANNING")
@@ -675,7 +654,7 @@ const WorkflowScanStep: React.FC<Props> = ({
             console.error("WorkflowScanStep.startCamera -> error:", error)
             setScanStatus("ERROR")
             setScanError(
-                "Không mở được camera hoặc chưa khởi tạo được bộ quét. Bạn kiểm tra quyền camera rồi thử lại nhé.",
+                "Không mở được camera. Vui lòng kiểm tra quyền camera rồi thử lại sau.",
             )
             stopCamera()
         } finally {
@@ -688,6 +667,94 @@ const WorkflowScanStep: React.FC<Props> = ({
             cameraFacingMode === "environment" ? "user" : "environment"
 
         await startCamera(nextMode)
+    }
+
+    const handleCaptureFromCamera = async () => {
+        const videoEl = videoRef.current
+
+        if (!videoEl || !cameraEnabled || actionDisabled) return
+
+        const width = videoEl.videoWidth
+        const height = videoEl.videoHeight
+
+        if (!width || !height) {
+            setScanStatus("ERROR")
+            setScanError("Camera chưa sẵn sàng để chụp. Bạn đợi 1-2 giây rồi bấm lại nha.")
+            return
+        }
+
+        setDecodingImage(true)
+        setScanError("")
+
+        try {
+            const canvas = document.createElement("canvas")
+            canvas.width = width
+            canvas.height = height
+
+            const ctx = canvas.getContext("2d", { willReadFrequently: true })
+            if (!ctx) {
+                throw new Error("Không tạo được canvas để chụp ảnh.")
+            }
+
+            if (cameraFacingMode === "user") {
+                ctx.translate(width, 0)
+                ctx.scale(-1, 1)
+            }
+
+            ctx.drawImage(videoEl, 0, 0, width, height)
+
+            const objectUrl = await new Promise<string>((resolve, reject) => {
+                canvas.toBlob(
+                    (blob) => {
+                        if (!blob) {
+                            reject(new Error("Không tạo được ảnh từ camera."))
+                            return
+                        }
+
+                        resolve(URL.createObjectURL(blob))
+                    },
+                    "image/png",
+                    1,
+                )
+            })
+
+            stopCamera()
+
+            revokeOriginalImageUrl()
+            revokeWorkingImageUrl()
+
+            originalImageUrlRef.current = objectUrl
+            workingImageUrlRef.current = objectUrl
+
+            await applyImageToState(objectUrl, true)
+
+            try {
+                const detectedText = await decodeLoadedImage(objectUrl)
+
+                if (detectedText?.trim()) {
+                    lastDetectedRef.current = ""
+                    lastDetectedAtRef.current = 0
+                    await handleDetected(detectedText)
+                    return
+                }
+            } catch (decodeError) {
+                console.log(
+                    "WorkflowScanStep.handleCaptureFromCamera -> decode captured image failed:",
+                    decodeError,
+                )
+            }
+
+            setScanStatus("ERROR")
+            setScanError(
+                "Chưa đọc được barcode từ ảnh vừa chụp. Bạn kéo khung cắt sát phần barcode rồi bấm “Cắt & phóng to”, sau đó bấm “Quét ảnh hiện tại”.",
+            )
+        } catch (error) {
+            console.error("WorkflowScanStep.handleCaptureFromCamera -> error:", error)
+            setScanStatus("ERROR")
+            setScanError("Không chụp hoặc xử lý được ảnh từ camera.")
+        } finally {
+            setDecodingImage(false)
+        }
     }
 
     const handleManualIdentify = () => {
@@ -1088,8 +1155,8 @@ const WorkflowScanStep: React.FC<Props> = ({
                 return "Đang khởi động camera..."
             case "SCANNING":
                 return cameraFacingMode === "environment"
-                    ? "Đang dùng camera sau. Đưa mã vạch vào giữa khung hình, giữ gần và đủ sáng để hệ thống nhận nhanh hơn."
-                    : "Đang dùng camera trước. Đưa mã vạch vào giữa khung hình để hệ thống tự nhận diện."
+                    ? "Đang dùng camera sau. Đưa mã vạch vào giữa khung hình, giữ gần và đủ sáng rồi bấm “Chụp ảnh barcode”."
+                    : "Đang dùng camera trước. Đưa mã vạch vào giữa khung hình rồi bấm “Chụp ảnh barcode”."
             case "DETECTED":
                 return lastScannedBarcode
                     ? `Đã quét thành công barcode: ${lastScannedBarcode}`
@@ -1358,8 +1425,8 @@ const WorkflowScanStep: React.FC<Props> = ({
                                         <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center">
                                             <div className="rounded-full bg-black/45 px-3 py-1 text-xs font-medium text-white backdrop-blur">
                                                 {cameraFacingMode === "environment"
-                                                    ? "Đang dùng camera sau"
-                                                    : "Đang dùng camera trước"}
+                                                    ? "Camera sau • canh barcode rồi chụp"
+                                                    : "Camera trước • canh barcode rồi chụp"}
                                             </div>
                                         </div>
                                     </>
@@ -1392,7 +1459,7 @@ const WorkflowScanStep: React.FC<Props> = ({
                             {!cameraEnabled ? (
                                 <button
                                     type="button"
-                                    onClick={() => startCamera()}
+                                    onClick={() => void startCamera()}
                                     disabled={actionDisabled}
                                     className={cn(
                                         "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
@@ -1402,7 +1469,7 @@ const WorkflowScanStep: React.FC<Props> = ({
                                     )}
                                 >
                                     <Camera className="h-4 w-4" />
-                                    Bật camera quét
+                                    Bật camera chụp
                                 </button>
                             ) : (
                                 <button
@@ -1414,6 +1481,27 @@ const WorkflowScanStep: React.FC<Props> = ({
                                     Tắt camera
                                 </button>
                             )}
+
+                            {cameraEnabled ? (
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCaptureFromCamera()}
+                                    disabled={actionDisabled}
+                                    className={cn(
+                                        "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
+                                        actionDisabled
+                                            ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                                            : "bg-emerald-600 text-white hover:bg-emerald-700",
+                                    )}
+                                >
+                                    {decodingImage ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <Camera className="h-4 w-4" />
+                                    )}
+                                    Chụp ảnh barcode
+                                </button>
+                            ) : null}
 
                             <button
                                 type="button"
@@ -1436,7 +1524,7 @@ const WorkflowScanStep: React.FC<Props> = ({
 
                             <button
                                 type="button"
-                                onClick={handleSwitchCamera}
+                                onClick={() => void handleSwitchCamera()}
                                 disabled={actionDisabled || !cameraEnabled || startingRef.current}
                                 className={cn(
                                     "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
@@ -1463,7 +1551,7 @@ const WorkflowScanStep: React.FC<Props> = ({
                             <div className="mt-3 grid gap-3 sm:grid-cols-2">
                                 <button
                                     type="button"
-                                    onClick={handleDecodeWorkingImage}
+                                    onClick={() => void handleDecodeWorkingImage()}
                                     disabled={actionDisabled}
                                     className={cn(
                                         "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
@@ -1482,7 +1570,7 @@ const WorkflowScanStep: React.FC<Props> = ({
 
                                 <button
                                     type="button"
-                                    onClick={handleApplyCrop}
+                                    onClick={() => void handleApplyCrop()}
                                     disabled={actionDisabled || !cropMode}
                                     className={cn(
                                         "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
@@ -1529,7 +1617,7 @@ const WorkflowScanStep: React.FC<Props> = ({
 
                                 <button
                                     type="button"
-                                    onClick={handleRestoreOriginalImage}
+                                    onClick={() => void handleRestoreOriginalImage()}
                                     disabled={actionDisabled || !originalImageSrc}
                                     className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 sm:col-span-2"
                                 >

@@ -1,6 +1,16 @@
-// src/types/product-ai-workflow.type.ts
+import type {
+    ProductNutritionFacts,
+    ProductStateValue,
+} from "./product.type"
 
-export type NutritionFactsMap = Record<string, string>
+export type ProductUnitInfoDto = {
+    unitId?: string | null
+    unitName?: string | null
+    unitType?: string | null
+    unitSymbol?: string | null
+}
+
+export type NutritionFactsMap = ProductNutritionFacts
 
 export type WorkflowNextAction =
     | "CREATE_STOCKLOT"
@@ -23,16 +33,6 @@ export type ProductWorkflowMode =
     | "CREATE_NEW_PRODUCT"
     | null
 
-export type ProductStateValue =
-    | 0
-    | 1
-    | 2
-    | 3
-    | 4
-    | 5
-    | 6
-    | 7
-
 export type WorkflowTimeoutInfoDto = {
     timeoutSeconds?: number | null
     isAiStep?: boolean | null
@@ -53,6 +53,7 @@ export type ExistingProductSummaryDto = {
     lastPrice?: number | null
     totalLotsSold?: number | null
     status?: ProductStateValue | string | null
+
     isCurrentSupermarket?: boolean | null
 }
 
@@ -90,19 +91,20 @@ export type OcrExtractedInfoDto = {
     nutritionFacts?: NutritionFactsMap | null
 }
 
-export type WorkflowIdentifyResultDto = {
+export type WorkflowIdentifyResultDto = ProductUnitInfoDto & {
     barcode: string
     productExists: boolean
     phase?: string | null
     nextAction: WorkflowNextAction
     existingProduct?: ExistingProductSummaryDto | null
-    matchedProducts?: ExistingProductSummaryDto[] | null
     barcodeLookupInfo?: BarcodeLookupInfoDto | null
+    timeoutInfo?: WorkflowTimeoutInfoDto | null
+
+    matchedProducts?: ExistingProductSummaryDto[] | null
     canCreatePrivateProductForCurrentSupermarket?: boolean | null
     requiresVerification?: boolean | null
     verificationProductId?: string | null
     canCreateLotDirectly?: boolean | null
-    timeoutInfo?: WorkflowTimeoutInfoDto | null
 }
 
 export type WorkflowAnalyzeImageResultDto = {
@@ -135,9 +137,10 @@ export type WorkflowCreateProductRequestDto = {
     ocrExtractedData?: string
     ocrConfidence?: number
     isManualFallback?: boolean
+    unitId?: string | null
 }
 
-export type WorkflowCreateProductResultDto = {
+export type WorkflowCreateProductResultDto = ProductUnitInfoDto & {
     productId: string
     supermarketId?: string | null
     name?: string | null
@@ -159,6 +162,7 @@ export type WorkflowCreateAndPublishLotRequestDto = {
     productId: string
     expiryDate: string
     manufactureDate?: string | null
+    unitId?: string | null
     quantity?: number
     weight?: number
     originalUnitPrice: number
@@ -190,7 +194,29 @@ export type WorkflowPricingSuggestionDto = {
     marketPriceSources?: WorkflowMarketPriceSourceDto[] | null
 }
 
-export type WorkflowStockLotDto = {
+export type WorkflowMarketPriceReferenceDto = {
+    barcode?: string | null
+    productName?: string | null
+    hasData?: boolean | null
+    minPrice?: number | null
+    avgPrice?: number | null
+    maxPrice?: number | null
+    sourceCount?: number | null
+    lastUpdated?: string | null
+    sources?: string[] | null
+    details?: WorkflowMarketPriceSourceDto[] | null
+    crawled?: boolean | null
+    crawlError?: string | null
+    message?: string | null
+}
+
+export type GetWorkflowMarketPriceReferenceQuery = {
+    barcode?: string
+    productName?: string
+    autoCrawl?: boolean
+}
+
+export type WorkflowStockLotDto = ProductUnitInfoDto & {
     lotId: string
     productId: string
     productName?: string | null
@@ -222,6 +248,7 @@ export type WorkflowCreateAndPublishLotResultDto = {
     stockLot?: WorkflowStockLotDto | null
     isManualFallback?: boolean | null
     timeoutInfo?: WorkflowTimeoutInfoDto | null
+
     productCategory?: string | null
     productNutritionFacts?: NutritionFactsMap | null
 }
@@ -237,6 +264,9 @@ export type ProductFormState = {
     name: string
     brand: string
     categoryName: string
+    categoryId: string
+    unitId: string
+    isFreshFood: boolean
     barcode: string
     manufacturer: string
     origin: string
@@ -288,20 +318,13 @@ export type ProductWorkflowState = {
     lotForm: LotFormState
 }
 
-export const CATEGORY_OPTIONS = [
-    { label: "Thực phẩm tươi", value: "Fresh Food" },
-    { label: "Thực phẩm khô", value: "Dry Food" },
-    { label: "Đồ uống", value: "Beverages" },
-    { label: "Gia vị", value: "Spices" },
-    { label: "Bánh kẹo", value: "Snacks" },
-    { label: "Đông lạnh", value: "Frozen Food" },
-    { label: "Khác", value: "Other" },
-] as const
-
 export const emptyProductForm = (): ProductFormState => ({
     name: "",
     brand: "",
     categoryName: "",
+    categoryId: "",
+    unitId: "",
+    isFreshFood: false,
     barcode: "",
     manufacturer: "",
     origin: "",
@@ -332,7 +355,7 @@ export const buildInitialWorkflowState = (): ProductWorkflowState => ({
     nextAction: null,
     barcode: "",
     phase: null,
-    statusText: "Bắt đầu bằng barcode hoặc ảnh sản phẩm",
+    statusText: "Bắt đầu bằng mã vạch hoặc ảnh sản phẩm",
     errorMessage: null,
 
     identifyResult: null,

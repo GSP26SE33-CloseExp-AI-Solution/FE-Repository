@@ -1,5 +1,3 @@
-// src/mappers/product-ai.mapper.ts
-
 import type {
     BarcodeLookupInfoDto,
     ExistingProductSummaryDto,
@@ -107,23 +105,47 @@ const resolveStepFromMode = (mode: ProductWorkflowMode): ProductWorkflowStep => 
     }
 }
 
-const pickOwnProduct = (result: WorkflowIdentifyResultDto) => {
-    const matched = result.matchedProducts || []
+const withCurrentSupermarketFlag = (
+    product?: ExistingProductSummaryDto | null,
+    isCurrentSupermarket = false,
+): ExistingProductSummaryDto | null => {
+    if (!product) return null
 
-    if (result.existingProduct && result.nextAction === "VERIFY_PRODUCT") {
-        return {
-            ...result.existingProduct,
-            isCurrentSupermarket: true,
-        }
+    return {
+        ...product,
+        isCurrentSupermarket:
+            product.isCurrentSupermarket ?? isCurrentSupermarket,
+    }
+}
+
+const pickOwnProduct = (result: WorkflowIdentifyResultDto) => {
+    if (
+        result.existingProduct &&
+        (result.nextAction === "CREATE_STOCKLOT" ||
+            result.nextAction === "VERIFY_PRODUCT")
+    ) {
+        return withCurrentSupermarketFlag(result.existingProduct, true)
     }
 
+    const matched = result.matchedProducts || []
     const current = matched.find((item) => item.isCurrentSupermarket)
-    return current || null
+
+    return withCurrentSupermarketFlag(current, true)
 }
 
 const pickReferenceProduct = (result: WorkflowIdentifyResultDto) => {
     if (result.nextAction !== "CHOOSE_OR_CREATE_PRIVATE_PRODUCT") return null
-    return result.existingProduct || (result.matchedProducts || [])[0] || null
+
+    if (result.existingProduct) {
+        return withCurrentSupermarketFlag(
+            result.existingProduct,
+            Boolean(result.existingProduct.isCurrentSupermarket),
+        )
+    }
+
+    const matched = result.matchedProducts || []
+
+    return withCurrentSupermarketFlag(matched[0] || null, false)
 }
 
 const mapReferenceIntoProductForm = ({
@@ -131,14 +153,17 @@ const mapReferenceIntoProductForm = ({
     ownProduct,
     referenceProduct,
     lookup,
+    unitId,
 }: {
     barcode: string
     ownProduct?: ExistingProductSummaryDto | null
     referenceProduct?: ExistingProductSummaryDto | null
     lookup?: BarcodeLookupInfoDto | null
+    unitId?: string | null
 }) => {
     return {
         ...emptyProductForm(),
+        unitId: firstText(unitId),
         barcode: firstText(
             ownProduct?.barcode,
             referenceProduct?.barcode,
@@ -172,12 +197,11 @@ const mapReferenceIntoProductForm = ({
             stringifyIngredients(referenceProduct?.ingredients),
             stringifyIngredients(lookup?.ingredients),
         ),
-        nutritionFacts: firstText(
-            stringifyNutrition(lookup?.nutritionFacts),
-        ),
+        nutritionFacts: firstText(stringifyNutrition(lookup?.nutritionFacts)),
         usageInstructions: "",
         storageInstructions: "",
         safetyWarnings: "",
+        isManualFallback: false,
     }
 }
 
@@ -186,13 +210,29 @@ export const mapWorkflowIdentifyResultToState = (
 ): ProductWorkflowState => {
     const mode = resolveModeFromNextAction(result.nextAction)
     const step = resolveStepFromMode(mode)
+
     const ownProduct = pickOwnProduct(result)
     const referenceProduct = pickReferenceProduct(result)
 
     const matched = result.matchedProducts || []
-    const externalProducts = matched.filter((item) => !item.isCurrentSupermarket)
+    const externalProducts = matched.filter(
+        (item) => !item.isCurrentSupermarket && item.productId !== ownProduct?.productId,
+    )
 
-    const canCreateLotDirectly = Boolean(result.canCreateLotDirectly)
+    const canCreateLotDirectly =
+        typeof result.canCreateLotDirectly === "boolean"
+            ? result.canCreateLotDirectly
+            : result.nextAction === "CREATE_STOCKLOT"
+
+    const requiresVerification =
+        typeof result.requiresVerification === "boolean"
+            ? result.requiresVerification
+            : result.nextAction === "VERIFY_PRODUCT"
+
+    const canCreatePrivateProductForCurrentSupermarket =
+        typeof result.canCreatePrivateProductForCurrentSupermarket === "boolean"
+            ? result.canCreatePrivateProductForCurrentSupermarket
+            : result.nextAction === "CHOOSE_OR_CREATE_PRIVATE_PRODUCT"
 
     return {
         ...buildInitialWorkflowState(),
@@ -203,12 +243,14 @@ export const mapWorkflowIdentifyResultToState = (
         phase: result.phase || null,
         statusText:
             result.nextAction === "CREATE_STOCKLOT"
-                ? "Đã có sản phẩm verified của siêu thị hiện tại, đi thẳng tạo lô"
+                ? "Đã có sản phẩm phù hợp, tiếp tục tạo lô hàng"
                 : result.nextAction === "VERIFY_PRODUCT"
-                    ? "Sản phẩm nội bộ cần xác nhận trước khi tạo lô"
+                    ? "Sản phẩm cần xác nhận trước khi tạo lô hàng"
                     : result.nextAction === "CHOOSE_OR_CREATE_PRIVATE_PRODUCT"
-                        ? "Đã có sản phẩm cùng barcode từ siêu thị khác, chỉ dùng để điền sẵn thông tin"
-                        : "Chưa có barcode trong hệ thống, tạo sản phẩm mới",
+                        ? "Đã tìm thấy sản phẩm tham khảo cùng mã vạch"
+                        : result.nextAction === "CREATE_PRODUCT"
+                            ? "Chưa có sản phẩm, cần tạo mới"
+                            : "Đã nhận diện mã vạch",
         errorMessage: null,
 
         identifyResult: result,
@@ -220,18 +262,17 @@ export const mapWorkflowIdentifyResultToState = (
         referenceProduct,
         externalProducts,
 
-        requiresVerification: Boolean(result.requiresVerification),
-        verificationProductId: result.verificationProductId || null,
+        requiresVerification,
+        verificationProductId: result.verificationProductId || ownProduct?.productId || null,
         canCreateLotDirectly,
-        canCreatePrivateProductForCurrentSupermarket: Boolean(
-            result.canCreatePrivateProductForCurrentSupermarket,
-        ),
+        canCreatePrivateProductForCurrentSupermarket,
 
         productForm: mapReferenceIntoProductForm({
             barcode: result.barcode,
             ownProduct,
             referenceProduct,
             lookup: result.barcodeLookupInfo,
+            unitId: result.unitId,
         }),
         lotForm: {
             ...emptyLotForm(),
@@ -249,7 +290,11 @@ export const mapWorkflowAnalyzeImageResultToState = (
 
     return {
         ...previous,
+        step: previous.step === "SCAN" ? "PRODUCT" : previous.step,
         analyzeResult: result,
+        statusText: result.aiSkipped
+            ? "Đã bỏ qua AI, bạn có thể nhập tay thông tin sản phẩm"
+            : "Đã phân tích ảnh, vui lòng kiểm tra lại thông tin sản phẩm",
         productForm: {
             ...previous.productForm,
             barcode: firstText(
@@ -320,7 +365,7 @@ export const mapWorkflowCreateProductResultToState = (
         nextAction: result.nextAction || "CREATE_STOCKLOT",
         statusText:
             result.nextActionDescription ||
-            "Đã tạo/xác nhận product thành công, tiếp tục tạo lô",
+            "Đã tạo/xác nhận sản phẩm thành công, tiếp tục tạo lô hàng",
         createdProduct: result,
         ownProduct: {
             productId: result.productId,
@@ -335,6 +380,14 @@ export const mapWorkflowCreateProductResultToState = (
             status: result.status,
             isCurrentSupermarket: true,
         },
+        productForm: {
+            ...previous.productForm,
+            unitId: firstText(result.unitId, previous.productForm.unitId),
+        },
+        requiresVerification: false,
+        verificationProductId: null,
+        canCreateLotDirectly: true,
+        canCreatePrivateProductForCurrentSupermarket: false,
     }
 }
 
@@ -349,12 +402,14 @@ export const mapWorkflowCreateAndPublishLotResultToState = (
         ...previous,
         step: "DONE",
         phase: result.phase || previous.phase,
+        nextAction: null,
         statusText: result.pricingSuggestionResolvedBeforePublish
-            ? "Đã tạo lot và publish thành công, giá AI đã được xử lý trước khi đăng"
-            : "Đã tạo lot và publish thành công",
+            ? "Đã tạo lô hàng và đăng bán thành công, giá AI đã được xử lý trước khi đăng bán"
+            : "Đã tạo lô hàng và đăng bán thành công",
         createdLot: result,
         productForm: {
             ...previous.productForm,
+            unitId: firstText(stockLot?.unitId, previous.productForm.unitId),
             categoryName: firstText(
                 result.productCategory,
                 previous.productForm.categoryName,
@@ -404,5 +459,27 @@ export const mapWorkflowCreateAndPublishLotResultToState = (
                     result.productCategory ?? previous.ownProduct.category ?? null,
             }
             : previous.ownProduct,
+    }
+}
+
+export const mergeWorkflowState = (
+    current: ProductWorkflowState,
+    patch: Partial<ProductWorkflowState>,
+): ProductWorkflowState => {
+    return {
+        ...current,
+        ...patch,
+        productForm: patch.productForm
+            ? {
+                ...current.productForm,
+                ...patch.productForm,
+            }
+            : current.productForm,
+        lotForm: patch.lotForm
+            ? {
+                ...current.lotForm,
+                ...patch.lotForm,
+            }
+            : current.lotForm,
     }
 }

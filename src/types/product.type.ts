@@ -5,6 +5,11 @@ export type ProductSelectOption<T extends string | number = number> = {
     label: string
 }
 
+export type ProductStateValue = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+export type ProductTypeValue = 0 | 1 | 2 | 3 | 4 | 5
+export type ExpiryStatusValue = 1 | 2 | 3 | 4 | 5
+export type ProductWeightTypeValue = 1 | 2
+
 export type ProductImageDto = {
     productImageId: string
     productId: string
@@ -40,9 +45,9 @@ export type ProductResponseDto = {
     category: string
     barcode: string
     isFreshFood: boolean
-    type: number
+    type: ProductTypeValue
     sku: string
-    status: number
+    status: ProductStateValue
     weightTypeName: string
     originalPrice: number
     suggestedPrice: number
@@ -69,7 +74,13 @@ export type ProductResponseDto = {
     nutritionFacts?: ProductNutritionFacts
     barcodeLookupInfo?: ProductBarcodeLookupInfoDto | null
 
-    // FE-safe optional fields:
+    // Unit-safe optional fields
+    unitId?: string | null
+    unitName?: string | null
+    unitType?: string | null
+    unitSymbol?: string | null
+
+    // FE-safe optional fields
     responsibleOrg?: string
     isFeatured?: boolean
     tags?: string[]
@@ -100,22 +111,37 @@ export type ProductDetailDto = {
     suggestedPrice?: number
     barcode?: string
     isFreshFood?: boolean
-    status?: number
+    status?: ProductStateValue
     supermarketName?: string
     mainImageUrl?: string
     totalImages?: number
     productImages?: ProductImageDto[]
     daysToExpiry?: number
-    expiryStatus?: number
+    expiryStatus?: ExpiryStatusValue
     expiryStatusText?: string
 
-    // FE-safe optional fields:
+    // Unit-safe optional fields
+    unitId?: string | null
+    unitType?: string | null
+    unitSymbol?: string | null
+
+    // FE-safe optional fields
     supermarketId?: string
-    type?: number
+    type?: ProductTypeValue
     sku?: string
+    weightTypeName?: string
+    pricingConfidence?: number
+    pricingReasons?: string
     responsibleOrg?: string
     isFeatured?: boolean
     tags?: string[]
+    barcodeLookupInfo?: ProductBarcodeLookupInfoDto | null
+    createdBy?: string
+    createdAt?: string
+    verifiedBy?: string
+    verifiedAt?: string
+    pricedBy?: string
+    pricedAt?: string
 }
 
 export type ProductListResult = {
@@ -149,28 +175,14 @@ export type UpdateProductDetailRequestDto = {
     safetyWarnings: string
 }
 
-export type UpdateProductRequestDto = {
-    supermarketId: string
-    name: string
-    categoryName: string
-    barcode: string
-    type: number
-    sku: string
-    status: number
-    responsibleOrg: string
-    isFeatured: boolean
-    tags: string[]
-    detail: UpdateProductDetailRequestDto
-}
-
 export type ProductEditFormValues = {
     supermarketId: string
     name: string
     categoryName: string
     barcode: string
-    type: number
+    type: ProductTypeValue
     sku: string
-    status: number
+    status: ProductStateValue
     responsibleOrg: string
     isFeatured: boolean
     tagsText: string
@@ -186,22 +198,67 @@ export type ProductEditFormValues = {
     safetyWarnings: string
 }
 
-export const PRODUCT_STATUS_OPTIONS: ProductSelectOption<number>[] = [
-    { value: 0, label: "Draft" },
-    { value: 1, label: "Verified" },
-    { value: 2, label: "Priced" },
-    { value: 3, label: "Published" },
-    { value: 4, label: "Expired" },
-    { value: 5, label: "SoldOut" },
-    { value: 6, label: "Hidden" },
-    { value: 7, label: "Deleted" },
+export type ProductEnumOptionDto = {
+    value: number
+    name: string
+    description: string
+}
+
+export type ProductUpdateDetailPayload = {
+    brand?: string
+    ingredients?: string
+    nutritionFactsJson?: string
+    usageInstructions?: string
+    storageInstructions?: string
+    manufacturer?: string
+    origin?: string
+    description?: string
+    safetyWarnings?: string
+}
+
+export type ProductUpdatePayload = {
+    supermarketId: string
+    name: string
+    categoryName: string
+    barcode: string
+    type: ProductTypeValue
+    sku: string
+    status: ProductStateValue
+    responsibleOrg?: string
+    isFeatured?: boolean
+    tags?: string[]
+    detail: ProductUpdateDetailPayload
+}
+
+export const PRODUCT_STATUS_OPTIONS: ProductSelectOption<ProductStateValue>[] = [
+    { value: 0, label: "Nháp" },
+    { value: 1, label: "Đã xác minh" },
+    { value: 2, label: "Đã định giá" },
+    { value: 3, label: "Đang bán" },
+    { value: 4, label: "Hết hạn" },
+    { value: 5, label: "Hết hàng" },
+    { value: 6, label: "Đã ẩn" },
+    { value: 7, label: "Đã xóa" },
 ]
 
-export const PRODUCT_TYPE_OPTIONS: ProductSelectOption<number>[] = [
-    { value: 0, label: "Standard" },
-    { value: 1, label: "Fresh" },
-    { value: 2, label: "Frozen" },
-    { value: 3, label: "Dry" },
-    { value: 4, label: "Beverage" },
-    { value: 5, label: "Other" },
+export const PRODUCT_TYPE_OPTIONS: ProductSelectOption<ProductTypeValue>[] = [
+    { value: 0, label: "Thông thường" },
+    { value: 1, label: "Tươi sống" },
+    { value: 2, label: "Đông lạnh" },
+    { value: 3, label: "Hàng khô" },
+    { value: 4, label: "Đồ uống" },
+    { value: 5, label: "Khác" },
+]
+
+export const PRODUCT_WEIGHT_TYPE_OPTIONS: ProductSelectOption<ProductWeightTypeValue>[] = [
+    { value: 1, label: "Cố định" },
+    { value: 2, label: "Theo khối lượng" },
+]
+
+export const EXPIRY_STATUS_OPTIONS: ProductSelectOption<ExpiryStatusValue>[] = [
+    { value: 1, label: "Hết hạn hôm nay" },
+    { value: 2, label: "Sắp hết hạn" },
+    { value: 3, label: "Hạn ngắn" },
+    { value: 4, label: "Hạn dài" },
+    { value: 5, label: "Đã hết hạn" },
 ]

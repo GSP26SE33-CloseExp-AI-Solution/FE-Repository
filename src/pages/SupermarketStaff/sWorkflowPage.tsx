@@ -1,9 +1,13 @@
-import React, { ChangeEvent, useEffect, useRef, useState } from "react"
+import React, { useEffect, useMemo, useRef, useState } from "react"
+import type { ChangeEvent } from "react"
 import { ArrowLeft, Loader2, RefreshCcw, Sparkles } from "lucide-react"
 import toast from "react-hot-toast"
 import { useNavigate } from "react-router-dom"
 
-import { productAiService } from "@/services/product-ai.service"
+import { productAiService } from "@/services/product-ai-workflow.service"
+import { categoryService } from "@/services/category.service"
+import { unitService } from "@/services/unit.service"
+
 import {
     mapWorkflowAnalyzeImageResultToState,
     mapWorkflowCreateAndPublishLotResultToState,
@@ -21,14 +25,23 @@ import {
     joinIngredientsForRequest,
     stringifyNutritionFactsForRequest,
 } from "@/types/product-ai-workflow.type"
+import type { CategoryItem } from "@/types/category.type"
+import type { UnitOption } from "@/types/unit.type"
 
-import WorkflowLotStep from "../sProductWorkflow/WorkflowLotStep"
-import WorkflowProductStep from "../sProductWorkflow/WorkflowProductStep"
-import WorkflowScanStep from "../sProductWorkflow/WorkflowScanStep"
-import WorkflowSummaryAside from "../sProductWorkflow/WorkflowSummaryAside"
-import { SectionCard, StepBadge } from "../sProductWorkflow/WorkflowShared"
+import WorkflowLotStep from "./sProductWorkflow/LotStep"
+import WorkflowProductStep from "./sProductWorkflow/ProductStep"
+import WorkflowScanStep from "./sProductWorkflow/ScanStep"
+import WorkflowSummaryAside from "./sProductWorkflow/SummaryAside"
+import { SectionCard, StepBadge } from "./sProductWorkflow/WorkflowShared"
 
 type LoadingState = null | "IDENTIFY" | "ANALYZE" | "CREATE_PRODUCT" | "CREATE_LOT"
+
+type ProductCategoryOption = {
+    categoryId: string
+    label: string
+    value: string
+    isFreshFood: boolean
+}
 
 const MAX_IMAGES = 5
 
@@ -79,15 +92,68 @@ const ProductWorkflowPage: React.FC = () => {
     const [images, setImages] = useState<LocalImageFile[]>([])
     const [uploadError, setUploadError] = useState<string | null>(null)
 
+    const [categories, setCategories] = useState<CategoryItem[]>([])
+    const [unitOptions, setUnitOptions] = useState<UnitOption[]>([])
+
     const fileInputRef = useRef<HTMLInputElement>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
     const canvasRef = useRef<HTMLCanvasElement>(null)
 
+    const streamRef = useRef<MediaStream | null>(null)
+    const imagesRef = useRef<LocalImageFile[]>([])
+
     const [stream, setStream] = useState<MediaStream | null>(null)
     const [usingCamera, setUsingCamera] = useState(false)
 
+    const categoryOptions = useMemo<ProductCategoryOption[]>(
+        () =>
+            categories.map((item) => ({
+                categoryId: item.categoryId,
+                label: item.name,
+                value: item.categoryId,
+                isFreshFood: item.isFreshFood,
+            })),
+        [categories],
+    )
+
+    const resolveCategoryMeta = (categoryName?: string | null, categoryId?: string | null) => {
+        const normalizedId = categoryId?.trim() || ""
+        if (normalizedId) {
+            const matchedById = categories.find((item) => item.categoryId === normalizedId)
+            if (matchedById) {
+                return {
+                    categoryId: matchedById.categoryId,
+                    categoryName: matchedById.name,
+                    isFreshFood: matchedById.isFreshFood,
+                }
+            }
+        }
+
+        const normalizedName = categoryName?.trim().toLowerCase() || ""
+        if (normalizedName) {
+            const matchedByName = categories.find(
+                (item) => item.name.trim().toLowerCase() === normalizedName,
+            )
+            if (matchedByName) {
+                return {
+                    categoryId: matchedByName.categoryId,
+                    categoryName: matchedByName.name,
+                    isFreshFood: matchedByName.isFreshFood,
+                }
+            }
+        }
+
+        return {
+            categoryId: "",
+            categoryName: categoryName?.trim() || "",
+            isFreshFood: false,
+        }
+    }
+
     const stopCamera = () => {
-        stream?.getTracks().forEach((track) => track.stop())
+        if (stream) {
+            stream.getTracks().forEach((track) => track.stop())
+        }
         setStream(null)
         setUsingCamera(false)
     }
@@ -106,7 +172,7 @@ const ProductWorkflowPage: React.FC = () => {
             setUploadError(null)
         } catch (error) {
             console.error("ProductWorkflowPage.startCamera -> error:", error)
-            setUploadError("Không thể mở camera. Hãy kiểm tra quyền truy cập.")
+            setUploadError("Không thể mở camera. Vui lòng kiểm tra quyền truy cập.")
         }
     }
 
@@ -114,27 +180,30 @@ const ProductWorkflowPage: React.FC = () => {
         const files = e.target.files
         if (!files) return
 
-        let updated = [...images]
-        let overLimit = 0
+        setImages((prev) => {
+            const updated = [...prev]
+            let overLimit = 0
 
-        for (const file of Array.from(files)) {
-            if (!file.type.startsWith("image/")) continue
+            for (const file of Array.from(files)) {
+                if (!file.type.startsWith("image/")) continue
 
-            if (updated.length >= MAX_IMAGES) {
-                overLimit++
-                continue
+                if (updated.length >= MAX_IMAGES) {
+                    overLimit++
+                    continue
+                }
+
+                updated.push({
+                    id: crypto.randomUUID(),
+                    file,
+                    preview: URL.createObjectURL(file),
+                    source: "upload",
+                })
             }
 
-            updated.push({
-                id: crypto.randomUUID(),
-                file,
-                preview: URL.createObjectURL(file),
-                source: "upload",
-            })
-        }
+            setUploadError(overLimit > 0 ? `Chỉ được tối đa ${MAX_IMAGES} ảnh` : null)
+            return updated
+        })
 
-        setImages(updated)
-        setUploadError(overLimit > 0 ? `Chỉ được tối đa ${MAX_IMAGES} ảnh` : null)
         e.target.value = ""
     }
 
@@ -184,17 +253,57 @@ const ProductWorkflowPage: React.FC = () => {
     const removeImage = (id: string) => {
         setImages((prev) => {
             const target = prev.find((item) => item.id === id)
-            if (target) URL.revokeObjectURL(target.preview)
+            if (target) {
+                URL.revokeObjectURL(target.preview)
+            }
             return prev.filter((item) => item.id !== id)
         })
     }
 
     const clearImages = () => {
-        images.forEach((img) => URL.revokeObjectURL(img.preview))
-        setImages([])
+        setImages((prev) => {
+            prev.forEach((img) => URL.revokeObjectURL(img.preview))
+            return []
+        })
         setUploadError(null)
         stopCamera()
     }
+
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
+                const data = await categoryService.getCategories(false)
+                setCategories(Array.isArray(data) ? data : [])
+            } catch (error) {
+                console.error("ProductWorkflowPage.loadCategories -> error:", error)
+                toast.error("Không tải được danh mục sản phẩm")
+            }
+        }
+
+        const loadUnits = async () => {
+            try {
+                const data = await unitService.getUnits()
+
+                setUnitOptions(
+                    Array.isArray(data)
+                        ? data.map((item) => ({
+                            unitId: item.unitId,
+                            label: item.symbol ? `${item.name} (${item.symbol})` : item.name,
+                            value: item.unitId,
+                            unitType: item.type || undefined,
+                            unitSymbol: item.symbol || undefined,
+                        }))
+                        : [],
+                )
+            } catch (error) {
+                console.error("ProductWorkflowPage.loadUnits -> error:", error)
+                toast.error("Không tải được đơn vị sản phẩm")
+            }
+        }
+
+        void loadCategories()
+        void loadUnits()
+    }, [])
 
     useEffect(() => {
         if (!usingCamera || !videoRef.current || !stream) return
@@ -206,11 +315,19 @@ const ProductWorkflowPage: React.FC = () => {
     }, [usingCamera, stream])
 
     useEffect(() => {
+        streamRef.current = stream
+    }, [stream])
+
+    useEffect(() => {
+        imagesRef.current = images
+    }, [images])
+
+    useEffect(() => {
         return () => {
-            stream?.getTracks().forEach((track) => track.stop())
-            images.forEach((img) => URL.revokeObjectURL(img.preview))
+            streamRef.current?.getTracks().forEach((track) => track.stop())
+            imagesRef.current.forEach((img) => URL.revokeObjectURL(img.preview))
         }
-    }, [stream, images])
+    }, [])
 
     const resetAllWorkflow = () => {
         clearImages()
@@ -234,7 +351,20 @@ const ProductWorkflowPage: React.FC = () => {
             const result = await productAiService.identifyWorkflow({ barcode })
             const next = mapWorkflowIdentifyResultToState(result)
 
-            setWorkflow(next)
+            const categoryMeta = resolveCategoryMeta(
+                next.productForm.categoryName,
+                next.productForm.categoryId,
+            )
+
+            setWorkflow({
+                ...next,
+                productForm: {
+                    ...next.productForm,
+                    categoryId: categoryMeta.categoryId,
+                    categoryName: categoryMeta.categoryName || next.productForm.categoryName,
+                    isFreshFood: categoryMeta.isFreshFood,
+                },
+            })
             setBarcodeInput(result.barcode || barcode)
             clearImages()
 
@@ -261,7 +391,10 @@ const ProductWorkflowPage: React.FC = () => {
     }
 
     const handleAnalyzeImage = async () => {
-        if (workflow.mode !== "CREATE_NEW_PRODUCT" || workflow.nextAction !== "CREATE_PRODUCT") {
+        if (
+            workflow.mode !== "CREATE_NEW_PRODUCT" ||
+            workflow.nextAction !== "CREATE_PRODUCT"
+        ) {
             toast.error("Chỉ được OCR ảnh khi hệ thống yêu cầu tạo sản phẩm mới")
             return
         }
@@ -282,25 +415,33 @@ const ProductWorkflowPage: React.FC = () => {
             )
 
             const next = mapWorkflowAnalyzeImageResultToState(workflow, result)
-            setWorkflow(next)
-
             const extractedBarcode =
                 result.extractedInfo?.barcode?.trim() ||
                 result.barcodeLookupInfo?.barcode?.trim() ||
                 ""
 
+            const categoryMeta = resolveCategoryMeta(
+                next.productForm.categoryName,
+                next.productForm.categoryId,
+            )
+
+            setWorkflow({
+                ...next,
+                barcode: extractedBarcode || next.barcode,
+                productForm: {
+                    ...next.productForm,
+                    barcode: extractedBarcode || next.productForm.barcode,
+                    categoryId: categoryMeta.categoryId,
+                    categoryName: categoryMeta.categoryName || next.productForm.categoryName,
+                    isFreshFood: categoryMeta.isFreshFood,
+                },
+            })
+
             if (extractedBarcode) {
-                setWorkflow((prev) => ({
-                    ...prev,
-                    barcode: extractedBarcode,
-                    productForm: {
-                        ...prev.productForm,
-                        barcode: extractedBarcode,
-                    },
-                }))
+                setBarcodeInput(extractedBarcode)
             }
 
-            toast.success("Đã phân tích ảnh và điền sẵn thông tin")
+            toast.success("Hệ thống đã phân tích ảnh và điền sẵn thông tin")
         } catch (error: any) {
             console.error("ProductWorkflowPage.handleAnalyzeImage -> error:", error)
             console.error(
@@ -312,7 +453,7 @@ const ProductWorkflowPage: React.FC = () => {
                 error?.response?.data?.errors?.[0] ||
                 error?.response?.data?.message ||
                 error?.message ||
-                "AI chưa phân tích được ảnh",
+                "Hệ thống chưa phân tích được ảnh",
             )
         } finally {
             setLoading(null)
@@ -320,28 +461,40 @@ const ProductWorkflowPage: React.FC = () => {
     }
 
     const handleChooseReference = (product: ExistingProductSummaryDto) => {
-        setWorkflow((prev) => ({
-            ...prev,
-            referenceProduct: product,
-            productForm: {
-                ...prev.productForm,
-                name: product.name || prev.productForm.name,
-                brand: product.brand || prev.productForm.brand,
-                categoryName: product.category || prev.productForm.categoryName,
-                barcode: product.barcode || prev.productForm.barcode,
-                manufacturer: product.manufacturer || prev.productForm.manufacturer,
-                ingredients:
-                    product.ingredients?.join(", ") || prev.productForm.ingredients,
-            },
-        }))
+        setWorkflow((prev) => {
+            const categoryMeta = resolveCategoryMeta(product.category, "")
+
+            return {
+                ...prev,
+                referenceProduct: product,
+                productForm: {
+                    ...prev.productForm,
+                    name: product.name || prev.productForm.name,
+                    brand: product.brand || prev.productForm.brand,
+                    categoryId: categoryMeta.categoryId,
+                    categoryName: categoryMeta.categoryName || prev.productForm.categoryName,
+                    isFreshFood: categoryMeta.isFreshFood,
+                    barcode: product.barcode || prev.productForm.barcode,
+                    manufacturer: product.manufacturer || prev.productForm.manufacturer,
+                    ingredients:
+                        product.ingredients?.join(", ") || prev.productForm.ingredients,
+                },
+            }
+        })
+
         toast.success("Đã dùng sản phẩm này làm dữ liệu tham khảo")
     }
 
     const handleSubmitProduct = async () => {
         const form = workflow.productForm
 
-        if (!form.name.trim() || !form.categoryName.trim() || !form.barcode.trim()) {
-            toast.error("Còn thiếu tên sản phẩm, danh mục hoặc barcode")
+        if (
+            !form.name.trim() ||
+            !form.categoryName.trim() ||
+            !form.barcode.trim() ||
+            !form.unitId.trim()
+        ) {
+            toast.error("Còn thiếu tên sản phẩm, danh mục, barcode hoặc đơn vị")
             return
         }
 
@@ -352,6 +505,7 @@ const ProductWorkflowPage: React.FC = () => {
                 barcode: form.barcode.trim(),
                 name: form.name.trim(),
                 categoryName: form.categoryName.trim(),
+                unitId: form.unitId.trim(),
                 detail: {
                     brand: form.brand.trim() || undefined,
                     ingredients: joinIngredientsForRequest(form.ingredients),
@@ -372,12 +526,25 @@ const ProductWorkflowPage: React.FC = () => {
             })
 
             const next = mapWorkflowCreateProductResultToState(workflow, result)
-            setWorkflow(next)
+            const categoryMeta = resolveCategoryMeta(
+                next.productForm.categoryName,
+                next.productForm.categoryId,
+            )
+
+            setWorkflow({
+                ...next,
+                productForm: {
+                    ...next.productForm,
+                    categoryId: categoryMeta.categoryId,
+                    categoryName: categoryMeta.categoryName || next.productForm.categoryName,
+                    isFreshFood: categoryMeta.isFreshFood,
+                },
+            })
 
             toast.success(
                 workflow.mode === "VERIFY_OWN_PRODUCT"
                     ? "Đã xác nhận sản phẩm thành công"
-                    : "Đã tạo product thành công",
+                    : "Đã tạo sản phẩm thành công",
             )
         } catch (error: any) {
             console.error("ProductWorkflowPage.handleSubmitProduct -> error:", error)
@@ -390,7 +557,7 @@ const ProductWorkflowPage: React.FC = () => {
                 error?.response?.data?.errors?.[0] ||
                 error?.response?.data?.message ||
                 error?.message ||
-                "Không thể xác nhận/tạo product",
+                "Không thể xác nhận/tạo sản phẩm",
             )
         } finally {
             setLoading(null)
@@ -402,7 +569,7 @@ const ProductWorkflowPage: React.FC = () => {
         const productId = workflow.createdProduct?.productId || workflow.ownProduct?.productId
 
         if (!productId) {
-            toast.error("Thiếu productId để tạo lô")
+            toast.error("Thiếu mã sản phẩm để tạo lô hàng")
             return
         }
 
@@ -435,7 +602,7 @@ const ProductWorkflowPage: React.FC = () => {
         }
 
         if (!form.acceptedSuggestion && !finalUnitPrice) {
-            toast.error("Khi không dùng giá AI, bạn cần nhập giá cuối mong muốn")
+            toast.error("Khi không dùng giá gợi ý từ hệ thống, bạn cần nhập giá cuối mong muốn")
             return
         }
 
@@ -458,6 +625,7 @@ const ProductWorkflowPage: React.FC = () => {
             acceptedSuggestion: form.acceptedSuggestion,
             priceFeedback: form.priceFeedback.trim() || undefined,
             isManualFallback: form.isManualFallback,
+            unitId: workflow.createdProduct?.unitId || workflow.productForm.unitId || undefined,
         }
 
         console.log("ProductWorkflowPage.handleSubmitLot -> payload:", payload)
@@ -473,8 +641,8 @@ const ProductWorkflowPage: React.FC = () => {
             setWorkflow(next)
             toast.success(
                 result.pricingSuggestionResolvedBeforePublish
-                    ? "Tạo lot + xử lý giá + publish thành công"
-                    : "Tạo lot + định giá + publish thành công",
+                    ? "Tạo lot + xử lý giá + đăng bán thành công"
+                    : "Tạo lot + định giá + đăng bán thành công",
             )
         } catch (error: any) {
             console.error("ProductWorkflowPage.handleSubmitLot -> error:", error)
@@ -483,12 +651,29 @@ const ProductWorkflowPage: React.FC = () => {
                 error?.response?.data,
             )
 
-            toast.error(
-                error?.response?.data?.errors?.[0] ||
-                error?.response?.data?.message ||
-                error?.message ||
-                "Không tạo và publish được lô hàng",
-            )
+            const responseMessage = error?.response?.data?.message || ""
+            const responseErrors = error?.response?.data?.errors || []
+
+            let uiMessage = "Không tạo và đăng bán được lô hàng"
+
+            if (
+                responseMessage.includes("Remaining shelf life must be > 24 hours")
+            ) {
+                uiMessage = "Hạn sử dụng sản phẩm phải trên 24 tiếng"
+            } else if (
+                Array.isArray(responseErrors) &&
+                responseErrors.includes("workflow_conflict")
+            ) {
+                uiMessage = responseMessage || "Thao tác hiện tại không phù hợp với quy trình hệ thống"
+            } else {
+                uiMessage =
+                    responseMessage ||
+                    responseErrors?.[0] ||
+                    error?.message ||
+                    uiMessage
+            }
+
+            toast.error(uiMessage)
         } finally {
             setLoading(null)
         }
@@ -508,11 +693,6 @@ const ProductWorkflowPage: React.FC = () => {
                             <h1 className="text-2xl font-bold tracking-tight text-slate-900 md:text-[28px]">
                                 Thêm sản phẩm cho siêu thị
                             </h1>
-
-                            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                                Luồng đúng: nhập hoặc quét barcode trước, hệ thống kiểm tra trong DB,
-                                chỉ khi chưa có sản phẩm phù hợp mới chuyển sang bước OCR ảnh.
-                            </p>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
@@ -568,6 +748,8 @@ const ProductWorkflowPage: React.FC = () => {
                                 fileInputRef={fileInputRef}
                                 videoRef={videoRef}
                                 canvasRef={canvasRef}
+                                categoryOptions={categoryOptions}
+                                unitOptions={unitOptions}
                                 onChooseReference={handleChooseReference}
                                 onChange={(next) =>
                                     setWorkflow((prev) => ({ ...prev, productForm: next }))
@@ -594,9 +776,13 @@ const ProductWorkflowPage: React.FC = () => {
                             <WorkflowLotStep
                                 ownProduct={workflow.ownProduct}
                                 createdProduct={workflow.createdProduct}
+                                selectedUnit={unitOptions.find(
+                                    (item) => item.unitId === workflow.productForm.unitId,
+                                )}
                                 form={workflow.lotForm}
                                 loading={loading === "CREATE_LOT"}
                                 createdLot={workflow.createdLot}
+                                isFreshFood={workflow.productForm.isFreshFood}
                                 onChange={(next) =>
                                     setWorkflow((prev) => ({ ...prev, lotForm: next }))
                                 }
@@ -663,7 +849,11 @@ const ProductWorkflowPage: React.FC = () => {
                         ) : null}
                     </div>
 
-                    <WorkflowSummaryAside workflow={workflow} images={images} />
+                    <WorkflowSummaryAside
+                        workflow={workflow}
+                        images={images}
+                        unitOptions={unitOptions}
+                    />
                 </div>
 
                 <div className="mt-6">

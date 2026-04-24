@@ -28,3 +28,5 @@ export type UpdateCategoryPayload = {
     catIconUrl?: string | null
     isActive: boolean
 }
+
+export type CategoryMutationMessage = string

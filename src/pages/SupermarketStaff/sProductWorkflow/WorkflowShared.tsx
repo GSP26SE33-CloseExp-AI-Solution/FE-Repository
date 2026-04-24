@@ -5,7 +5,7 @@ export const cn = (...classes: Array<string | false | null | undefined>) =>
 
 export const formatCurrencyVN = (value?: number | null) => {
     if (typeof value !== "number" || Number.isNaN(value)) return "—"
-    return value.toLocaleString("vi-VN") + " đ"
+    return `${value.toLocaleString("vi-VN")} đ`
 }
 
 export const parseCurrencyVN = (value: string) => {
@@ -90,27 +90,39 @@ export const Field = ({
     </label>
 )
 
-export const SelectField = ({
+export const SelectField = <T extends string | number>({
     label,
     value,
     onChange,
     options,
+    placeholder = "-- Chọn --",
 }: {
     label: string
-    value: string
-    onChange: (value: string) => void
-    options: ReadonlyArray<{ label: string; value: string }>
+    value: T | ""
+    onChange: (value: T | "") => void
+    options: ReadonlyArray<{ label: string; value: T }>
+    placeholder?: string
 }) => (
     <label className="block">
         <div className="mb-2 text-sm font-medium text-slate-700">{label}</div>
         <select
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+            value={String(value)}
+            onChange={(e) => {
+                const raw = e.target.value
+
+                if (raw === "") {
+                    onChange("")
+                    return
+                }
+
+                const matched = options.find((option) => String(option.value) === raw)
+                onChange(matched ? matched.value : "")
+            }}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
         >
-            <option value="">-- Chọn --</option>
+            <option value="">{placeholder}</option>
             {options.map((option) => (
-                <option key={option.value} value={option.value}>
+                <option key={String(option.value)} value={String(option.value)}>
                     {option.label}
                 </option>
             ))}
@@ -172,10 +184,18 @@ export const NumberField = ({
         <input
             type="number"
             min={0}
+            step="any"
             value={value}
             onChange={(e) => {
                 const raw = e.target.value
-                onChange(raw === "" ? "" : Number(raw))
+
+                if (raw === "") {
+                    onChange("")
+                    return
+                }
+
+                const parsed = Number(raw)
+                onChange(Number.isNaN(parsed) ? "" : parsed)
             }}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
         />
@@ -210,21 +230,55 @@ export const CurrencyField = ({
     label: string
     value: number | ""
     onChange: (value: number | "") => void
-}) => (
-    <label className="block">
-        <div className="mb-2 text-sm font-medium text-slate-700">{label}</div>
-        <input
-            type="text"
-            inputMode="numeric"
-            value={typeof value === "number" ? formatCurrencyVN(value) : ""}
-            onChange={(e) => {
-                const raw = e.target.value
-                onChange(raw.trim() === "" ? "" : parseCurrencyVN(raw))
-            }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
-        />
-    </label>
-)
+}) => {
+    const [focused, setFocused] = React.useState(false)
+    const [draftValue, setDraftValue] = React.useState("")
+
+    React.useEffect(() => {
+        if (!focused) {
+            setDraftValue(typeof value === "number" ? String(value) : "")
+        }
+    }, [focused, value])
+
+    const displayValue = focused
+        ? draftValue
+        : typeof value === "number"
+            ? formatCurrencyVN(value)
+            : ""
+
+    return (
+        <label className="block">
+            <div className="mb-2 text-sm font-medium text-slate-700">{label}</div>
+            <input
+                type="text"
+                inputMode="numeric"
+                value={displayValue}
+                onFocus={() => {
+                    setFocused(true)
+                    setDraftValue(typeof value === "number" ? String(value) : "")
+                }}
+                onBlur={() => {
+                    setFocused(false)
+                }}
+                onChange={(e) => {
+                    const digitsOnly = e.target.value.replace(/[^\d]/g, "")
+
+                    setDraftValue(digitsOnly)
+
+                    if (!digitsOnly) {
+                        onChange("")
+                        return
+                    }
+
+                    const parsed = Number(digitsOnly)
+                    onChange(Number.isNaN(parsed) ? "" : parsed)
+                }}
+                placeholder="Nhập số tiền"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+            />
+        </label>
+    )
+}
 
 export const InfoRow = ({
     label,
