@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom"
 import {
     LogOut,
     Menu,
+    ReceiptText,
     Search,
     ShieldCheck,
     ShoppingCart,
@@ -52,6 +53,7 @@ const HOME_ROUTE = "/"
 const IMPACT_ROUTE = "/impact"
 const PARTNER_ROUTE = "/partner/register"
 const CART_ROUTE = "/cart"
+const ORDERS_ROUTE = "/orders"
 const LOGIN_ROUTE = "/login"
 const PROFILE_ROUTE = "/vendor/profile"
 const CART_KEY = "customer_cart_v1"
@@ -256,6 +258,19 @@ const CustomerHeader = () => {
         }
 
         navigate(CART_ROUTE)
+        setMobileNavOpen(false)
+    }
+
+    const handleViewMyOrders = () => {
+        if (!user) {
+            navigate(LOGIN_ROUTE, {
+                state: { redirectTo: ORDERS_ROUTE },
+            })
+            return
+        }
+
+        navigate(ORDERS_ROUTE)
+        setOpen(false)
         setMobileNavOpen(false)
     }
 
@@ -671,6 +686,15 @@ const CustomerHeader = () => {
                                             <span>Hồ sơ</span>
                                         </button>
 
+                                        <button
+                                            type="button"
+                                            onClick={handleViewMyOrders}
+                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-gray-50"
+                                        >
+                                            <ReceiptText size={16} className="text-emerald-600" />
+                                            <span>Đơn hàng của tôi</span>
+                                        </button>
+
                                         {roleName === "Vendor" && (
                                             <button
                                                 type="button"
@@ -867,6 +891,15 @@ const CustomerHeader = () => {
                                     >
                                         <UserIcon size={16} className="text-gray-600" />
                                         <span>Hồ sơ</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleViewMyOrders}
+                                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-gray-50"
+                                    >
+                                        <ReceiptText size={16} className="text-emerald-600" />
+                                        <span>Đơn hàng của tôi</span>
                                     </button>
 
                                     {roleName === "Vendor" && (
