@@ -2,6 +2,10 @@ import axiosClient from "@/utils/axiosClient"
 import type { ApiResponse } from "@/types/api.types"
 import type { UnitItem } from "@/types/unit.type"
 
+type GetWorkflowUnitsQuery = {
+    type?: string
+}
+
 const unwrap = <T,>(response?: ApiResponse<T> | null): T => {
     if (!response) {
         throw new Error("Không nhận được phản hồi từ máy chủ")
@@ -20,9 +24,14 @@ const unwrap = <T,>(response?: ApiResponse<T> | null): T => {
 }
 
 export const unitService = {
-    async getUnits(): Promise<UnitItem[]> {
+    async getUnits(query?: GetWorkflowUnitsQuery): Promise<UnitItem[]> {
         const response = await axiosClient.get<ApiResponse<UnitItem[]>>(
-            "/admin/catalog/units",
+            "/Products/workflow/units",
+            {
+                params: {
+                    type: query?.type?.trim() || undefined,
+                },
+            },
         )
 
         return unwrap(response.data)

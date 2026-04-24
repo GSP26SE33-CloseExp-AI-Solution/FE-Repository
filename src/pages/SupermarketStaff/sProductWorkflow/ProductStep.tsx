@@ -58,6 +58,18 @@ type Props = {
     canvasRef: React.RefObject<HTMLCanvasElement | null>
     categoryOptions: ProductCategoryOption[]
     unitOptions: ProductUnitOption[]
+    nutritionRows: Array<{
+        id: string
+        label: string
+        value: string
+    }>
+    onNutritionRowChange: (
+        id: string,
+        key: "label" | "value",
+        value: string,
+    ) => void
+    onAddNutritionRow: () => void
+    onRemoveNutritionRow: (id: string) => void
     onChooseReference: (product: ExistingProductSummaryDto) => void
     onChange: (next: ProductFormState) => void
     onSubmit: () => void
@@ -104,6 +116,10 @@ const WorkflowProductStep: React.FC<Props> = ({
     canvasRef,
     categoryOptions,
     unitOptions,
+    nutritionRows,
+    onNutritionRowChange,
+    onAddNutritionRow,
+    onRemoveNutritionRow,
     onChooseReference,
     onChange,
     onSubmit,
@@ -532,11 +548,62 @@ const WorkflowProductStep: React.FC<Props> = ({
                     </div>
 
                     <div className="md:col-span-2">
-                        <TextareaField
-                            label="Thông tin dinh dưỡng"
-                            value={form.nutritionFacts}
-                            onChange={(value) => onChange({ ...form, nutritionFacts: value })}
-                        />
+                        <div className="mb-2 text-sm font-medium text-slate-700">
+                            Thông tin dinh dưỡng
+                        </div>
+
+                        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                            {nutritionRows.map((row, index) => (
+                                <div
+                                    key={row.id}
+                                    className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]"
+                                >
+                                    <Field
+                                        label=""
+                                        value={row.label}
+                                        onChange={(value) =>
+                                            onNutritionRowChange(row.id, "label", value)
+                                        }
+                                    />
+
+                                    <Field
+                                        label=""
+                                        value={row.value}
+                                        onChange={(value) =>
+                                            onNutritionRowChange(row.id, "value", value)
+                                        }
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={() => onRemoveNutritionRow(row.id)}
+                                        className="mt-0 inline-flex h-[46px] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 md:mt-[28px]"
+                                        title="Xóa dòng"
+                                    >
+                                        ×
+                                    </button>
+
+                                    {index === 0 ? (
+                                        <>
+                                            <div className="-mt-2 text-xs text-slate-400">
+                                                Ví dụ: Năng lượng
+                                            </div>
+                                            <div className="-mt-2 text-xs text-slate-400">
+                                                Ví dụ: 286 kcal
+                                            </div>
+                                        </>
+                                    ) : null}
+                                </div>
+                            ))}
+
+                            <button
+                                type="button"
+                                onClick={onAddNutritionRow}
+                                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                            >
+                                Thêm dòng
+                            </button>
+                        </div>
                     </div>
 
                     <div className="md:col-span-2">

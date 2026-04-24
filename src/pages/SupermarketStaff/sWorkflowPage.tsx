@@ -43,6 +43,71 @@ type ProductCategoryOption = {
     isFreshFood: boolean
 }
 
+type NutritionFactRow = {
+    id: string
+    label: string
+    value: string
+}
+
+const createNutritionRow = (label = "", value = ""): NutritionFactRow => ({
+    id:
+        typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random()}`,
+    label,
+    value,
+})
+
+const nutritionRowsToJsonString = (rows: NutritionFactRow[]) => {
+    const normalizedEntries = rows
+        .map((row) => ({
+            label: row.label.trim(),
+            value: row.value.trim(),
+        }))
+        .filter((row) => row.label && row.value)
+
+    return JSON.stringify(
+        Object.fromEntries(normalizedEntries.map((row) => [row.label, row.value])),
+    )
+}
+
+const parseNutritionRowsFromText = (value?: string | null): NutritionFactRow[] => {
+    const text = value?.trim() || ""
+
+    if (!text) return [createNutritionRow()]
+
+    try {
+        const parsed = JSON.parse(text)
+
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            const entries = Object.entries(parsed).filter(
+                ([key, itemValue]) => key.trim() && String(itemValue ?? "").trim(),
+            )
+
+            if (entries.length > 0) {
+                return entries.map(([label, itemValue]) =>
+                    createNutritionRow(label, String(itemValue)),
+                )
+            }
+        }
+    } catch {
+        // fallback bên dưới cho dữ liệu dạng text thường
+    }
+
+    return text
+        .split(/[;\n|]+/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .map((item) => {
+            const [label, ...rest] = item.split(":")
+            return createNutritionRow(label.trim(), rest.join(":").trim())
+        })
+        .filter((row) => row.label || row.value)
+        .concat([])
+        .slice(0)
+        || [createNutritionRow()]
+}
+
 const MAX_IMAGES = 5
 
 const normalizeBarcode = (value: string) => value.replace(/\s+/g, "").trim()
@@ -94,6 +159,9 @@ const ProductWorkflowPage: React.FC = () => {
 
     const [categories, setCategories] = useState<CategoryItem[]>([])
     const [unitOptions, setUnitOptions] = useState<UnitOption[]>([])
+    const [nutritionRows, setNutritionRows] = useState<NutritionFactRow[]>([
+        createNutritionRow(),
+    ])
 
     const fileInputRef = useRef<HTMLInputElement>(null)
     const videoRef = useRef<HTMLVideoElement>(null)
@@ -288,7 +356,7 @@ const ProductWorkflowPage: React.FC = () => {
                     Array.isArray(data)
                         ? data.map((item) => ({
                             unitId: item.unitId,
-                            label: item.symbol ? `${item.name} (${item.symbol})` : item.name,
+                            label: item.name,
                             value: item.unitId,
                             unitType: item.type || undefined,
                             unitSymbol: item.symbol || undefined,
@@ -329,10 +397,70 @@ const ProductWorkflowPage: React.FC = () => {
         }
     }, [])
 
+    const syncNutritionRowsFromForm = (nutritionFacts?: string | null) => {
+        setNutritionRows(parseNutritionRowsFromText(nutritionFacts))
+    }
+
+    const setNutritionRow = (
+        id: string,
+        key: "label" | "value",
+        value: string,
+    ) => {
+        setNutritionRows((prev) => {
+            const nextRows = prev.map((row) =>
+                row.id === id ? { ...row, [key]: value } : row,
+            )
+
+            setWorkflow((current) => ({
+                ...current,
+                productForm: {
+                    ...current.productForm,
+                    nutritionFacts: nutritionRowsToJsonString(nextRows),
+                },
+            }))
+
+            return nextRows
+        })
+    }
+
+    const addNutritionRow = () => {
+        setNutritionRows((prev) => {
+            const nextRows = [...prev, createNutritionRow()]
+
+            setWorkflow((current) => ({
+                ...current,
+                productForm: {
+                    ...current.productForm,
+                    nutritionFacts: nutritionRowsToJsonString(nextRows),
+                },
+            }))
+
+            return nextRows
+        })
+    }
+
+    const removeNutritionRow = (id: string) => {
+        setNutritionRows((prev) => {
+            const nextRows = prev.filter((row) => row.id !== id)
+            const safeRows = nextRows.length > 0 ? nextRows : [createNutritionRow()]
+
+            setWorkflow((current) => ({
+                ...current,
+                productForm: {
+                    ...current.productForm,
+                    nutritionFacts: nutritionRowsToJsonString(safeRows),
+                },
+            }))
+
+            return safeRows
+        })
+    }
+
     const resetAllWorkflow = () => {
         clearImages()
         setBarcodeInput("")
         setLoading(null)
+        setNutritionRows([createNutritionRow()])
         setWorkflow(buildInitialWorkflowState())
     }
 
@@ -365,6 +493,7 @@ const ProductWorkflowPage: React.FC = () => {
                     isFreshFood: categoryMeta.isFreshFood,
                 },
             })
+            syncNutritionRowsFromForm(next.productForm.nutritionFacts)
             setBarcodeInput(result.barcode || barcode)
             clearImages()
 
@@ -425,17 +554,21 @@ const ProductWorkflowPage: React.FC = () => {
                 next.productForm.categoryId,
             )
 
+            const nextProductForm = {
+                ...next.productForm,
+                barcode: extractedBarcode || next.productForm.barcode,
+                categoryId: categoryMeta.categoryId,
+                categoryName: categoryMeta.categoryName || next.productForm.categoryName,
+                isFreshFood: categoryMeta.isFreshFood,
+            }
+
             setWorkflow({
                 ...next,
                 barcode: extractedBarcode || next.barcode,
-                productForm: {
-                    ...next.productForm,
-                    barcode: extractedBarcode || next.productForm.barcode,
-                    categoryId: categoryMeta.categoryId,
-                    categoryName: categoryMeta.categoryName || next.productForm.categoryName,
-                    isFreshFood: categoryMeta.isFreshFood,
-                },
+                productForm: nextProductForm,
             })
+
+            syncNutritionRowsFromForm(nextProductForm.nutritionFacts)
 
             if (extractedBarcode) {
                 setBarcodeInput(extractedBarcode)
@@ -463,6 +596,8 @@ const ProductWorkflowPage: React.FC = () => {
     const handleChooseReference = (product: ExistingProductSummaryDto) => {
         setWorkflow((prev) => {
             const categoryMeta = resolveCategoryMeta(product.category, "")
+
+            syncNutritionRowsFromForm(prev.productForm.nutritionFacts)
 
             return {
                 ...prev,
@@ -750,6 +885,10 @@ const ProductWorkflowPage: React.FC = () => {
                                 canvasRef={canvasRef}
                                 categoryOptions={categoryOptions}
                                 unitOptions={unitOptions}
+                                nutritionRows={nutritionRows}
+                                onNutritionRowChange={setNutritionRow}
+                                onAddNutritionRow={addNutritionRow}
+                                onRemoveNutritionRow={removeNutritionRow}
                                 onChooseReference={handleChooseReference}
                                 onChange={(next) =>
                                     setWorkflow((prev) => ({ ...prev, productForm: next }))
