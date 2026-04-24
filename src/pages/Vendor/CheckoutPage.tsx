@@ -463,15 +463,7 @@ const CheckoutPage: React.FC = () => {
     return () => {
       cancelled = true
     }
-  }, [
-    ctx.deliveryMethodId,
-    ctx.addressId,
-    ctx.addressText,
-    ctx.lat,
-    ctx.lng,
-    resolveDeliveryAddressContext,
-    user?.userId,
-  ])
+  }, [ctx, resolveDeliveryAddressContext, user?.userId])
 
   const handlePayAndRedirect = async () => {
     if (!canSubmit) return

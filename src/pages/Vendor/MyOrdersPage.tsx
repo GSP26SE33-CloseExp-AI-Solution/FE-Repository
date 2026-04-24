@@ -3,10 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom"
 import {
     AlertCircle,
     ChevronRight,
-    Clock3,
     Loader2,
     MapPin,
-    PackageCheck,
     ReceiptText,
     Search,
     ShoppingBag,

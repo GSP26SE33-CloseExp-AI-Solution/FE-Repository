@@ -820,7 +820,7 @@ const AdminDelivery = () => {
 
                         <button
                             type="button"
-                            onClick={() => void loadMonthData(true)}
+                            onClick={() => void handleRefreshData()}
                             disabled={refreshing}
                             className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-white px-4 py-2.5 text-sm font-semibold text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
                         >
