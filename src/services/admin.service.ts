@@ -232,6 +232,29 @@ const paginateLocal = <T>(
     }
 }
 
+const fetchAllPages = async <T,>(
+    fetchPage: (pageNumber: number, pageSize: number) => Promise<PaginationResult<T>>,
+    pageSize = 100
+): Promise<T[]> => {
+    const allItems: T[] = []
+    let pageNumber = 1
+    let totalResult = 0
+
+    do {
+        const result = await fetchPage(pageNumber, pageSize)
+        const items = result.items ?? []
+
+        allItems.push(...items)
+        totalResult = result.totalResult ?? allItems.length
+
+        if (!items.length) break
+
+        pageNumber += 1
+    } while (allItems.length < totalResult)
+
+    return allItems
+}
+
 const normalizeStatus = (value?: string) =>
     String(value || "")
         .trim()
@@ -250,6 +273,15 @@ const toDateKey = (value?: string) => {
     const month = String(date.getMonth() + 1).padStart(2, "0")
     const day = String(date.getDate()).padStart(2, "0")
     return `${year}-${month}-${day}`
+}
+
+const toUtcStartOfDay = (value?: string) => {
+    if (!value) return undefined
+
+    const dateKey = toDateKey(value)
+    if (!dateKey) return undefined
+
+    return `${dateKey}T00:00:00.000Z`
 }
 
 const toMonthMeta = (dateKey: string) => {
@@ -822,7 +854,9 @@ export const adminService = {
     getDeliveryGroups(params?: DeliveryGroupsQuery) {
         return get<PaginationResult<DeliveryGroupSummary>>(
             `/delivery/groups${buildQueryString({
-                DeliveryDate: params?.deliveryDate,
+                DeliveryDate: params?.deliveryDate
+                    ? toUtcStartOfDay(params.deliveryDate)
+                    : undefined,
                 PageNumber: params?.pageNumber,
                 PageSize: params?.pageSize,
                 status: params?.status,
@@ -834,7 +868,9 @@ export const adminService = {
     getDraftDeliveryGroups(params?: DraftDeliveryGroupsQuery) {
         return get<PaginationResult<DeliveryGroupSummary>>(
             `/delivery/groups/drafts${buildQueryString({
-                DeliveryDate: params?.deliveryDate,
+                DeliveryDate: params?.deliveryDate
+                    ? toUtcStartOfDay(params.deliveryDate)
+                    : undefined,
                 TimeSlotId: params?.timeSlotId,
                 CollectionId: params?.collectionId,
                 PageNumber: params?.pageNumber,
@@ -845,10 +881,18 @@ export const adminService = {
     },
 
     generateDraftDeliveryGroups(payload: GenerateDraftDeliveryGroupsPayload) {
-        console.log("adminService.generateDraftDeliveryGroups payload:", payload)
+        const normalizedPayload: GenerateDraftDeliveryGroupsPayload = {
+            ...payload,
+            deliveryDate: payload.deliveryDate
+                ? toUtcStartOfDay(payload.deliveryDate)
+                : undefined,
+        }
+
+        console.log("adminService.generateDraftDeliveryGroups payload:", normalizedPayload)
+
         return post<DeliveryGroupSummary[], GenerateDraftDeliveryGroupsPayload>(
             "/delivery/groups/drafts/generate",
-            payload,
+            normalizedPayload,
             "Không thể tạo nhóm draft"
         )
     },
@@ -910,29 +954,49 @@ export const adminService = {
         pageSize?: number
         status?: string
     }): Promise<DeliveryCalendarDaySummary[]> {
-        const [draftResult, groupsResult] = await Promise.all([
-            this.getDraftDeliveryGroups({
-                deliveryDate: params?.deliveryDate,
-                pageNumber: params?.pageNumber ?? 1,
-                pageSize: params?.pageSize ?? 99999,
-            }),
-            this.getDeliveryGroups({
-                deliveryDate: params?.deliveryDate,
-                pageNumber: params?.pageNumber ?? 1,
-                pageSize: params?.pageSize ?? 99999,
-                status: params?.status,
-            }),
+        const [draftItems, groupItems] = await Promise.all([
+            fetchAllPages<DeliveryGroupSummary>((pageNumber, pageSize) =>
+                this.getDraftDeliveryGroups({
+                    deliveryDate: params?.deliveryDate,
+                    pageNumber,
+                    pageSize,
+                })
+            ),
+            fetchAllPages<DeliveryGroupSummary>((pageNumber, pageSize) =>
+                this.getDeliveryGroups({
+                    deliveryDate: params?.deliveryDate,
+                    pageNumber,
+                    pageSize,
+                    status: params?.status,
+                })
+            ),
         ])
 
         const uniqueMap = new Map<string, DeliveryGroupSummary>()
 
-            ;[...(draftResult.items ?? []), ...(groupsResult.items ?? [])].forEach((item) => {
+            ;[...draftItems, ...groupItems].forEach((item) => {
                 if (!uniqueMap.has(item.deliveryGroupId)) {
                     uniqueMap.set(item.deliveryGroupId, item)
                 }
             })
 
         const groups = Array.from(uniqueMap.values())
+
+        console.log("adminService.getDeliveryCalendarDays merged:", {
+            deliveryDate: params?.deliveryDate,
+            normalizedDeliveryDate: params?.deliveryDate
+                ? toUtcStartOfDay(params.deliveryDate)
+                : undefined,
+            draftCount: draftItems.length,
+            groupCount: groupItems.length,
+            totalUnique: groups.length,
+            bySlot: groups.reduce<Record<string, number>>((acc, group) => {
+                const key = group.timeSlotDisplay || group.timeSlotId || "unknown"
+                acc[key] = (acc[key] ?? 0) + 1
+                return acc
+            }, {}),
+        })
+
         return this.groupDeliveryGroupsByDate(groups)
     },
 
@@ -941,8 +1005,6 @@ export const adminService = {
     ): Promise<DeliveryCalendarSlotSummary[]> {
         const days = await this.getDeliveryCalendarDays({
             deliveryDate: date,
-            pageNumber: 1,
-            pageSize: 99999,
         })
 
         const selectedDay = days.find((item) => item.date === toDateKey(date))
@@ -965,10 +1027,7 @@ export const adminService = {
         const end = new Date(year, month, 0)
         const endDate = `${year}-${monthText}-${String(end.getDate()).padStart(2, "0")}`
 
-        const days = await this.getDeliveryCalendarDays({
-            pageNumber: 1,
-            pageSize: 99999,
-        })
+        const days = await this.getDeliveryCalendarDays()
 
         const filteredDays = days.filter(
             (item) => item.date >= startDate && item.date <= endDate
@@ -1038,21 +1097,25 @@ export const adminService = {
         return `${hh}:${mm}`
     },
 
-    toTimeSpanPayload(value: string) {
+    toTimeSpanTicks(value: string) {
         const normalized = value.trim()
-        if (!normalized) return "00:00:00"
+        if (!normalized) return 0
 
         const [hoursText, minutesText] = normalized.split(":")
-        const hours = String(Number(hoursText || 0)).padStart(2, "0")
-        const minutes = String(Number(minutesText || 0)).padStart(2, "0")
+        const hours = Number(hoursText || 0)
+        const minutes = Number(minutesText || 0)
 
-        return `${hours}:${minutes}:00`
+        return (hours * 60 * 60 + minutes * 60) * 10_000_000
     },
 
     toTimeSlotPayload(startHHmm: string, endHHmm: string): UpsertTimeSlotPayload {
         return {
-            startTime: this.toTimeSpanPayload(startHHmm),
-            endTime: this.toTimeSpanPayload(endHHmm),
+            startTime: {
+                ticks: this.toTimeSpanTicks(startHHmm),
+            },
+            endTime: {
+                ticks: this.toTimeSpanTicks(endHHmm),
+            },
         }
     },
 
@@ -1068,7 +1131,7 @@ export const adminService = {
         keyword?: string
         status?: number
     }): Promise<DeliveryStaffBoardItem[]> {
-        const [usersResult, groupsResult, draftGroupsResult] = await Promise.all([
+        const [usersResult, allGroups, allDraftGroups] = await Promise.all([
             this.getUsers({
                 pageNumber: 1,
                 pageSize: 99999,
@@ -1076,18 +1139,19 @@ export const adminService = {
                 status: params?.status,
                 keyword: params?.keyword,
             }),
-            this.getDeliveryGroups({
-                pageNumber: 1,
-                pageSize: 99999,
-            }),
-            this.getDraftDeliveryGroups({
-                pageNumber: 1,
-                pageSize: 99999,
-            }),
+            fetchAllPages<DeliveryGroupSummary>((pageNumber, pageSize) =>
+                this.getDeliveryGroups({
+                    pageNumber,
+                    pageSize,
+                })
+            ),
+            fetchAllPages<DeliveryGroupSummary>((pageNumber, pageSize) =>
+                this.getDraftDeliveryGroups({
+                    pageNumber,
+                    pageSize,
+                })
+            ),
         ])
-
-        const allGroups = groupsResult.items ?? []
-        const allDraftGroups = draftGroupsResult.items ?? []
 
         return usersResult.items.map((user) => {
             const assignedGroups = allGroups.filter(

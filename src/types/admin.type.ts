@@ -77,9 +77,13 @@ export type AdminTimeSlot = {
     displayTimeRange?: string
 }
 
+export type TimeSpanPayload = {
+    ticks: number
+}
+
 export type UpsertTimeSlotPayload = {
-    startTime: string
-    endTime: string
+    startTime: TimeSpanPayload
+    endTime: TimeSpanPayload
 }
 
 export type CollectionPoint = {
@@ -382,6 +386,7 @@ export type GenerateDraftDeliveryGroupsPayload = {
     collectionId?: string
     maxDistanceKm?: number
     maxOrdersPerGroup?: number
+    maxRouteDurationMinutes?: number
 }
 
 export type AssignDeliveryGroupPayload = {

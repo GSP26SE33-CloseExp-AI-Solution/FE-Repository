@@ -73,6 +73,22 @@ const PARAMETER_META: Record<string, ParameterMeta> = {
         suffix: "phút",
         inputMode: "numeric",
     },
+    ORDER_READY_TO_SHIP_MAX_WAIT_MINUTES: {
+        title: "Thời gian tối đa chờ xử lý đơn sẵn sàng giao",
+        description:
+            "Sau khoảng thời gian này, đơn đã sẵn sàng giao nhưng chưa được xử lý tiếp sẽ được xem là cần ưu tiên kiểm tra.",
+        placeholder: "Ví dụ: 90",
+        suffix: "phút",
+        inputMode: "numeric",
+    },
+    ORDER_SYSTEM_USAGE_FEE_VND: {
+        title: "Phí sử dụng hệ thống trên mỗi đơn",
+        description:
+            "Khoản phí hệ thống được áp dụng cho mỗi đơn hàng theo cấu hình vận hành hiện tại.",
+        placeholder: "Ví dụ: 5000",
+        suffix: "đ",
+        inputMode: "numeric",
+    },
 }
 
 const getParameterMeta = (configKey: string): ParameterMeta => {
