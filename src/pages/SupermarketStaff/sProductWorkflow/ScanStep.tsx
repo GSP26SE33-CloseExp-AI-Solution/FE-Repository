@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { DragEvent, MouseEvent as ReactMouseEvent } from "react"
 import {
     Camera,
@@ -899,30 +899,37 @@ const WorkflowScanStep: React.FC<Props> = ({
         }
     }
 
-    const extractPointFromMouse = (
-        event: Pick<MouseEvent, "clientX" | "clientY"> | ReactMouseEvent<HTMLDivElement>,
-    ) => {
-        const container = previewContainerRef.current
-        if (!container || !previewRect.width || !previewRect.height) return null
+    const extractPointFromMouse = useCallback(
+        (
+            event:
+                | Pick<MouseEvent, "clientX" | "clientY">
+                | ReactMouseEvent<HTMLDivElement>,
+        ) => {
+            const container = previewContainerRef.current
+            if (!container || !previewRect.width || !previewRect.height) return null
 
-        const bounds = container.getBoundingClientRect()
+            const bounds = container.getBoundingClientRect()
 
-        const rawX = event.clientX - bounds.left
-        const rawY = event.clientY - bounds.top
+            const rawX = event.clientX - bounds.left
+            const rawY = event.clientY - bounds.top
 
-        const insideX = rawX >= previewRect.x && rawX <= previewRect.x + previewRect.width
-        const insideY = rawY >= previewRect.y && rawY <= previewRect.y + previewRect.height
+            const insideX =
+                rawX >= previewRect.x && rawX <= previewRect.x + previewRect.width
+            const insideY =
+                rawY >= previewRect.y && rawY <= previewRect.y + previewRect.height
 
-        if (!insideX || !insideY) return null
+            if (!insideX || !insideY) return null
 
-        const relativeX = (rawX - previewRect.x) / previewRect.width
-        const relativeY = (rawY - previewRect.y) / previewRect.height
+            const relativeX = (rawX - previewRect.x) / previewRect.width
+            const relativeY = (rawY - previewRect.y) / previewRect.height
 
-        return {
-            x: clamp(relativeX, 0, 1),
-            y: clamp(relativeY, 0, 1),
-        }
-    }
+            return {
+                x: clamp(relativeX, 0, 1),
+                y: clamp(relativeY, 0, 1),
+            }
+        },
+        [previewRect],
+    )
 
     const beginCropInteraction = (
         event: ReactMouseEvent<HTMLButtonElement | HTMLDivElement>,
@@ -1043,7 +1050,7 @@ const WorkflowScanStep: React.FC<Props> = ({
             window.removeEventListener("mousemove", handleWindowMouseMove)
             window.removeEventListener("mouseup", handleWindowMouseUp)
         }
-    }, [cropInteraction, previewRect])
+    }, [cropInteraction, extractPointFromMouse])
 
     useEffect(() => {
         const element = previewContainerRef.current

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import {
     ArrowLeft,
@@ -31,7 +31,7 @@ const PackagePacking = () => {
     const [failureReason, setFailureReason] = useState("")
     const [failNotes, setFailNotes] = useState("")
 
-    const fetchDetail = async () => {
+    const fetchDetail = useCallback(async () => {
         if (!orderId) {
             setLoading(false)
             return
@@ -46,11 +46,11 @@ const PackagePacking = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [orderId])
 
     useEffect(() => {
-        fetchDetail()
-    }, [orderId])
+        void fetchDetail()
+    }, [fetchDetail])
 
     const handlePackage = async () => {
         if (!orderId) return

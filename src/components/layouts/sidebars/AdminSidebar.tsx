@@ -1,9 +1,7 @@
 import {
     LayoutDashboard,
     Users,
-    BadgeCheck,
     Briefcase,
-    CreditCard,
     Truck,
     PackageCheck,
     MessageSquare,

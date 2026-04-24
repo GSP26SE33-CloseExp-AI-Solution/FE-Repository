@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import {
     ArrowLeft,
@@ -64,7 +64,7 @@ const PackageCollect = () => {
         return order?.items?.reduce((sum, item) => sum + item.quantity, 0) || 0
     }, [order])
 
-    const fetchDetail = async () => {
+    const fetchDetail = useCallback(async () => {
         if (!orderId) {
             setLoading(false)
             return
@@ -79,11 +79,11 @@ const PackageCollect = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [orderId])
 
     useEffect(() => {
-        fetchDetail()
-    }, [orderId])
+        void fetchDetail()
+    }, [fetchDetail])
 
     const handleConfirm = async () => {
         if (!orderId) return

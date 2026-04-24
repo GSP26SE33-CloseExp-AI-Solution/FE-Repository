@@ -251,14 +251,6 @@ const formatDateForInput = (date: Date) => {
   return `${year}-${month}-${day}`
 }
 
-const currency = new Intl.NumberFormat("vi-VN", {
-  style: "currency",
-  currency: "VND",
-  maximumFractionDigits: 0,
-})
-
-const numberFormatter = new Intl.NumberFormat("vi-VN")
-
 const formatDateTime = (value?: string | null) => {
   if (!value) return "--"
 

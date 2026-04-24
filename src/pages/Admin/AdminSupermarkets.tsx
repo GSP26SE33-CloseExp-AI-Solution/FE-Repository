@@ -161,10 +161,12 @@ const AdminSupermarkets = () => {
 
     useEffect(() => {
         void loadSupermarkets()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page])
 
     useEffect(() => {
         void loadApplications()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
@@ -334,6 +336,7 @@ const AdminSupermarkets = () => {
                         new Date(a.createdAt || 0).getTime()
                 )
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [supermarkets, keyword, sortBy, statusFilter])
 
     const displayApplications = useMemo(() => {

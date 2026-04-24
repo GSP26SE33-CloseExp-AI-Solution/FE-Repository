@@ -9,7 +9,6 @@ import {
     Loader2,
     Package,
     RefreshCcw,
-    Sparkles,
     Store,
     Tag,
     TrendingUp,
@@ -99,15 +98,6 @@ const formatNumber = (value?: number | null) => {
 const formatMoney = (value?: number | null) => {
     if (typeof value !== "number" || Number.isNaN(value)) return "—"
     return `${value.toLocaleString("vi-VN")} đ`
-}
-
-const formatDate = (value?: string | null) => {
-    if (!value) return "—"
-
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) return "—"
-
-    return date.toLocaleDateString("vi-VN")
 }
 
 const formatRelativeDateVN = (value?: string | null) => {

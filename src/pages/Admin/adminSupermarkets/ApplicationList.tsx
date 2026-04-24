@@ -1,13 +1,10 @@
 import {
-    AlertTriangle,
     Building2,
     CheckCircle2,
     Copy,
     MapPin,
     MapPinned,
     Search,
-    ShieldCheck,
-    UserRound,
     XCircle,
 } from "lucide-react"
 

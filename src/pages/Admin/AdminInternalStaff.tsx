@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { FormEvent } from "react"
 import { Plus, RefreshCcw, Search, Users, Loader2 } from "lucide-react"
 
@@ -227,35 +227,38 @@ const AdminInternalStaff = () => {
         [allItems]
     )
 
-    const loadInternalStaff = async (isRefresh = false) => {
-        try {
-            if (isRefresh) setRefreshing(true)
-            else setLoading(true)
+    const loadInternalStaff = useCallback(
+        async (isRefresh = false) => {
+            try {
+                if (isRefresh) setRefreshing(true)
+                else setLoading(true)
 
-            setError("")
+                setError("")
 
-            const response = await adminService.getUsers({
-                pageNumber: 1,
-                pageSize: 99999,
-                keyword: keyword || undefined,
-            })
+                const response = await adminService.getUsers({
+                    pageNumber: 1,
+                    pageSize: 99999,
+                    keyword: keyword || undefined,
+                })
 
-            const internalUsers = (response.items ?? []).filter((user) =>
-                isInternalRoleId(user.roleId)
-            )
+                const internalUsers = (response.items ?? []).filter((user) =>
+                    isInternalRoleId(user.roleId),
+                )
 
-            setAllItems(internalUsers.map(mapAdminUserToInternalStaffRow))
-        } catch (err: any) {
-            setError(err?.message || "Không thể tải danh sách nhân sự nội bộ.")
-        } finally {
-            setLoading(false)
-            setRefreshing(false)
-        }
-    }
+                setAllItems(internalUsers.map(mapAdminUserToInternalStaffRow))
+            } catch (err: any) {
+                setError(err?.message || "Không thể tải danh sách nhân sự nội bộ.")
+            } finally {
+                setLoading(false)
+                setRefreshing(false)
+            }
+        },
+        [keyword],
+    )
 
     useEffect(() => {
         void loadInternalStaff()
-    }, [keyword])
+    }, [loadInternalStaff])
 
     useEffect(() => {
         if (page > totalPages) {
@@ -373,24 +376,6 @@ const AdminInternalStaff = () => {
         setSelectedStaff(item)
         setOpenDetailModal(true)
         await loadUserDetail(item.userId)
-    }
-
-    const handleOpenEdit = async (item: InternalStaffRow) => {
-        setSelectedStaff(item)
-        const detail = await loadUserDetail(item.userId)
-        if (!detail) return
-
-        setEditForm({
-            fullName: detail.fullName || "",
-            email: detail.email || "",
-            phone: detail.phone || "",
-            roleId: isInternalRoleId(detail.roleId)
-                ? detail.roleId
-                : DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? ROLE_USER.PACKAGING_STAFF,
-            status: detail.status ?? USER_STATUS.PENDING_APPROVAL,
-        })
-        setOpenDetailModal(false)
-        setOpenEditModal(true)
     }
 
     const handleCloseEditModal = () => {

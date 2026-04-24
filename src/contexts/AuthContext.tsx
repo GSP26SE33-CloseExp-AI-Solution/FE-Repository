@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useCallback, useContext, useEffect, useState } from "react"
 import type { AuthData, AuthUser } from "@/types/auth.types"
 import { getAuthSession, clearAuth, saveAuth } from "@/utils/authStorage"
 import { authService } from "@/services/auth.service"
@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [employeeCodeHint, setEmployeeCodeHint] = useState("")
     const [initialized, setInitialized] = useState(false)
 
-    const applyUserState = (nextUser: AuthUser | null) => {
+    const applyUserState = useCallback((nextUser: AuthUser | null) => {
         const derived = getDerivedAuthState(nextUser)
 
         clearCustomerPurchaseStateIfNeeded(nextUser)
@@ -69,9 +69,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsSupermarketManager(derived.isSupermarketManager)
         setIsSubSupermarketStaff(derived.isSubSupermarketStaff)
         setEmployeeCodeHint(derived.employeeCodeHint)
-    }
+    }, [])
 
-    const refreshProfile = async (): Promise<AuthUser | null> => {
+    const refreshProfile = useCallback(async (): Promise<AuthUser | null> => {
         try {
             const latestUser = await adminService.getCurrentUserProfile()
 
@@ -95,7 +95,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             console.error("AuthContext.refreshProfile -> error:", err)
             return null
         }
-    }
+    }, [applyUserState])
 
     useEffect(() => {
         const run = async () => {
@@ -117,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         void run()
-    }, [])
+    }, [applyUserState, refreshProfile])
 
     const loginSuccess = (session: AuthData) => {
         saveAuth(session)

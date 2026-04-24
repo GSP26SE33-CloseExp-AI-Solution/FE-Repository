@@ -335,12 +335,14 @@ const AdminSettings = () => {
 
     useEffect(() => {
         void fetchBaseData()
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
     useEffect(() => {
         if (tab === "parameters" || tab === "categories" || tab === "promotions") {
             void fetchTabData(tab)
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tab])
 
     const handleUpdateParameter = async (configKey: string, configValue: string) => {

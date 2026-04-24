@@ -416,11 +416,10 @@ const AdminOperations = () => {
     const [selectedStaffId, setSelectedStaffId] = useState<string>("ps-04")
     const [note, setNote] = useState("")
     const [drawerOpen, setDrawerOpen] = useState(true)
-    const [refreshTick, setRefreshTick] = useState(0)
 
-    const supermarkets = useMemo(() => MOCK_SUPERMARKETS, [refreshTick])
-    const staffs = useMemo(() => MOCK_STAFFS, [refreshTick])
-    const assignments = useMemo(() => MOCK_ASSIGNMENTS, [refreshTick])
+    const supermarkets = MOCK_SUPERMARKETS
+    const staffs = MOCK_STAFFS
+    const assignments = MOCK_ASSIGNMENTS
 
     const areaOptions = useMemo(() => {
         return Array.from(new Set(supermarkets.map((item) => item.area)))

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
     ArrowUpDown,
@@ -124,7 +124,7 @@ const PackageOrders = () => {
         return sortOrdersByDeliverySlot(baseList)
     }, [orders, keyword])
 
-    const fetchOrders = async () => {
+    const fetchOrders = useCallback(async () => {
         try {
             setLoading(true)
             const response = await packagingService.getPendingOrders(page, pageSize)
@@ -144,11 +144,11 @@ const PackageOrders = () => {
         } finally {
             setLoading(false)
         }
-    }
+    }, [page, pageSize])
 
     useEffect(() => {
-        fetchOrders()
-    }, [page])
+        void fetchOrders()
+    }, [fetchOrders])
 
     return (
         <div className="space-y-6">

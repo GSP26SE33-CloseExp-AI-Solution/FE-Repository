@@ -2045,25 +2045,6 @@ const DetailBlock = ({
     )
 }
 
-const InlineInfoCard = ({
-    label,
-    value,
-}: {
-    label: string
-    value: string
-}) => {
-    return (
-        <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
-            <div className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
-                {label}
-            </div>
-            <div className="text-sm leading-6 text-slate-800">
-                {value && value !== "undefined" ? value : "—"}
-            </div>
-        </div>
-    )
-}
-
 const FieldLabel = ({
     label,
     required,
