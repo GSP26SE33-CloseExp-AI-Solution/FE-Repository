@@ -1,15 +1,19 @@
-import React, { Fragment, useMemo, useState } from "react"
+import React, { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import {
+    Camera,
     ChevronRight,
     Heart,
+    Loader2,
     LogOut,
     Mail,
     Phone,
     Save,
     ShieldAlert,
     ShoppingBag,
+    Trash2,
     UserCircle,
+    X,
 } from "lucide-react"
 
 import { useAuthContext } from "@/contexts/AuthContext"
@@ -17,6 +21,13 @@ import { useLogoutAll } from "@/hooks/useLogoutAll"
 import CustomerAddressesPanel from "./CustomerAddressesPanel"
 import { showError, showSuccess } from "@/utils/toast"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
+import {
+    getMyPrimaryImageApi,
+    uploadMyAvatarApi,
+    deleteMyImageApi,
+    updateMyProfileApi,
+    type UserImage,
+} from "@/services/user.service"
 
 const getSafeString = (value?: string | null) => value?.trim() ?? ""
 
@@ -76,15 +87,26 @@ const getUserStatusClass = (status?: number) => {
     }
 }
 
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
 const VendorProfile: React.FC = () => {
     const navigate = useNavigate()
     const location = useLocation()
-    const { user } = useAuthContext()
+    const { user, refreshProfile } = useAuthContext()
     const { logoutAll, loggingOutAll } = useLogoutAll()
 
     const [fullName, setFullName] = useState(getSafeString(user?.fullName))
     const [phone, setPhone] = useState(getSafeString(user?.phone))
     const [savingProfile, setSavingProfile] = useState(false)
+
+    const [avatarImage, setAvatarImage] = useState<UserImage | null>(null)
+    const [loadingAvatar, setLoadingAvatar] = useState(true)
+    const [uploadingAvatar, setUploadingAvatar] = useState(false)
+    const [deletingAvatar, setDeletingAvatar] = useState(false)
+    const [showAvatarMenu, setShowAvatarMenu] = useState(false)
+    const fileInputRef = useRef<HTMLInputElement>(null)
+    const avatarMenuRef = useRef<HTMLDivElement>(null)
 
     const pageTitle = useMemo(() => "Tài khoản của tôi", [])
     const pageDescription = useMemo(
@@ -98,6 +120,84 @@ const VendorProfile: React.FC = () => {
         [location.pathname]
     )
 
+    const loadPrimaryAvatar = useCallback(async () => {
+        try {
+            setLoadingAvatar(true)
+            const image = await getMyPrimaryImageApi()
+            setAvatarImage(image)
+        } catch {
+            setAvatarImage(null)
+        } finally {
+            setLoadingAvatar(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        void loadPrimaryAvatar()
+    }, [loadPrimaryAvatar])
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (avatarMenuRef.current && !avatarMenuRef.current.contains(e.target as Node)) {
+                setShowAvatarMenu(false)
+            }
+        }
+
+        document.addEventListener("mousedown", handleClickOutside)
+        return () => document.removeEventListener("mousedown", handleClickOutside)
+    }, [])
+
+    const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+            showError("Chỉ chấp nhận file ảnh: JPEG, PNG, GIF, WebP")
+            return
+        }
+
+        if (file.size > MAX_IMAGE_SIZE) {
+            showError("File ảnh không được vượt quá 5MB")
+            return
+        }
+
+        try {
+            setUploadingAvatar(true)
+            setShowAvatarMenu(false)
+
+            const uploaded = await uploadMyAvatarApi(file, "avatar", true)
+            setAvatarImage(uploaded)
+            showSuccess("Cập nhật ảnh đại diện thành công")
+        } catch (error: any) {
+            showError(error?.message || "Không thể tải ảnh lên")
+        } finally {
+            setUploadingAvatar(false)
+            if (fileInputRef.current) {
+                fileInputRef.current.value = ""
+            }
+        }
+    }
+
+    const handleDeleteAvatar = async () => {
+        if (!avatarImage?.imageId) return
+
+        const confirmed = window.confirm("Bạn có chắc muốn xóa ảnh đại diện này không?")
+        if (!confirmed) return
+
+        try {
+            setDeletingAvatar(true)
+            setShowAvatarMenu(false)
+
+            await deleteMyImageApi(avatarImage.imageId)
+            setAvatarImage(null)
+            showSuccess("Đã xóa ảnh đại diện")
+        } catch (error: any) {
+            showError(error?.message || "Không thể xóa ảnh")
+        } finally {
+            setDeletingAvatar(false)
+        }
+    }
+
     const handleSaveProfile = async () => {
         if (!fullName.trim()) {
             showError("Vui lòng nhập họ và tên.")
@@ -107,17 +207,17 @@ const VendorProfile: React.FC = () => {
         try {
             setSavingProfile(true)
 
-            console.log("VendorProfile.handleSaveProfile payload:", {
+            await updateMyProfileApi({
                 fullName: fullName.trim(),
                 phone: phone.trim() || undefined,
             })
 
-            showSuccess(
-                "Đã lưu giao diện tài khoản. Khi có API cập nhật hồ sơ khách hàng, mình sẽ nối tiếp phần này."
-            )
+            await refreshProfile()
+
+            showSuccess("Cập nhật hồ sơ thành công")
         } catch (error: any) {
             console.error("VendorProfile.handleSaveProfile error:", error)
-            showError(error?.response?.data?.message || "Không thể cập nhật hồ sơ.")
+            showError(error?.message || "Không thể cập nhật hồ sơ.")
         } finally {
             setSavingProfile(false)
         }
@@ -246,11 +346,83 @@ const VendorProfile: React.FC = () => {
                     <div className="space-y-5">
                         <div className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
                             <div className="flex flex-col items-center text-center">
-                                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-                                    <ShoppingBag className="h-8 w-8 text-emerald-600" />
+                                <div className="relative" ref={avatarMenuRef}>
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                        onChange={handleAvatarFileChange}
+                                        className="hidden"
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowAvatarMenu((v) => !v)}
+                                        disabled={uploadingAvatar || deletingAvatar}
+                                        className="group relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 transition hover:ring-2 hover:ring-emerald-300 hover:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {loadingAvatar ? (
+                                            <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                                        ) : avatarImage?.preSignedUrl ? (
+                                            <img
+                                                src={avatarImage.preSignedUrl}
+                                                alt="Ảnh đại diện"
+                                                className="h-full w-full rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <ShoppingBag className="h-10 w-10 text-emerald-600" />
+                                        )}
+
+                                        {(uploadingAvatar || deletingAvatar) && (
+                                            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-white/70">
+                                                <Loader2 className="h-6 w-6 animate-spin text-emerald-600" />
+                                            </div>
+                                        )}
+
+                                        <div className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-500 text-white shadow-sm transition group-hover:bg-emerald-600">
+                                            <Camera className="h-3.5 w-3.5" />
+                                        </div>
+                                    </button>
+
+                                    {showAvatarMenu && (
+                                        <div className="absolute left-1/2 top-full z-10 mt-2 w-48 -translate-x-1/2 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                                            <button
+                                                type="button"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] text-slate-700 transition hover:bg-slate-50"
+                                            >
+                                                <Camera className="h-4 w-4 text-emerald-600" />
+                                                <span>{avatarImage ? "Thay đổi ảnh" : "Tải ảnh lên"}</span>
+                                            </button>
+
+                                            {avatarImage && (
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDeleteAvatar}
+                                                    className="flex w-full items-center gap-2.5 border-t border-slate-100 px-4 py-3 text-left text-[13px] text-rose-600 transition hover:bg-rose-50"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    <span>Xóa ảnh đại diện</span>
+                                                </button>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowAvatarMenu(false)}
+                                                className="flex w-full items-center gap-2.5 border-t border-slate-100 px-4 py-3 text-left text-[13px] text-slate-500 transition hover:bg-slate-50"
+                                            >
+                                                <X className="h-4 w-4" />
+                                                <span>Hủy</span>
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <h2 className="mt-3 text-base font-bold text-slate-900">
+                                <p className="mt-2 text-[11px] text-slate-400">
+                                    Nhấn vào ảnh để thay đổi
+                                </p>
+
+                                <h2 className="mt-2 text-base font-bold text-slate-900">
                                     {user.fullName || "--"}
                                 </h2>
 
