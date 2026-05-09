@@ -9,24 +9,6 @@ export type PaginationResult<T> = {
     pageSize: number
 }
 
-export type TimeSpanDto = {
-    ticks: number
-    days: number
-    hours: number
-    milliseconds: number
-    microseconds: number
-    nanoseconds: number
-    minutes: number
-    seconds: number
-    totalDays: number
-    totalHours: number
-    totalMilliseconds: number
-    totalMicroseconds: number
-    totalNanoseconds: number
-    totalMinutes: number
-    totalSeconds: number
-}
-
 /* ========================= Dashboard ========================= */
 
 export type DashboardOverviewQuery = {
@@ -69,21 +51,19 @@ export type SlaAlertItem = {
 
 /* ========================= System Config ========================= */
 
+export type TimeSlotTimeValue = string // Format: "HH:mm:ss", ví dụ "08:00:00"
+
 export type AdminTimeSlot = {
     timeSlotId: string
-    startTime: TimeSpanDto
-    endTime: TimeSpanDto
+    startTime: TimeSlotTimeValue
+    endTime: TimeSlotTimeValue
     relatedOrderCount: number
     displayTimeRange?: string
 }
 
-export type TimeSpanPayload = {
-    ticks: number
-}
-
 export type UpsertTimeSlotPayload = {
-    startTime: TimeSpanPayload
-    endTime: TimeSpanPayload
+    startTime: TimeSlotTimeValue
+    endTime: TimeSlotTimeValue
 }
 
 export type CollectionPoint = {

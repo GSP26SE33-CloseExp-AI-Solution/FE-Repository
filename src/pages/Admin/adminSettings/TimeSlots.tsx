@@ -7,6 +7,7 @@ import {
     hhmmFromTimeSpan,
     logApiError,
     logApiSuccess,
+    normalizeTimeSlotValue,
     parseMinutes,
     type TimeSlotUsageRow,
 } from "./Shared"
@@ -46,7 +47,10 @@ const AdminSettingsTimeSlots = ({ loading, timeSlots, onRefresh }: Props) => {
             return showError("Giờ kết thúc phải lớn hơn giờ bắt đầu")
         }
 
-        const payload = adminService.toTimeSlotPayload(newSlotStart, newSlotEnd)
+        const payload = {
+            startTime: normalizeTimeSlotValue(newSlotStart),
+            endTime: normalizeTimeSlotValue(newSlotEnd),
+        }
 
         try {
             logApiSuccess("handleCreateTimeSlot - request", payload)
@@ -97,7 +101,10 @@ const AdminSettingsTimeSlots = ({ loading, timeSlots, onRefresh }: Props) => {
             return showError("Giờ kết thúc phải lớn hơn giờ bắt đầu")
         }
 
-        const payload = adminService.toTimeSlotPayload(editSlotStart, editSlotEnd)
+        const payload = {
+            startTime: normalizeTimeSlotValue(editSlotStart),
+            endTime: normalizeTimeSlotValue(editSlotEnd),
+        }
 
         try {
             logApiSuccess("handleUpdateTimeSlot - request", { timeSlotId, payload })

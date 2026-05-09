@@ -68,45 +68,66 @@ export const logApiSuccess = (
     console.groupEnd()
 }
 
+export const normalizeTimeSlotValue = (value?: string | null) => {
+    if (!value) return "00:00:00"
+
+    const normalized = value.trim()
+    if (!normalized) return "00:00:00"
+
+    const match = normalized.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/)
+    if (!match) return normalized
+
+    const [, hourText, minuteText, secondText = "00"] = match
+    const hour = Number(hourText)
+    const minute = Number(minuteText)
+    const second = Number(secondText)
+
+    if (
+        Number.isNaN(hour) ||
+        Number.isNaN(minute) ||
+        Number.isNaN(second) ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59 ||
+        second < 0 ||
+        second > 59
+    ) {
+        return normalized
+    }
+
+    return `${String(hour).padStart(2, "0")}:${String(minute).padStart(
+        2,
+        "0"
+    )}:${String(second).padStart(2, "0")}`
+}
+
 export const hhmmFromTimeSpan = (
     value?: AdminTimeSlot["startTime"] | string | null
 ) => {
     if (!value) return "--"
 
-    if (typeof value === "string") {
-        const normalized = value.trim()
-        if (!normalized) return "--"
-
-        const hhmmssMatch = normalized.match(/(\d{1,2}):(\d{2})(?::\d{2})?$/)
-        if (hhmmssMatch) {
-            const [, hh, mm] = hhmmssMatch
-            return `${hh.padStart(2, "0")}:${mm}`
-        }
-
-        return normalized
+    const normalized = normalizeTimeSlotValue(value)
+    if (!normalized || normalized === "00:00:00") {
+        return normalized === "00:00:00" ? "00:00" : "--"
     }
 
-    if (typeof value.hours === "number" || typeof value.minutes === "number") {
-        const hh = String(value.hours ?? 0).padStart(2, "0")
-        const mm = String(value.minutes ?? 0).padStart(2, "0")
-        return `${hh}:${mm}`
-    }
+    const match = normalized.match(/^(\d{2}):(\d{2})(?::\d{2})?$/)
+    if (!match) return normalized
 
-    if (typeof value.totalMinutes === "number") {
-        const totalMinutes = Math.round(value.totalMinutes ?? 0)
-        const hh = String(Math.floor(totalMinutes / 60)).padStart(2, "0")
-        const mm = String(totalMinutes % 60).padStart(2, "0")
-        return `${hh}:${mm}`
-    }
+    const [, hh, mm] = match
+    return `${hh}:${mm}`
+}
 
-    if (typeof value.ticks === "number") {
-        const totalMinutes = Math.floor(value.ticks / 10_000_000 / 60)
-        const hh = String(Math.floor(totalMinutes / 60)).padStart(2, "0")
-        const mm = String(totalMinutes % 60).padStart(2, "0")
-        return `${hh}:${mm}`
-    }
+export const toTimeInputValue = (value?: string | null) => {
+    if (!value) return ""
 
-    return "--"
+    const normalized = normalizeTimeSlotValue(value)
+    const match = normalized.match(/^(\d{2}):(\d{2})(?::\d{2})?$/)
+
+    if (!match) return ""
+    const [, hh, mm] = match
+    return `${hh}:${mm}`
 }
 
 export const formatDateTime = (value?: string) => {
@@ -194,7 +215,8 @@ export const parseCoordinate = (value: string) => {
 }
 
 export const parseMinutes = (value: string) => {
-    const [hourText, minuteText] = value.split(":")
+    const normalized = normalizeTimeSlotValue(value)
+    const [hourText, minuteText] = normalized.split(":")
     const hour = Number(hourText)
     const minute = Number(minuteText)
 
@@ -236,15 +258,21 @@ export const validatePromotionPayload = (payload: UpsertPromotionPayload) => {
     if (!payload.startDate) return "Vui lòng chọn thời gian bắt đầu"
     if (!payload.endDate) return "Vui lòng chọn thời gian kết thúc"
 
-    if (new Date(payload.endDate).getTime() <= new Date(payload.startDate).getTime()) {
+    if (
+        new Date(payload.endDate).getTime() <=
+        new Date(payload.startDate).getTime()
+    ) {
         return "Thời gian kết thúc phải sau thời gian bắt đầu"
     }
 
     if (payload.discountValue <= 0) return "Giá trị giảm phải lớn hơn 0"
-    if ((payload.minOrderAmount ?? 0) < 0) return "Giá trị đơn tối thiểu không được âm"
-    if ((payload.maxDiscountAmount ?? 0) < 0) return "Mức giảm tối đa không được âm"
+    if ((payload.minOrderAmount ?? 0) < 0)
+        return "Giá trị đơn tối thiểu không được âm"
+    if ((payload.maxDiscountAmount ?? 0) < 0)
+        return "Mức giảm tối đa không được âm"
     if (payload.maxUsage < 0) return "Tổng số lượt sử dụng không được âm"
-    if (payload.perUserLimit < 0) return "Số lần dùng tối đa mỗi người không được âm"
+    if (payload.perUserLimit < 0)
+        return "Số lần dùng tối đa mỗi người không được âm"
 
     return null
 }

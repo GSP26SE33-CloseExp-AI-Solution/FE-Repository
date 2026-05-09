@@ -42,7 +42,6 @@ import type {
     SlaAlertItem,
     SlaAlertQuery,
     SystemParameter,
-    TimeSpanDto,
     UpdateCurrentUserProfilePayload,
     UpdatePromotionStatusPayload,
     UpdateSupermarketPayload,
@@ -1088,36 +1087,6 @@ export const adminService = {
     },
 
     /* ========================= Helpers ========================= */
-
-    timeSpanToClockText(value?: TimeSpanDto | null) {
-        if (!value) return "--"
-
-        const hh = String(value.hours ?? 0).padStart(2, "0")
-        const mm = String(value.minutes ?? 0).padStart(2, "0")
-        return `${hh}:${mm}`
-    },
-
-    toTimeSpanTicks(value: string) {
-        const normalized = value.trim()
-        if (!normalized) return 0
-
-        const [hoursText, minutesText] = normalized.split(":")
-        const hours = Number(hoursText || 0)
-        const minutes = Number(minutesText || 0)
-
-        return (hours * 60 * 60 + minutes * 60) * 10_000_000
-    },
-
-    toTimeSlotPayload(startHHmm: string, endHHmm: string): UpsertTimeSlotPayload {
-        return {
-            startTime: {
-                ticks: this.toTimeSpanTicks(startHHmm),
-            },
-            endTime: {
-                ticks: this.toTimeSpanTicks(endHHmm),
-            },
-        }
-    },
 
     getDeliveryStaffUsers() {
         return this.getUsers({
