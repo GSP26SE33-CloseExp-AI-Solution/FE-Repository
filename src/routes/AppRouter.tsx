@@ -36,6 +36,7 @@ import AdminDelivery from "@/pages/Admin/AdminDelivery"
 import AdminOperations from "@/pages/Admin/AdminOperations"
 import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets"
 import AdminProfile from "@/pages/Admin/AdminProfile"
+import AdminRefunds from "@/pages/Admin/AdminRefunds"
 
 import PackageOrders from "@/pages/PackagingStaff/pOrders"
 import PackageCollect from "@/pages/PackagingStaff/pCollect"
@@ -108,6 +109,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/admin/profile"
                                 element={<AdminProfile />}
+                            />
+                            <Route
+                                path="/admin/refunds"
+                                element={<AdminRefunds />}
                             />
                         </Route>
                     </Route>

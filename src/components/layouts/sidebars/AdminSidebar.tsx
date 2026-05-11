@@ -9,6 +9,7 @@ import {
     Settings,
     Store,
     UserCircle,
+    Banknote,
 } from "lucide-react"
 
 import BaseSidebar, { type SidebarMenuItem } from "@/components/layouts/shared/BaseSidebar"
@@ -19,6 +20,7 @@ const adminMenuItems: SidebarMenuItem[] = [
     { label: "Điều phối giao hàng", path: "/admin/delivery", icon: Truck },
     { label: "Điều phối đóng gói", path: "/admin/operations", icon: PackageCheck },
     { label: "Phản hồi", path: "/admin/feedbacks", icon: MessageSquare },
+    { label: "Hoàn tiền", path: "/admin/refunds", icon: Banknote },
     { label: "Siêu thị", path: "/admin/supermarkets", icon: Store },
     { label: "Tài khoản", path: "/admin/users", icon: Users },
     { label: "Nhân sự nội bộ", path: "/admin/internal-staff", icon: Briefcase },
