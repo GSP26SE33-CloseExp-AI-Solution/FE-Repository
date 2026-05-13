@@ -115,9 +115,21 @@ const WorkflowLotStep: React.FC<Props> = ({
     const effectiveCategory = createdProduct?.category || ownProduct?.category || "—"
     const effectiveManufacturer =
         createdProduct?.manufacturer || ownProduct?.manufacturer || "—"
-    
+
     const stockLot = createdLot?.stockLot
     const pricing = createdLot?.pricingSuggestion
+
+    const originalPrice =
+        stockLot?.originalUnitPrice ?? stockLot?.originalPrice ?? pricing?.originalPrice
+
+    const suggestedPrice =
+        stockLot?.suggestedUnitPrice ?? stockLot?.suggestedPrice ?? pricing?.suggestedPrice
+
+    const finalPrice =
+        stockLot?.sellingUnitPrice ??
+        stockLot?.finalUnitPrice ??
+        stockLot?.finalPrice ??
+        (form.acceptedSuggestion ? suggestedPrice : undefined)
 
     const effectiveUnit = formatUnit(
         stockLot?.unitName || createdProduct?.unitName || selectedUnit?.label,
@@ -182,7 +194,7 @@ const WorkflowLotStep: React.FC<Props> = ({
                     />
 
                     <DateField
-                        label="Ngày sản xuất"
+                        label="Ngày sản xuất *"
                         value={form.manufactureDate}
                         onChange={(value) => onChange({ ...form, manufactureDate: value })}
                     />
@@ -210,7 +222,7 @@ const WorkflowLotStep: React.FC<Props> = ({
                     />
 
                     <CurrencyField
-                        label="Giá bán mong muốn"
+                        label="Giá bán mong muốn *"
                         value={form.finalUnitPrice}
                         onChange={(value) => onChange({ ...form, finalUnitPrice: value })}
                     />
@@ -325,17 +337,15 @@ const WorkflowLotStep: React.FC<Props> = ({
                         />
                         <InfoRow
                             label="Giá hệ thống đề xuất"
-                            value={formatCurrencyVN(pricing?.suggestedPrice)}
+                            value={formatCurrencyVN(suggestedPrice)}
                         />
                         <InfoRow
                             label="Giá gốc"
-                            value={formatCurrencyVN(
-                                stockLot?.originalPrice ?? pricing?.originalPrice,
-                            )}
+                            value={formatCurrencyVN(originalPrice)}
                         />
                         <InfoRow
                             label="Giá bán cuối"
-                            value={formatCurrencyVN(stockLot?.finalPrice)}
+                            value={formatCurrencyVN(finalPrice)}
                         />
                         <InfoRow
                             label="Số ngày còn lại trước hạn sử dụng"

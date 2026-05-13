@@ -38,7 +38,9 @@ export const productAiService = {
     ): Promise<WorkflowIdentifyResultDto> {
         const response = await axiosClient.post<ApiResponse<WorkflowIdentifyResultDto>>(
             "/Products/workflow/identify",
-            payload,
+            {
+                barcode: payload.barcode.trim(),
+            },
         )
 
         return unwrap(response.data)
@@ -50,11 +52,15 @@ export const productAiService = {
     ): Promise<WorkflowAnalyzeImageResultDto> {
         const formData = new FormData()
         formData.append("file", file)
-        formData.append("manualFallback", String(manualFallback))
 
         const response = await axiosClient.post<ApiResponse<WorkflowAnalyzeImageResultDto>>(
             "/Products/workflow/analyze-image",
             formData,
+            {
+                params: {
+                    manualFallback,
+                },
+            },
         )
 
         return unwrap(response.data)

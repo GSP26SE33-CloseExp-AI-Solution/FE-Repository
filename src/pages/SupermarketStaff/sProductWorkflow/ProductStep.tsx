@@ -27,6 +27,11 @@ import {
     TextareaField,
 } from "./WorkflowShared"
 
+type OcrProgressStep = {
+    label: string
+    description: string
+}
+
 type ProductCategoryOption = {
     categoryId: string
     label: string
@@ -98,6 +103,113 @@ const stringifyNutritionFacts = (value?: Record<string, string> | null) => {
     return Object.entries(value)
         .map(([key, itemValue]) => `${key}: ${itemValue}`)
         .join(" | ")
+}
+
+const OCR_PROGRESS_STEPS: OcrProgressStep[] = [
+    {
+        label: "Chuẩn bị ảnh",
+        description: "Tối ưu ảnh trước khi gửi lên hệ thống.",
+    },
+    {
+        label: "Gửi ảnh lên hệ thống",
+        description: "Ảnh đang được tải lên để thực hiện quá trình OCR.",
+    },
+    {
+        label: "AI đọc nhãn sản phẩm",
+        description: "Hệ thống đang nhận diện tên, thương hiệu, barcode và thông tin nhãn.",
+    },
+    {
+        label: "Đối chiếu dữ liệu tham khảo",
+        description: "Kiểm tra barcode và dữ liệu sản phẩm có thể tìm được.",
+    },
+    {
+        label: "Điền dữ liệu vào form",
+        description: "Chuẩn bị tự điền thông tin để bạn kiểm tra lại.",
+    },
+]
+
+const OcrLoadingPanel = () => {
+    const [activeIndex, setActiveIndex] = React.useState(0)
+
+    React.useEffect(() => {
+        const timer = window.setInterval(() => {
+            setActiveIndex((prev) =>
+                prev >= OCR_PROGRESS_STEPS.length - 1 ? prev : prev + 1,
+            )
+        }, 1200)
+
+        return () => window.clearInterval(timer)
+    }, [])
+
+    const percent = Math.round(
+        ((activeIndex + 1) / OCR_PROGRESS_STEPS.length) * 100,
+    )
+
+    return (
+        <div className="mt-4 overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50">
+            <div className="border-b border-emerald-100 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <div className="text-sm font-semibold text-emerald-900">
+                            Đang OCR ảnh sản phẩm
+                        </div>
+                        <div className="mt-1 text-xs leading-5 text-emerald-700">
+                            Vui lòng giữ nguyên màn hình, hệ thống đang đọc thông tin trên nhãn.
+                        </div>
+                    </div>
+
+                    <Loader2 className="h-5 w-5 shrink-0 animate-spin text-emerald-700" />
+                </div>
+
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
+                    <div
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                        style={{ width: `${percent}%` }}
+                    />
+                </div>
+            </div>
+
+            <div className="space-y-3 px-4 py-4">
+                {OCR_PROGRESS_STEPS.map((step, index) => {
+                    const done = index < activeIndex
+                    const active = index === activeIndex
+
+                    return (
+                        <div key={step.label} className="flex gap-3">
+                            <div
+                                className={cn(
+                                    "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-bold",
+                                    done
+                                        ? "border-emerald-500 bg-emerald-500 text-white"
+                                        : active
+                                            ? "border-emerald-500 bg-white text-emerald-700"
+                                            : "border-emerald-200 bg-white text-emerald-300",
+                                )}
+                            >
+                                {done ? "✓" : index + 1}
+                            </div>
+
+                            <div>
+                                <div
+                                    className={cn(
+                                        "text-sm font-semibold",
+                                        active || done
+                                            ? "text-emerald-900"
+                                            : "text-emerald-500",
+                                    )}
+                                >
+                                    {step.label}
+                                </div>
+                                <div className="mt-0.5 text-xs leading-5 text-emerald-700">
+                                    {step.description}
+                                </div>
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+        </div>
+    )
 }
 
 const WorkflowProductStep: React.FC<Props> = ({
@@ -211,14 +323,27 @@ const WorkflowProductStep: React.FC<Props> = ({
 
             {showOcrStep ? (
                 <SectionCard
-                    title="Phân tích ảnh sản phẩm"
-                    description="Chỉ xuất hiện khi hệ thống chưa có sản phẩm phù hợp với mã vạch này."
+                    title="OCR thông tin nhãn sản phẩm"
+                    description="Chỉ xuất hiện khi barcode sản phẩm chưa có trong hệ thống. 
+                    OCR sẽ tự điền thông tin, bạn vẫn có thể chỉnh tay trước khi lưu."
                 >
+                    <div className="mb-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-800">
+                        <span className="font-semibold text-sky-900">
+                            Chụp mặt có thông tin sản phẩm.
+                        </span>{" "}
+                        Ưu tiên ảnh rõ tên, thành phần, dinh dưỡng, NSX/HSD. OCR chỉ dùng 1 ảnh chính.
+                    </div>
                     <div className="flex flex-wrap gap-2">
                         <button
                             type="button"
                             onClick={onStartCamera}
-                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
+                            disabled={Boolean(loading)}
+                            className={cn(
+                                "inline-flex h-10 items-center gap-2 rounded-xl border px-4 text-sm font-semibold transition",
+                                loading
+                                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                                    : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100",
+                            )}
                         >
                             <Camera className="h-4 w-4" />
                             Chụp ảnh
@@ -227,7 +352,13 @@ const WorkflowProductStep: React.FC<Props> = ({
                         <button
                             type="button"
                             onClick={onTriggerUpload}
-                            className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-800"
+                            disabled={Boolean(loading)}
+                            className={cn(
+                                "inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
+                                loading
+                                    ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                                    : "bg-slate-900 text-white hover:bg-slate-800",
+                            )}
                         >
                             <UploadCloud className="h-4 w-4" />
                             Tải ảnh lên
@@ -236,10 +367,10 @@ const WorkflowProductStep: React.FC<Props> = ({
                         <button
                             type="button"
                             onClick={onAnalyzeImage}
-                            disabled={loading === "ANALYZE" || images.length === 0}
+                            disabled={Boolean(loading) || images.length === 0}
                             className={cn(
                                 "inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold transition",
-                                loading === "ANALYZE" || images.length === 0
+                                Boolean(loading) || images.length === 0
                                     ? "cursor-not-allowed bg-slate-100 text-slate-400"
                                     : "bg-emerald-600 text-white hover:bg-emerald-700",
                             )}
@@ -249,17 +380,20 @@ const WorkflowProductStep: React.FC<Props> = ({
                             ) : (
                                 <Sparkles className="h-4 w-4" />
                             )}
-                            Phân tích ảnh
+                            {loading === "ANALYZE"
+                                ? "Đang OCR..."
+                                : "Phân tích ảnh bằng OCR"}
                         </button>
 
                         <input
                             ref={fileInputRef}
                             type="file"
                             accept="image/*"
-                            multiple
                             onChange={onFileChange}
                             className="hidden"
                         />
+
+                        {loading === "ANALYZE" ? <OcrLoadingPanel /> : null}
                     </div>
 
                     {uploadError ? (
@@ -282,7 +416,13 @@ const WorkflowProductStep: React.FC<Props> = ({
                                 <button
                                     type="button"
                                     onClick={onStopCamera}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-white/90 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-white"
+                                    disabled={Boolean(loading)}
+                                    className={cn(
+                                        "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition",
+                                        loading
+                                            ? "cursor-not-allowed bg-white/60 text-slate-400"
+                                            : "bg-white/90 text-slate-700 hover:bg-white",
+                                    )}
                                 >
                                     <X className="h-4 w-4" />
                                     Đóng camera
@@ -291,7 +431,13 @@ const WorkflowProductStep: React.FC<Props> = ({
                                 <button
                                     type="button"
                                     onClick={onCapturePhoto}
-                                    className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                                    disabled={Boolean(loading)}
+                                    className={cn(
+                                        "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition",
+                                        loading
+                                            ? "cursor-not-allowed bg-slate-100 text-slate-400"
+                                            : "bg-emerald-600 text-white hover:bg-emerald-700",
+                                    )}
                                 >
                                     <Camera className="h-4 w-4" />
                                     Chụp ảnh
@@ -303,158 +449,59 @@ const WorkflowProductStep: React.FC<Props> = ({
                     <canvas ref={canvasRef} className="hidden" />
 
                     {images.length > 0 ? (
-                        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        <div className="mt-4">
                             {images.map((img, index) => (
                                 <div
                                     key={img.id}
-                                    className="group relative overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50"
+                                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-3"
                                 >
                                     <img
                                         src={img.preview}
                                         alt={`Ảnh sản phẩm ${index + 1}`}
-                                        className="h-48 w-full object-cover transition duration-300 group-hover:scale-[1.02]"
+                                        className="h-20 w-20 rounded-xl object-cover"
                                     />
 
-                                    <div className="absolute inset-x-0 top-0 flex items-start justify-between p-3">
-                                        <div className="rounded-full bg-white/90 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                                            {index === 0 ? "Ảnh chính" : `Ảnh ${index + 1}`}
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-semibold text-slate-900">
+                                            Ảnh OCR chính
                                         </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => onRemoveImage(img.id)}
-                                            className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-0 transition hover:bg-black/70 group-hover:opacity-100"
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
+                                        <div className="mt-1 text-xs leading-5 text-slate-500">
+                                            Hệ thống sẽ phân tích ảnh này để điền thông tin sản phẩm.
+                                        </div>
                                     </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => onRemoveImage(img.id)}
+                                        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
                                 </div>
                             ))}
                         </div>
                     ) : null}
 
                     {analyzeResult ? (
-                        <div className="mt-4 space-y-4">
-                            <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                                Hệ thống đã điền sẵn một phần thông tin. Bạn kiểm tra lại trước khi xác nhận.
-                            </div>
-
-                            <div className="rounded-xl border border-slate-200 bg-white px-4 py-4">
-                                <div className="mb-3 text-sm font-semibold text-slate-900">
-                                    Dữ liệu hệ thống đọc được
+                        <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-800">
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div>
+                                    <div className="font-semibold text-emerald-900">
+                                        OCR đã điền dữ liệu vào form bên dưới
+                                    </div>
+                                    <div className="text-xs leading-5 text-emerald-700">
+                                        Vui lòng kiểm tra lại dữ liệu trong form trước khi tạo sản phẩm.
+                                    </div>
                                 </div>
 
-                                <div className="space-y-3 text-sm text-slate-600">
-                                    <InfoRow
-                                        label="Tên sản phẩm"
-                                        value={
-                                            analyzeResult.extractedInfo?.name ||
-                                            analyzeResult.barcodeLookupInfo?.productName ||
-                                            "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Thương hiệu"
-                                        value={
-                                            analyzeResult.extractedInfo?.brand ||
-                                            analyzeResult.barcodeLookupInfo?.brand ||
-                                            "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Danh mục"
-                                        value={
-                                            analyzeResult.extractedInfo?.category ||
-                                            analyzeResult.barcodeLookupInfo?.category ||
-                                            "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Mã vạch"
-                                        value={
-                                            analyzeResult.extractedInfo?.barcode ||
-                                            analyzeResult.barcodeLookupInfo?.barcode ||
-                                            "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Nhà sản xuất"
-                                        value={
-                                            analyzeResult.extractedInfo?.manufacturer ||
-                                            analyzeResult.barcodeLookupInfo?.manufacturer ||
-                                            "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Xuất xứ"
-                                        value={
-                                            analyzeResult.extractedInfo?.origin ||
-                                            analyzeResult.barcodeLookupInfo?.country ||
-                                            "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Khối lượng"
-                                        value={
-                                            analyzeResult.extractedInfo?.weight ||
-                                            analyzeResult.barcodeLookupInfo?.weight ||
-                                            "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Thành phần"
-                                        value={
-                                            stringifyIngredients(
-                                                analyzeResult.extractedInfo?.ingredients,
-                                            ) !== "—"
-                                                ? stringifyIngredients(
-                                                    analyzeResult.extractedInfo?.ingredients,
-                                                )
-                                                : stringifyIngredients(
-                                                    analyzeResult.barcodeLookupInfo?.ingredients,
-                                                )
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Thông tin dinh dưỡng"
-                                        value={
-                                            stringifyNutritionFacts(
-                                                analyzeResult.extractedInfo?.nutritionFacts,
-                                            ) !== "—"
-                                                ? stringifyNutritionFacts(
-                                                    analyzeResult.extractedInfo
-                                                        ?.nutritionFacts,
-                                                )
-                                                : stringifyNutritionFacts(
-                                                    analyzeResult.barcodeLookupInfo
-                                                        ?.nutritionFacts,
-                                                )
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Độ tin cậy AI"
-                                        value={formatConfidence(analyzeResult.confidence)}
-                                    />
-                                    <InfoRow
-                                        label="AI có bỏ qua xử lý không"
-                                        value={
-                                            typeof analyzeResult.aiSkipped === "boolean"
-                                                ? analyzeResult.aiSkipped
-                                                    ? "Có"
-                                                    : "Không"
-                                                : "—"
-                                        }
-                                    />
-                                    <InfoRow
-                                        label="Đường dẫn ảnh phân tích"
-                                        value={analyzeResult.imageUrl || "—"}
-                                    />
+                                <div className="inline-flex w-fit items-center rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold text-emerald-700">
+                                    Độ tin cậy: {formatConfidence(analyzeResult.confidence)}
                                 </div>
                             </div>
                         </div>
                     ) : (
                         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                            Bạn có thể phân tích ảnh trước rồi chỉnh lại form bên dưới, hoặc bỏ qua và nhập tay toàn bộ.
+                            Bạn có thể OCR ảnh trước để hệ thống điền sẵn, hoặc bỏ qua và nhập tay toàn bộ.
                         </div>
                     )}
                 </SectionCard>
@@ -495,12 +542,12 @@ const WorkflowProductStep: React.FC<Props> = ({
                     />
 
                     <SelectField
-                        label="Đơn vị *"
+                        label="Đơn vị bán cho lô hàng *"
                         value={form.unitId}
                         onChange={(value) =>
                             onChange({
                                 ...form,
-                                unitId: String(value),
+                                unitId: value ? String(value) : "",
                             })
                         }
                         options={unitOptions.map((item) => ({
@@ -657,10 +704,10 @@ const WorkflowProductStep: React.FC<Props> = ({
                     <button
                         type="button"
                         onClick={onSubmit}
-                        disabled={!canSubmit || loading === "CREATE_PRODUCT"}
+                        disabled={!canSubmit || Boolean(loading)}
                         className={cn(
                             "inline-flex h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-semibold transition",
-                            canSubmit && loading !== "CREATE_PRODUCT"
+                            canSubmit && !loading
                                 ? "bg-emerald-600 text-white hover:bg-emerald-700"
                                 : "cursor-not-allowed bg-slate-100 text-slate-400",
                         )}

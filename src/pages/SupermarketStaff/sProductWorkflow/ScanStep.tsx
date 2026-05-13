@@ -424,19 +424,10 @@ const decodeImageWithVariants = async (image: HTMLImageElement) => {
             const text = decodeCanvasWithZxing(canvas)
 
             if (text?.trim()) {
-                console.log(
-                    "WorkflowScanStep.decodeImageWithVariants -> success:",
-                    variant.label,
-                )
                 return text
             }
         } catch (error) {
             lastError = error
-            console.log(
-                "WorkflowScanStep.decodeImageWithVariants -> failed variant:",
-                variant.label,
-                error,
-            )
         }
     }
 
@@ -452,14 +443,9 @@ const decodeLoadedImage = async (imageSrc: string) => {
         const text = result.getText()
 
         if (text?.trim()) {
-            console.log("WorkflowScanStep.decodeLoadedImage -> browser decode success")
             return text
         }
     } catch (firstError) {
-        console.log(
-            "WorkflowScanStep.decodeLoadedImage -> browser decode failed, fallback to variants:",
-            firstError,
-        )
     }
 
     return decodeImageWithVariants(imageEl)
@@ -648,7 +634,6 @@ const WorkflowScanStep: React.FC<Props> = ({
             try {
                 await videoEl.play()
             } catch (playError) {
-                console.log("WorkflowScanStep.startCamera -> video.play warning:", playError)
             }
         } catch (error) {
             console.error("WorkflowScanStep.startCamera -> error:", error)
@@ -738,10 +723,6 @@ const WorkflowScanStep: React.FC<Props> = ({
                     return
                 }
             } catch (decodeError) {
-                console.log(
-                    "WorkflowScanStep.handleCaptureFromCamera -> decode captured image failed:",
-                    decodeError,
-                )
             }
 
             setScanStatus("ERROR")
@@ -759,6 +740,8 @@ const WorkflowScanStep: React.FC<Props> = ({
 
     const handleManualIdentify = () => {
         const normalized = normalizeBarcode(barcodeInput)
+        if (!normalized) return
+
         setBarcodeInput(normalized)
         setLastScannedBarcode(normalized)
         void onIdentify(normalized)
@@ -817,7 +800,6 @@ const WorkflowScanStep: React.FC<Props> = ({
                     return
                 }
             } catch (error) {
-                console.log("WorkflowScanStep.decodeImageFile -> initial decode fail:", error)
             }
 
             setScanStatus("ERROR")
@@ -1078,7 +1060,7 @@ const WorkflowScanStep: React.FC<Props> = ({
 
     useEffect(() => {
         return () => {
-            stopCamera()
+            cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
             revokeOriginalImageUrl()
             revokeWorkingImageUrl()
         }

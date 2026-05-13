@@ -94,7 +94,7 @@ const parseNutritionRowsFromText = (value?: string | null): NutritionFactRow[] =
         // fallback bên dưới cho dữ liệu dạng text thường
     }
 
-    return text
+    const rows = text
         .split(/[;\n|]+/)
         .map((item) => item.trim())
         .filter(Boolean)
@@ -103,12 +103,11 @@ const parseNutritionRowsFromText = (value?: string | null): NutritionFactRow[] =
             return createNutritionRow(label.trim(), rest.join(":").trim())
         })
         .filter((row) => row.label || row.value)
-        .concat([])
-        .slice(0)
-        || [createNutritionRow()]
+
+    return rows.length > 0 ? rows : [createNutritionRow()]
 }
 
-const MAX_IMAGES = 5
+const MAX_IMAGES = 1
 
 const normalizeBarcode = (value: string) => value.replace(/\s+/g, "").trim()
 
@@ -245,44 +244,37 @@ const ProductWorkflowPage: React.FC = () => {
     }
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const files = e.target.files
-        if (!files) return
+        const file = e.target.files?.[0]
+        if (!file) return
+
+        if (!file.type.startsWith("image/")) {
+            setUploadError("File này không phải ảnh. Vui lòng chọn ảnh mặt chứa thông tin sản phẩm.")
+            e.target.value = ""
+            return
+        }
 
         setImages((prev) => {
-            const updated = [...prev]
-            let overLimit = 0
+            prev.forEach((img) => URL.revokeObjectURL(img.preview))
 
-            for (const file of Array.from(files)) {
-                if (!file.type.startsWith("image/")) continue
-
-                if (updated.length >= MAX_IMAGES) {
-                    overLimit++
-                    continue
-                }
-
-                updated.push({
-                    id: crypto.randomUUID(),
+            return [
+                {
+                    id:
+                        typeof crypto !== "undefined" && "randomUUID" in crypto
+                            ? crypto.randomUUID()
+                            : `${Date.now()}-${Math.random()}`,
                     file,
                     preview: URL.createObjectURL(file),
                     source: "upload",
-                })
-            }
-
-            setUploadError(overLimit > 0 ? `Chỉ được tối đa ${MAX_IMAGES} ảnh` : null)
-            return updated
+                },
+            ]
         })
 
+        setUploadError(null)
         e.target.value = ""
     }
 
     const capturePhoto = async () => {
         if (!videoRef.current || !canvasRef.current) return
-
-        if (images.length >= MAX_IMAGES) {
-            setUploadError(`Chỉ được tối đa ${MAX_IMAGES} ảnh.`)
-            stopCamera()
-            return
-        }
 
         const video = videoRef.current
         const canvas = canvasRef.current
@@ -304,15 +296,21 @@ const ProductWorkflowPage: React.FC = () => {
             type: "image/png",
         })
 
-        setImages((prev) => [
-            ...prev,
-            {
-                id: crypto.randomUUID(),
-                file,
-                preview,
-                source: "camera",
-            },
-        ])
+        setImages((prev) => {
+            prev.forEach((img) => URL.revokeObjectURL(img.preview))
+
+            return [
+                {
+                    id:
+                        typeof crypto !== "undefined" && "randomUUID" in crypto
+                            ? crypto.randomUUID()
+                            : `${Date.now()}-${Math.random()}`,
+                    file,
+                    preview,
+                    source: "camera",
+                },
+            ]
+        })
 
         setUploadError(null)
         stopCamera()
@@ -530,7 +528,7 @@ const ProductWorkflowPage: React.FC = () => {
 
         const rawMainImage = images[0]?.file
         if (!rawMainImage) {
-            toast.error("Bạn chưa chọn ảnh sản phẩm")
+            toast.error("Bạn chưa chọn ảnh mặt có thông tin sản phẩm để OCR")
             return
         }
 
@@ -597,8 +595,6 @@ const ProductWorkflowPage: React.FC = () => {
         setWorkflow((prev) => {
             const categoryMeta = resolveCategoryMeta(product.category, "")
 
-            syncNutritionRowsFromForm(prev.productForm.nutritionFacts)
-
             return {
                 ...prev,
                 referenceProduct: product,
@@ -629,7 +625,7 @@ const ProductWorkflowPage: React.FC = () => {
             !form.barcode.trim() ||
             !form.unitId.trim()
         ) {
-            toast.error("Còn thiếu tên sản phẩm, danh mục, barcode hoặc đơn vị")
+            toast.error("Còn thiếu tên sản phẩm, danh mục, barcode hoặc đơn vị bán cho lô hàng")
             return
         }
 
@@ -763,15 +759,11 @@ const ProductWorkflowPage: React.FC = () => {
             unitId: workflow.createdProduct?.unitId || workflow.productForm.unitId || undefined,
         }
 
-        console.log("ProductWorkflowPage.handleSubmitLot -> payload:", payload)
-
         setLoading("CREATE_LOT")
 
         try {
             const result = await productAiService.createAndPublishWorkflowLot(payload)
             const next = mapWorkflowCreateAndPublishLotResultToState(workflow, result)
-
-            console.log("ProductWorkflowPage.handleSubmitLot -> result:", result)
 
             setWorkflow(next)
             toast.success(

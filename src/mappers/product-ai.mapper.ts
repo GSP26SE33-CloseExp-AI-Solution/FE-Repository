@@ -15,10 +15,18 @@ import {
     emptyLotForm,
     emptyProductForm,
 } from "@/types/product-ai-workflow.type"
+import type { ProductStateValue } from "@/types/product.type"
 
 const firstText = (...values: Array<string | null | undefined>) => {
     const found = values.find((value) => typeof value === "string" && value.trim())
     return found?.trim() || ""
+}
+
+const firstNumber = (...values: Array<number | null | undefined>) => {
+    const found = values.find(
+        (value) => typeof value === "number" && !Number.isNaN(value),
+    )
+    return typeof found === "number" ? found : undefined
 }
 
 const stringifyIngredients = (value?: string[] | null) => {
@@ -44,34 +52,43 @@ const normalizeDateInput = (value?: string | null) => {
     return date.toISOString().slice(0, 10)
 }
 
-export const mapProductStateLabel = (status?: string | number | null) => {
-    switch (status) {
+const normalizeStatusKey = (status?: string | number | null) => {
+    if (typeof status === "number") return status
+    return status?.trim().toLowerCase() || ""
+}
+
+export const mapProductStateLabel = (
+    status?: ProductStateValue | string | number | null,
+) => {
+    switch (normalizeStatusKey(status)) {
         case 0:
-        case "Draft":
+        case "draft":
             return "Nháp"
         case 1:
-        case "Verified":
+        case "verified":
             return "Đã xác nhận"
         case 2:
-        case "Priced":
+        case "priced":
             return "Đã chốt giá"
         case 3:
-        case "Published":
+        case "published":
             return "Đã đăng bán"
         case 4:
-        case "Expired":
+        case "expired":
             return "Hết hạn"
         case 5:
-        case "SoldOut":
+        case "soldout":
+        case "sold_out":
+        case "sold out":
             return "Hết hàng"
         case 6:
-        case "Hidden":
+        case "hidden":
             return "Đã ẩn"
         case 7:
-        case "Deleted":
+        case "deleted":
             return "Đã xóa"
         default:
-            return "Chưa rõ"
+            return typeof status === "string" && status.trim() ? status : "Chưa rõ"
     }
 }
 
@@ -398,6 +415,21 @@ export const mapWorkflowCreateAndPublishLotResultToState = (
     const stockLot = result.stockLot
     const pricing = result.pricingSuggestion
 
+    const originalUnitPrice = firstNumber(
+        stockLot?.originalUnitPrice,
+        stockLot?.originalPrice,
+        pricing?.originalPrice,
+    )
+
+    const finalUnitPrice = firstNumber(
+        stockLot?.sellingUnitPrice,
+        stockLot?.finalUnitPrice,
+        stockLot?.finalPrice,
+        previous.lotForm.acceptedSuggestion ? stockLot?.suggestedUnitPrice : undefined,
+        previous.lotForm.acceptedSuggestion ? stockLot?.suggestedPrice : undefined,
+        previous.lotForm.acceptedSuggestion ? pricing?.suggestedPrice : undefined,
+    )
+
     return {
         ...previous,
         step: "DONE",
@@ -435,22 +467,14 @@ export const mapWorkflowCreateAndPublishLotResultToState = (
                     ? stockLot.weight
                     : previous.lotForm.weight,
             originalUnitPrice:
-                typeof stockLot?.originalPrice === "number"
-                    ? stockLot.originalPrice
-                    : typeof pricing?.originalPrice === "number"
-                        ? pricing.originalPrice
-                        : previous.lotForm.originalUnitPrice,
+                typeof originalUnitPrice === "number"
+                    ? originalUnitPrice
+                    : previous.lotForm.originalUnitPrice,
             finalUnitPrice:
-                typeof stockLot?.finalPrice === "number"
-                    ? stockLot.finalPrice
-                    : typeof pricing?.suggestedPrice === "number" &&
-                        previous.lotForm.acceptedSuggestion
-                        ? pricing.suggestedPrice
-                        : previous.lotForm.finalUnitPrice,
-            acceptedSuggestion:
-                typeof result.pricingSuggestionResolvedBeforePublish === "boolean"
-                    ? result.pricingSuggestionResolvedBeforePublish
-                    : previous.lotForm.acceptedSuggestion,
+                typeof finalUnitPrice === "number"
+                    ? finalUnitPrice
+                    : previous.lotForm.finalUnitPrice,
+            acceptedSuggestion: previous.lotForm.acceptedSuggestion,
         },
         ownProduct: previous.ownProduct
             ? {

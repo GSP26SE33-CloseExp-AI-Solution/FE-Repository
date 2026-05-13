@@ -12,12 +12,13 @@ export type ProductUnitInfoDto = {
 
 export type NutritionFactsMap = ProductNutritionFacts
 
-export type WorkflowNextAction =
+export type KnownWorkflowNextAction =
     | "CREATE_STOCKLOT"
     | "VERIFY_PRODUCT"
     | "CHOOSE_OR_CREATE_PRIVATE_PRODUCT"
     | "CREATE_PRODUCT"
-    | string
+
+export type WorkflowNextAction = KnownWorkflowNextAction | (string & {})
 
 export type ProductWorkflowStep =
     | "SCAN"
@@ -226,13 +227,21 @@ export type WorkflowStockLotDto = ProductUnitInfoDto & {
     expiryDate?: string | null
     manufactureDate?: string | null
     daysToExpiry?: number | null
+    daysRemaining?: number | null
+    hoursRemaining?: number | null
     quantity?: number | null
     weight?: number | null
-    status?: number | string | null
+    status?: ProductStateValue | string | number | null
     createdAt?: string | null
     createdBy?: string | null
     publishedBy?: string | null
     publishedAt?: string | null
+
+    originalUnitPrice?: number | null
+    suggestedUnitPrice?: number | null
+    finalUnitPrice?: number | null
+    sellingUnitPrice?: number | null
+
     originalPrice?: number | null
     suggestedPrice?: number | null
     finalPrice?: number | null

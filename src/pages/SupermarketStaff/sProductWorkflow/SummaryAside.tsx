@@ -6,20 +6,12 @@ import type {
     ProductWorkflowState,
 } from "@/types/product-ai-workflow.type"
 import type { UnitOption } from "@/types/unit.type"
-import { mapProductStateLabel } from "@/mappers/product-ai.mapper"
 import { InfoRow, SectionCard } from "./WorkflowShared"
 
 type Props = {
     workflow: ProductWorkflowState
     images: LocalImageFile[]
     unitOptions?: UnitOption[]
-}
-
-const stringifyNutritionFacts = (value?: Record<string, string> | null) => {
-    if (!value || Object.keys(value).length === 0) return "—"
-    return Object.entries(value)
-        .map(([key, itemValue]) => `${key}: ${itemValue}`)
-        .join(" | ")
 }
 
 const formatMoney = (value?: number | null) => {
@@ -42,7 +34,6 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
         workflow.createdProduct?.mainImageUrl ||
         workflow.ownProduct?.mainImageUrl ||
         workflow.referenceProduct?.mainImageUrl ||
-        workflow.analyzeResult?.imageUrl ||
         ""
 
     const ocrConfidence =
@@ -56,20 +47,6 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
             : typeof workflow.createdLot?.pricingSuggestion?.confidence === "number"
                 ? `${Math.round(workflow.createdLot.pricingSuggestion.confidence * 100)}%`
                 : "—"
-
-    const activeProductName =
-        workflow.createdLot?.stockLot?.productName ||
-        workflow.createdProduct?.name ||
-        workflow.ownProduct?.name ||
-        workflow.productForm.name ||
-        "—"
-
-    const activeProductCategory =
-        workflow.createdLot?.productCategory ||
-        workflow.createdProduct?.category ||
-        workflow.ownProduct?.category ||
-        workflow.productForm.categoryName ||
-        "—"
 
     const selectedUnit = unitOptions.find(
         (item) => item.unitId === workflow.productForm.unitId,
@@ -87,23 +64,12 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
         selectedUnit?.label || workflow.productForm.unitId,
     )
 
-    const activeManufacturer =
-        workflow.createdProduct?.manufacturer ||
-        workflow.ownProduct?.manufacturer ||
-        workflow.productForm.manufacturer ||
-        "—"
-
-    const finalNutritionFacts =
-        stringifyNutritionFacts(workflow.createdLot?.productNutritionFacts) !== "—"
-            ? stringifyNutritionFacts(workflow.createdLot?.productNutritionFacts)
-            : workflow.productForm.nutritionFacts || "—"
-
     const activeProductStatus =
         workflow.createdProduct?.status ?? workflow.ownProduct?.status ?? null
 
     return (
         <div className="space-y-5">
-            <SectionCard title="Ảnh sản phẩm">
+            <SectionCard title="Ảnh hiện tại">
                 {previewImage ? (
                     <div className="flex h-[280px] items-center justify-center overflow-hidden rounded-[20px] border border-slate-200 bg-slate-50">
                         <img
@@ -125,116 +91,36 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
             <SectionCard title="Tóm tắt quy trình">
                 <div className="space-y-3 text-sm text-slate-600">
                     <InfoRow label="Bước hiện tại" value={workflow.step} />
-                    <InfoRow label="Chế độ" value={workflow.mode || "—"} />
-                    <InfoRow label="Giai đoạn" value={workflow.phase || "—"} />
-                    <InfoRow label="Hành động tiếp theo" value={workflow.nextAction || "—"} />
-                    <InfoRow label="Mã vạch" value={workflow.barcode || "—"} />
+                    <InfoRow label="Mã vạch" value={workflow.barcode || workflow.productForm.barcode || "—"} />
                     <InfoRow label="Đơn vị" value={activeUnit} />
-                    <InfoRow label="Độ tin cậy OCR" value={ocrConfidence} />
-                    <InfoRow
-                        label="Mã sản phẩm"
-                        value={
-                            workflow.createdProduct?.productId ||
-                            workflow.ownProduct?.productId ||
-                            "—"
-                        }
-                    />
-                    <InfoRow
-                        label="Mã lô"
-                        value={
-                            workflow.createdLot?.stockLot?.lotId ||
-                            workflow.createdLot?.lotId ||
-                            "—"
-                        }
-                    />
-                    <InfoRow
-                        label="Cho phép tạo lô trực tiếp"
-                        value={workflow.canCreateLotDirectly ? "Có" : "Không"}
-                    />
-                    <InfoRow
-                        label="Yêu cầu xác nhận sản phẩm"
-                        value={workflow.requiresVerification ? "Có" : "Không"}
-                    />
+
+                    {workflow.analyzeResult ? (
+                        <InfoRow label="Độ tin cậy OCR" value={ocrConfidence} />
+                    ) : null}
+
+                    {workflow.createdProduct?.productId || workflow.ownProduct?.productId ? (
+                        <InfoRow
+                            label="Mã sản phẩm"
+                            value={
+                                workflow.createdProduct?.productId ||
+                                workflow.ownProduct?.productId ||
+                                "—"
+                            }
+                        />
+                    ) : null}
+
+                    {workflow.createdLot?.stockLot?.lotId || workflow.createdLot?.lotId ? (
+                        <InfoRow
+                            label="Mã lô"
+                            value={
+                                workflow.createdLot?.stockLot?.lotId ||
+                                workflow.createdLot?.lotId ||
+                                "—"
+                            }
+                        />
+                    ) : null}
                 </div>
             </SectionCard>
-
-            {(workflow.ownProduct || workflow.createdProduct || workflow.createdLot) ? (
-                <SectionCard title="Thông tin sản phẩm">
-                    <div className="space-y-3 text-sm text-slate-600">
-                        <InfoRow label="Tên sản phẩm" value={activeProductName} />
-                        <InfoRow
-                            label="Trạng thái"
-                            value={mapProductStateLabel(activeProductStatus)}
-                        />
-                        <InfoRow label="Danh mục" value={activeProductCategory} />
-                        <InfoRow label="Đơn vị" value={activeUnit} />
-                        <InfoRow label="Nhà sản xuất" value={activeManufacturer} />
-                    </div>
-                </SectionCard>
-            ) : null}
-
-            {workflow.referenceProduct ? (
-                <SectionCard title="Sản phẩm tham khảo">
-                    <div className="space-y-3 text-sm text-slate-600">
-                        <InfoRow label="Tên sản phẩm" value={workflow.referenceProduct.name || "—"} />
-                        <InfoRow
-                            label="Thương hiệu"
-                            value={workflow.referenceProduct.brand || "—"}
-                        />
-                        <InfoRow
-                            label="Danh mục"
-                            value={workflow.referenceProduct.category || "—"}
-                        />
-                        <InfoRow
-                            label="Mã vạch"
-                            value={workflow.referenceProduct.barcode || "—"}
-                        />
-                        <InfoRow
-                            label="Siêu thị"
-                            value={workflow.referenceProduct.supermarketName || "—"}
-                        />
-                    </div>
-                </SectionCard>
-            ) : null}
-
-            {workflow.analyzeResult ? (
-                <SectionCard title="Dữ liệu AI phân tích">
-                    <div className="space-y-3 text-sm text-slate-600">
-                        <InfoRow
-                            label="Tên sản phẩm"
-                            value={
-                                workflow.analyzeResult.extractedInfo?.name ||
-                                workflow.analyzeResult.barcodeLookupInfo?.productName ||
-                                "—"
-                            }
-                        />
-                        <InfoRow
-                            label="Thương hiệu"
-                            value={
-                                workflow.analyzeResult.extractedInfo?.brand ||
-                                workflow.analyzeResult.barcodeLookupInfo?.brand ||
-                                "—"
-                            }
-                        />
-                        <InfoRow
-                            label="Danh mục"
-                            value={
-                                workflow.analyzeResult.extractedInfo?.category ||
-                                workflow.analyzeResult.barcodeLookupInfo?.category ||
-                                "—"
-                            }
-                        />
-                        <InfoRow
-                            label="Mã vạch"
-                            value={
-                                workflow.analyzeResult.extractedInfo?.barcode ||
-                                workflow.analyzeResult.barcodeLookupInfo?.barcode ||
-                                "—"
-                            }
-                        />
-                    </div>
-                </SectionCard>
-            ) : null}
 
             {workflow.step === "DONE" && workflow.createdLot ? (
                 <SectionCard title="Hoàn tất">
@@ -275,7 +161,11 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
                             />
                             <InfoRow
                                 label="Giá bán cuối"
-                                value={formatMoney(workflow.createdLot.stockLot?.finalPrice)}
+                                value={formatMoney(
+                                    workflow.createdLot.stockLot?.sellingUnitPrice ??
+                                    workflow.createdLot.stockLot?.finalUnitPrice ??
+                                    workflow.createdLot.stockLot?.finalPrice,
+                                )}
                             />
                             <InfoRow
                                 label="Độ tin cậy định giá"
@@ -296,10 +186,6 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
                             <InfoRow
                                 label="Người tạo lô"
                                 value={workflow.createdLot.stockLot?.createdBy || "—"}
-                            />
-                            <InfoRow
-                                label="Thông tin dinh dưỡng"
-                                value={finalNutritionFacts}
                             />
                         </div>
                     </div>
