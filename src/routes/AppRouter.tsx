@@ -37,6 +37,7 @@ import AdminOperations from "@/pages/Admin/AdminOperations"
 import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets"
 import AdminProfile from "@/pages/Admin/AdminProfile"
 import AdminRefunds from "@/pages/Admin/AdminRefunds"
+import AITokenDashboard from "@/pages/Admin/AITokenDashboard"
 
 import PackageOrders from "@/pages/PackagingStaff/pOrders"
 import PackageCollect from "@/pages/PackagingStaff/pCollect"
@@ -143,6 +144,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/supermarketStaff/profile"
                                 element={<ProfilePage />}
+                            />
+                            <Route
+                                path="/supermarketStaff/ai-tokens"
+                                element={<AITokenDashboard />}
                             />
                         </Route>
                     </Route>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { Bell, LogOut, ShieldCheck } from "lucide-react"
+import { Bell, LogOut, ShieldCheck, type LucideIcon } from "lucide-react"
 
 import Logo from "@/assets/logo.png"
 import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs"
@@ -14,6 +14,13 @@ type BaseStaffHeaderProps = {
     centerHint?: string
     extraMeta?: React.ReactNode
     headerActions?: React.ReactNode
+    profileMenuItems?: {
+        label: string
+        path: string
+        icon: LucideIcon
+        description?: string
+    }[]
+    profileDropdownExtra?: React.ReactNode
     onLogoutAll?: () => Promise<void> | void
     loggingOutAll?: boolean
 }
@@ -26,6 +33,8 @@ const BaseStaffHeader = ({
     centerHint,
     extraMeta,
     headerActions,
+    profileMenuItems = [],
+    profileDropdownExtra,
     onLogoutAll,
     loggingOutAll = false,
 }: BaseStaffHeaderProps) => {
@@ -144,6 +153,8 @@ const BaseStaffHeader = ({
                                     </p>
                                 </div>
 
+                                {profileDropdownExtra}
+
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -155,6 +166,34 @@ const BaseStaffHeader = ({
                                     <ShieldCheck size={16} className="text-slate-500" />
                                     <span>Hồ sơ</span>
                                 </button>
+
+                                {profileMenuItems.map((item) => {
+                                    const Icon = item.icon
+
+                                    return (
+                                        <button
+                                            key={item.path}
+                                            type="button"
+                                            onClick={() => {
+                                                setOpen(false)
+                                                navigate(item.path)
+                                            }}
+                                            className="flex w-full items-start gap-3 px-4 py-3 text-left transition hover:bg-gray-50"
+                                        >
+                                            <Icon size={16} className="mt-0.5 text-slate-500" />
+                                            <div>
+                                                <p className="text-sm font-medium text-slate-700">
+                                                    {item.label}
+                                                </p>
+                                                {item.description ? (
+                                                    <p className="mt-0.5 text-xs text-slate-500">
+                                                        {item.description}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                        </button>
+                                    )
+                                })}
 
                                 {onLogoutAll ? (
                                     <>

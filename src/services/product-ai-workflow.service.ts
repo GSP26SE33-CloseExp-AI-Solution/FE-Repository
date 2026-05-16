@@ -8,8 +8,7 @@ import type {
     WorkflowCreateProductRequestDto,
     WorkflowCreateProductResultDto,
     WorkflowIdentifyResultDto,
-    WorkflowMarketPriceReferenceDto,
-} from "@/types/product-ai-workflow.type"
+    WorkflowMarketPriceReferenceDto,    AiPricingSuggestionResult} from "@/types/product-ai-workflow.type"
 
 type WorkflowIdentifyRequestDto = {
     barcode: string
@@ -49,6 +48,7 @@ export const productAiService = {
     async analyzeWorkflowImage(
         file: File,
         manualFallback = false,
+        onUploadProgress?: (progressEvent: import("axios").AxiosProgressEvent) => void
     ): Promise<WorkflowAnalyzeImageResultDto> {
         const formData = new FormData()
         formData.append("file", file)
@@ -60,6 +60,7 @@ export const productAiService = {
                 params: {
                     manualFallback,
                 },
+                onUploadProgress,
             },
         )
 
@@ -105,4 +106,15 @@ export const productAiService = {
 
         return unwrap(response.data)
     },
-}
+    async getAiPriceSuggestion(payload: {
+        category: string
+        expiryDate: string
+        originalPrice: number
+        brand?: string | null
+    }): Promise<AiPricingSuggestionResult> {
+        const response = await axiosClient.post<ApiResponse<AiPricingSuggestionResult>>(
+            "/AI/pricing",
+            payload,
+        )
+        return unwrap(response.data)
+    },}

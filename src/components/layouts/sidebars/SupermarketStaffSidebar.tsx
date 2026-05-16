@@ -5,6 +5,7 @@ import {
     User,
     Bell,
     Settings,
+    Bot,
 } from "lucide-react"
 
 import BaseSidebar, { type SidebarMenuItem } from "@/components/layouts/shared/BaseSidebar"
@@ -12,6 +13,7 @@ import BaseSidebar, { type SidebarMenuItem } from "@/components/layouts/shared/B
 const supermarketStaffMenuItems: SidebarMenuItem[] = [
     { label: "Tổng quan", path: "/supermarketStaff/dashboard", icon: LayoutDashboard, end: true },
     { label: "Sản phẩm", path: "/supermarketStaff/products", icon: Box },
+    { label: "AI Token", path: "/supermarketStaff/ai-tokens", icon: Bot },
     { label: "Thống kê", path: "/supermarketStaff/statistic", icon: BarChart3, end: true },
     { label: "Hồ sơ", path: "/supermarketStaff/profile", icon: User, end: true },
     { label: "Thông báo", path: "/supermarketStaff/notification", icon: Bell, end: true },

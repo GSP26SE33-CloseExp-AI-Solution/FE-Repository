@@ -248,6 +248,20 @@ export type WorkflowStockLotDto = ProductUnitInfoDto & {
     pricingConfidence?: number | null
 }
 
+export type AiPricingSuggestionResult = {
+    success: boolean
+    errorMessage?: string | null
+    suggestedPrice: number
+    minPrice: number
+    maxPrice: number
+    discountPercent: number
+    confidence: number
+    expectedSellRate: number
+    estimatedTimeToSell: string
+    competitiveness: number
+    reasons?: string[] | null
+}
+
 export type WorkflowCreateAndPublishLotResultDto = {
     productId: string
     lotId: string

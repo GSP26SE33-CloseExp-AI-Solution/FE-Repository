@@ -1,7 +1,9 @@
+import AiTokenDropdownPanel from "@/components/ai/AiTokenDropdownPanel"
 import BaseStaffHeader from "@/components/layouts/shared/BaseStaffHeader"
 import { STAFF_HEADER_CONFIG } from "@/constants/layoutByRole"
 import { useAuthContext } from "@/contexts/AuthContext"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
+import { Bot } from "lucide-react"
 
 const SupermarketStaffHeader = () => {
     const config = STAFF_HEADER_CONFIG.SupermarketStaff
@@ -19,6 +21,15 @@ const SupermarketStaffHeader = () => {
             profileRoute={config.profileRoute}
             accentClass={config.accentClass}
             centerHint={config.centerHint}
+            profileDropdownExtra={<AiTokenDropdownPanel />}
+            profileMenuItems={[
+                {
+                    label: "Trang AI Token",
+                    path: "/supermarketStaff/ai-tokens",
+                    icon: Bot,
+                    description: "Lịch sử và cấu hình token đầy đủ",
+                },
+            ]}
             extraMeta={
                 <div className="flex flex-wrap items-center gap-2">
                     {config.meta}

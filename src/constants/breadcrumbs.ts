@@ -14,6 +14,7 @@ export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/supermarketStaff/products/add": ["Siêu thị", "Sản phẩm", "Thêm sản phẩm"],
     "/supermarketStaff/products/edit": ["Siêu thị", "Sản phẩm", "Chỉnh sửa"],
     "/supermarketStaff/products": ["Siêu thị", "Sản phẩm"],
+    "/supermarketStaff/ai-tokens": ["Siêu thị", "AI Token"],
     "/supermarketStaff/statistic": ["Siêu thị", "Thống kê"],
     "/supermarketStaff/profile": ["Siêu thị", "Hồ sơ"],
     "/supermarketStaff/notification": ["Siêu thị", "Thông báo"],

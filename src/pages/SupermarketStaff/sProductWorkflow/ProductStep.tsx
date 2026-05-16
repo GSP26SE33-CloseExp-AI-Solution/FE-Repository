@@ -128,22 +128,11 @@ const OCR_PROGRESS_STEPS: OcrProgressStep[] = [
     },
 ]
 
-const OcrLoadingPanel = () => {
-    const [activeIndex, setActiveIndex] = React.useState(0)
-
-    React.useEffect(() => {
-        const timer = window.setInterval(() => {
-            setActiveIndex((prev) =>
-                prev >= OCR_PROGRESS_STEPS.length - 1 ? prev : prev + 1,
-            )
-        }, 1200)
-
-        return () => window.clearInterval(timer)
-    }, [])
-
-    const percent = Math.round(
-        ((activeIndex + 1) / OCR_PROGRESS_STEPS.length) * 100,
-    )
+const OcrLoadingPanel = ({ activeIndex, uploadPercent = 0 }: { activeIndex: number, uploadPercent?: number }) => {
+    let percent = Math.round(((activeIndex) / OCR_PROGRESS_STEPS.length) * 100)
+    if (activeIndex === 1) { // Gửi ảnh
+        percent += Math.round((uploadPercent / 100) * (100 / OCR_PROGRESS_STEPS.length))
+    }
 
     return (
         <div className="mt-4 overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50">
@@ -212,7 +201,7 @@ const OcrLoadingPanel = () => {
     )
 }
 
-const WorkflowProductStep: React.FC<Props> = ({
+const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPercent?: number }> = ({
     mode,
     nextAction,
     form,
@@ -229,6 +218,8 @@ const WorkflowProductStep: React.FC<Props> = ({
     categoryOptions,
     unitOptions,
     nutritionRows,
+    ocrStepIndex = 0,
+    ocrUploadPercent = 0,
     onNutritionRowChange,
     onAddNutritionRow,
     onRemoveNutritionRow,
@@ -389,11 +380,12 @@ const WorkflowProductStep: React.FC<Props> = ({
                             ref={fileInputRef}
                             type="file"
                             accept="image/*"
+                            multiple
                             onChange={onFileChange}
                             className="hidden"
                         />
 
-                        {loading === "ANALYZE" ? <OcrLoadingPanel /> : null}
+                        {loading === "ANALYZE" ? <OcrLoadingPanel activeIndex={ocrStepIndex} uploadPercent={ocrUploadPercent} /> : null}
                     </div>
 
                     {uploadError ? (

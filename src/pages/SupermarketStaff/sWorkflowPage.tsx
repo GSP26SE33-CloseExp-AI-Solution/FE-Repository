@@ -34,7 +34,7 @@ import WorkflowScanStep from "./sProductWorkflow/ScanStep"
 import WorkflowSummaryAside from "./sProductWorkflow/SummaryAside"
 import { SectionCard, StepBadge } from "./sProductWorkflow/WorkflowShared"
 
-type LoadingState = null | "IDENTIFY" | "ANALYZE" | "CREATE_PRODUCT" | "CREATE_LOT"
+type LoadingState = null | "IDENTIFY" | "ANALYZE" | "CREATE_PRODUCT" | "CREATE_LOT" | "PREVIEW_PRICE"
 
 type ProductCategoryOption = {
     categoryId: string
@@ -107,7 +107,7 @@ const parseNutritionRowsFromText = (value?: string | null): NutritionFactRow[] =
     return rows.length > 0 ? rows : [createNutritionRow()]
 }
 
-const MAX_IMAGES = 1
+const MAX_IMAGES = 3
 
 const normalizeBarcode = (value: string) => value.replace(/\s+/g, "").trim()
 
@@ -155,6 +155,8 @@ const ProductWorkflowPage: React.FC = () => {
 
     const [images, setImages] = useState<LocalImageFile[]>([])
     const [uploadError, setUploadError] = useState<string | null>(null)
+    const [ocrStepIndex, setOcrStepIndex] = useState(0)
+    const [ocrUploadPercent, setOcrUploadPercent] = useState(0)
 
     const [categories, setCategories] = useState<CategoryItem[]>([])
     const [unitOptions, setUnitOptions] = useState<UnitOption[]>([])
@@ -244,37 +246,63 @@ const ProductWorkflowPage: React.FC = () => {
     }
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0]
-        if (!file) return
+        const selectedFiles = Array.from(e.target.files ?? [])
+        if (selectedFiles.length === 0) return
 
-        if (!file.type.startsWith("image/")) {
+        if (selectedFiles.some((file) => !file.type.startsWith("image/"))) {
             setUploadError("File này không phải ảnh. Vui lòng chọn ảnh mặt chứa thông tin sản phẩm.")
             e.target.value = ""
             return
         }
 
         setImages((prev) => {
-            prev.forEach((img) => URL.revokeObjectURL(img.preview))
+            const remainingSlots = MAX_IMAGES - prev.length
+            const filesToAdd = selectedFiles.slice(0, Math.max(0, remainingSlots))
 
-            return [
-                {
-                    id:
-                        typeof crypto !== "undefined" && "randomUUID" in crypto
-                            ? crypto.randomUUID()
-                            : `${Date.now()}-${Math.random()}`,
-                    file,
-                    preview: URL.createObjectURL(file),
-                    source: "upload",
-                },
-            ]
+            if (filesToAdd.length === 0) {
+                setUploadError(`Chỉ được chọn tối đa ${MAX_IMAGES} ảnh cho mỗi lần OCR.`)
+                return prev
+            }
+
+            setUploadError(
+                selectedFiles.length > filesToAdd.length
+                    ? `Chỉ thêm ${filesToAdd.length} ảnh. Giới hạn tối đa là ${MAX_IMAGES} ảnh.`
+                    : null,
+            )
+
+            const nextImages: LocalImageFile[] = filesToAdd.map((file) => ({
+                id:
+                    typeof crypto !== "undefined" && "randomUUID" in crypto
+                        ? crypto.randomUUID()
+                        : `${Date.now()}-${Math.random()}`,
+                file,
+                preview: URL.createObjectURL(file),
+                source: "upload",
+            }))
+
+            return [...prev, ...nextImages]
         })
 
-        setUploadError(null)
         e.target.value = ""
+    }
+
+    const triggerUpload = () => {
+        if (imagesRef.current.length >= MAX_IMAGES) {
+            setUploadError(`Chỉ được chọn tối đa ${MAX_IMAGES} ảnh cho mỗi lần OCR.`)
+            return
+        }
+
+        fileInputRef.current?.click()
     }
 
     const capturePhoto = async () => {
         if (!videoRef.current || !canvasRef.current) return
+
+        if (imagesRef.current.length >= MAX_IMAGES) {
+            setUploadError(`Chỉ được chụp tối đa ${MAX_IMAGES} ảnh cho mỗi lần OCR.`)
+            stopCamera()
+            return
+        }
 
         const video = videoRef.current
         const canvas = canvasRef.current
@@ -297,9 +325,10 @@ const ProductWorkflowPage: React.FC = () => {
         })
 
         setImages((prev) => {
-            prev.forEach((img) => URL.revokeObjectURL(img.preview))
+            if (prev.length >= MAX_IMAGES) return prev
 
             return [
+                ...prev,
                 {
                     id:
                         typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -526,25 +555,64 @@ const ProductWorkflowPage: React.FC = () => {
             return
         }
 
-        const rawMainImage = images[0]?.file
-        if (!rawMainImage) {
+        if (images.length === 0) {
             toast.error("Bạn chưa chọn ảnh mặt có thông tin sản phẩm để OCR")
             return
         }
 
         setLoading("ANALYZE")
+        setOcrStepIndex(0)
+        setOcrUploadPercent(0)
 
         try {
-            const mainImage = await convertImageToPng(rawMainImage)
-            const result = await productAiService.analyzeWorkflowImage(
-                mainImage,
-                workflow.productForm.isManualFallback,
+            const convertedImages = await Promise.all(
+                images.map((image) => convertImageToPng(image.file)),
             )
+            const results: WorkflowAnalyzeImageResultDto[] = []
 
-            const next = mapWorkflowAnalyzeImageResultToState(workflow, result)
+            for (let i = 0; i < convertedImages.length; i++) {
+                const image = convertedImages[i]
+                setOcrStepIndex(1)
+                const result = await productAiService.analyzeWorkflowImage(
+                    image,
+                    workflow.productForm.isManualFallback,
+                    (progressEvent) => {
+                        const total = progressEvent.total || image.size
+                        const percent = Math.round((progressEvent.loaded * 100) / total)
+                        
+                        setOcrUploadPercent(prev => Math.max(prev, percent))
+                        
+                        if (percent >= 100) {
+                            setOcrStepIndex((prev) => {
+                                // Chỉ móc sự kiện chuyển lên bước 2 & 3 nếu chưa vượt qua bước 1
+                                if (prev < 2) {
+                                    setTimeout(() => {
+                                        setOcrStepIndex((p) => p === 2 ? 3 : p)
+                                    }, 4000)
+                                    return 2
+                                }
+                                return prev
+                            })
+                        }
+                    }
+                )
+                results.push(result)
+            }
+            
+            setOcrStepIndex(4)
+
+            const next = results.reduce(
+                (current, result) => mapWorkflowAnalyzeImageResultToState(current, result),
+                workflow,
+            )
             const extractedBarcode =
-                result.extractedInfo?.barcode?.trim() ||
-                result.barcodeLookupInfo?.barcode?.trim() ||
+                results
+                    .map((result) =>
+                        result.extractedInfo?.barcode?.trim() ||
+                        result.barcodeLookupInfo?.barcode?.trim() ||
+                        "",
+                    )
+                    .find(Boolean) ||
                 ""
 
             const categoryMeta = resolveCategoryMeta(
@@ -572,7 +640,7 @@ const ProductWorkflowPage: React.FC = () => {
                 setBarcodeInput(extractedBarcode)
             }
 
-            toast.success("Hệ thống đã phân tích ảnh và điền sẵn thông tin")
+            toast.success(`Hệ thống đã phân tích ${results.length} ảnh và điền sẵn thông tin`)
         } catch (error: any) {
             console.error("ProductWorkflowPage.handleAnalyzeImage -> error:", error)
             console.error(
@@ -872,6 +940,8 @@ const ProductWorkflowPage: React.FC = () => {
                                 images={images}
                                 uploadError={uploadError}
                                 usingCamera={usingCamera}
+                                ocrStepIndex={ocrStepIndex}
+                                ocrUploadPercent={ocrUploadPercent}
                                 fileInputRef={fileInputRef}
                                 videoRef={videoRef}
                                 canvasRef={canvasRef}
@@ -897,7 +967,7 @@ const ProductWorkflowPage: React.FC = () => {
                                 onStartCamera={startCamera}
                                 onStopCamera={stopCamera}
                                 onCapturePhoto={capturePhoto}
-                                onTriggerUpload={() => fileInputRef.current?.click()}
+                                onTriggerUpload={triggerUpload}
                                 onRemoveImage={removeImage}
                                 onFileChange={handleFileChange}
                             />
@@ -911,12 +981,56 @@ const ProductWorkflowPage: React.FC = () => {
                                     (item) => item.unitId === workflow.productForm.unitId,
                                 )}
                                 form={workflow.lotForm}
-                                loading={loading === "CREATE_LOT"}
+                                loading={loading === "CREATE_LOT" || loading === "PREVIEW_PRICE"}
                                 createdLot={workflow.createdLot}
                                 isFreshFood={workflow.productForm.isFreshFood}
                                 onChange={(next) =>
                                     setWorkflow((prev) => ({ ...prev, lotForm: next }))
                                 }
+                                onPreviewPricing={async () => {
+                                    const effectiveCategory = workflow.createdProduct?.category || workflow.ownProduct?.category || "";
+                                    const effectiveBrand = workflow.createdProduct?.brand || workflow.ownProduct?.brand || "";
+                                    const lotForm = workflow.lotForm;
+
+                                    if (!lotForm.expiryDate || typeof lotForm.originalUnitPrice !== "number" || lotForm.originalUnitPrice <= 0) {
+                                        toast.error("Vui lòng nhập Ngày hết hạn và Giá gốc trước khi xem đề xuất.");
+                                        return;
+                                    }
+
+                                    setLoading("PREVIEW_PRICE");
+                                    try {
+                                        const aiResult = await productAiService.getAiPriceSuggestion({
+                                            category: effectiveCategory,
+                                            expiryDate: lotForm.expiryDate,
+                                            originalPrice: lotForm.originalUnitPrice,
+                                            brand: effectiveBrand,
+                                        });
+
+                                        setWorkflow(prev => ({
+                                            ...prev,
+                                            createdLot: {
+                                                ...prev.createdLot,
+                                                productId: prev.createdProduct?.productId || prev.ownProduct?.productId || "",
+                                                lotId: "",
+                                                pricingSuggestion: {
+                                                    originalPrice: lotForm.originalUnitPrice,
+                                                    suggestedPrice: aiResult.suggestedPrice,
+                                                    minMarketPrice: aiResult.minPrice,
+                                                    maxMarketPrice: aiResult.maxPrice,
+                                                    reasons: aiResult.reasons || [
+                                                        `Độ tin cậy: ${Math.round(aiResult.confidence * 100)}%`,
+                                                        `Giá cạnh tranh: ${Math.round(aiResult.competitiveness * 100)}%`
+                                                    ],
+                                                    confidence: aiResult.confidence
+                                                }
+                                            } as any
+                                        }));
+                                    } catch (err: any) {
+                                        toast.error(err?.response?.data?.message || "Lỗi lấy dữ liệu đề xuất giá từ AI");
+                                    } finally {
+                                        setLoading(null);
+                                    }
+                                }}
                                 onBack={() => {
                                     if (workflow.createdProduct) {
                                         setWorkflow((prev) => ({
