@@ -115,6 +115,12 @@ const CustomerHeader = () => {
         }
     }
 
+    const clearLocalCart = () => {
+        localStorage.removeItem(CART_KEY)
+        setCartCount(0)
+        window.dispatchEvent(new Event("cart:updated"))
+    }
+
     const loadSearchIndex = () => {
         try {
             const raw = localStorage.getItem(SEARCH_INDEX_KEY)
@@ -280,7 +286,10 @@ const CustomerHeader = () => {
         )
 
         if (!confirmed) return
+
+        clearLocalCart()
         await logoutAll()
+        navigate(HOME_ROUTE)
     }
 
     const openSearch = () => {
@@ -739,6 +748,7 @@ const CustomerHeader = () => {
                                             type="button"
                                             onClick={async () => {
                                                 setOpen(false)
+                                                clearLocalCart()
                                                 await logout()
                                                 navigate(HOME_ROUTE)
                                             }}
@@ -942,6 +952,7 @@ const CustomerHeader = () => {
                                         type="button"
                                         onClick={async () => {
                                             setMobileNavOpen(false)
+                                            clearLocalCart()
                                             await logout()
                                             navigate(HOME_ROUTE)
                                         }}
