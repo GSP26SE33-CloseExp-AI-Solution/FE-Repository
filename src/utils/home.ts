@@ -1,4 +1,8 @@
-import type { HomeProductLotApiItem, HomeProductView } from "@/types/home.type"
+import type {
+    HomeProductGroupView,
+    HomeProductLotApiItem,
+    HomeProductView,
+} from "@/types/home.type"
 
 export const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -212,4 +216,142 @@ const resolveCategoryFromApi = (item: HomeProductLotApiItem) => {
                 ? item.isFreshFood
                 : !!categoryObject?.isFreshFood || !!item.categoryRef?.isFreshFood,
     }
+}
+
+export const groupHomeProductsByProduct = (
+    products: HomeProductView[],
+    rawProducts: HomeProductLotApiItem[] = []
+): HomeProductGroupView[] => {
+    const rawByLotId = new Map(rawProducts.map((item) => [item.lotId, item]))
+    const groupMap = new Map<string, HomeProductGroupView>()
+
+    products.forEach((product) => {
+        const rawLot = rawByLotId.get(product.lotId)
+        const current = groupMap.get(product.productId)
+
+        if (!current) {
+            groupMap.set(product.productId, {
+                productId: product.productId,
+                name: product.name,
+                brand: product.brand,
+                subtitle: buildProductGroupSubtitle(product),
+                category: product.category,
+                categoryId: product.categoryId,
+                imageUrl: product.imageUrl,
+                imageVariant: product.imageVariant,
+                isFreshFood: product.isFreshFood,
+
+                minPrice: product.price,
+                maxPrice: product.price,
+                originalMinPrice: product.originalPrice,
+                originalMaxPrice: product.originalPrice,
+                discountLabel: product.discountLabel,
+
+                totalQuantity: product.quantity,
+                supermarketCount: 1,
+                supermarketNames: product.supermarketName ? [product.supermarketName] : [],
+                unitNames: rawLot?.unitName ? [rawLot.unitName] : [],
+
+                nearestExpiryDate: rawLot?.expiryDate,
+                nearestDaysToExpiry: product.daysToExpiry,
+                nearestHoursRemaining: product.hoursRemaining,
+                timeLeft: product.timeLeft,
+
+                lots: [product],
+                rawLots: rawLot ? [rawLot] : [],
+            })
+            return
+        }
+
+        const supermarketNames = new Set(current.supermarketNames)
+        if (product.supermarketName) supermarketNames.add(product.supermarketName)
+
+        const unitNames = new Set(current.unitNames)
+        if (rawLot?.unitName) unitNames.add(rawLot.unitName)
+
+        const nextLots = [...current.lots, product]
+        const nextRawLots = rawLot ? [...current.rawLots, rawLot] : current.rawLots
+
+        const nearestLot = getNearestExpiryLot([
+            ...current.lots,
+            product,
+        ])
+
+        current.minPrice = Math.min(current.minPrice, product.price)
+        current.maxPrice = Math.max(current.maxPrice, product.price)
+        current.originalMinPrice = Math.min(current.originalMinPrice, product.originalPrice)
+        current.originalMaxPrice = Math.max(current.originalMaxPrice, product.originalPrice)
+        current.totalQuantity += product.quantity
+        current.supermarketNames = Array.from(supermarketNames)
+        current.supermarketCount = current.supermarketNames.length
+        current.unitNames = Array.from(unitNames)
+        current.lots = nextLots
+        current.rawLots = nextRawLots
+
+        if (nearestLot) {
+            current.nearestDaysToExpiry = nearestLot.daysToExpiry
+            current.nearestHoursRemaining = nearestLot.hoursRemaining
+            current.timeLeft = nearestLot.timeLeft
+
+            const nearestRawLot = rawByLotId.get(nearestLot.lotId)
+            current.nearestExpiryDate = nearestRawLot?.expiryDate
+        }
+
+        current.discountLabel = getBestDiscountLabel(current.lots)
+        current.subtitle = buildProductGroupSubtitle(current)
+    })
+
+    return Array.from(groupMap.values()).sort((a, b) => {
+        const aDays = a.nearestDaysToExpiry ?? Number.MAX_SAFE_INTEGER
+        const bDays = b.nearestDaysToExpiry ?? Number.MAX_SAFE_INTEGER
+
+        if (aDays !== bDays) return aDays - bDays
+        return a.minPrice - b.minPrice
+    })
+}
+
+const buildProductGroupSubtitle = (
+    product: Pick<
+        HomeProductGroupView,
+        "supermarketCount" | "unitNames" | "totalQuantity"
+    > | HomeProductView
+) => {
+    if ("supermarketCount" in product) {
+        const unitText = product.unitNames.length
+            ? ` · ${product.unitNames.slice(0, 2).join(", ")}`
+            : ""
+
+        return `${product.supermarketCount} siêu thị${unitText} · còn ${product.totalQuantity}`
+    }
+
+    return product.subtitle
+}
+
+const getNearestExpiryLot = (lots: HomeProductView[]) => {
+    return lots
+        .filter((lot) => typeof lot.daysToExpiry === "number")
+        .sort((a, b) => {
+            const aDays = a.daysToExpiry ?? Number.MAX_SAFE_INTEGER
+            const bDays = b.daysToExpiry ?? Number.MAX_SAFE_INTEGER
+
+            if (aDays !== bDays) return aDays - bDays
+
+            const aHours = a.hoursRemaining ?? Number.MAX_SAFE_INTEGER
+            const bHours = b.hoursRemaining ?? Number.MAX_SAFE_INTEGER
+
+            return aHours - bHours
+        })[0]
+}
+
+const getBestDiscountLabel = (lots: HomeProductView[]) => {
+    const bestPercent = lots.reduce((max, lot) => {
+        if (!lot.discountLabel.startsWith("-")) return max
+
+        const percent = Number(lot.discountLabel.replace(/[^\d]/g, ""))
+        if (Number.isNaN(percent)) return max
+
+        return Math.max(max, percent)
+    }, 0)
+
+    return bestPercent > 0 ? `-${bestPercent}%` : ""
 }

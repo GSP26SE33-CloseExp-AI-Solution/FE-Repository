@@ -74,6 +74,37 @@ export type HomeProductView = {
     quantity: number
 }
 
+export type HomeProductGroupView = {
+    productId: string
+    name: string
+    brand: string
+    subtitle: string
+    category: string
+    categoryId?: string
+    imageUrl?: string
+    imageVariant?: "milk" | "bread" | "beef" | "avocado"
+    isFreshFood: boolean
+
+    minPrice: number
+    maxPrice: number
+    originalMinPrice: number
+    originalMaxPrice: number
+    discountLabel: string
+
+    totalQuantity: number
+    supermarketCount: number
+    supermarketNames: string[]
+    unitNames: string[]
+
+    nearestExpiryDate?: string
+    nearestDaysToExpiry: number | null
+    nearestHoursRemaining: number | null
+    timeLeft: string
+
+    lots: HomeProductView[]
+    rawLots: HomeProductLotApiItem[]
+}
+
 export type HomeStatCard = {
     icon: "meals" | "co2" | "stores"
     title: string

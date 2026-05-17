@@ -13,6 +13,7 @@ import VerifyOtp from "@/pages/Auth/VerifyOtp"
 import PartnerRegister from "@/pages/Auth/PartnerRegister"
 
 import Home from "@/pages/Home/Home"
+import ProductDetailPage from "@/pages/Home/ProductDetailPage"
 
 import CartPage from "@/pages/Vendor/CartPage"
 import CheckoutPage from "@/pages/Vendor/CheckoutPage"
@@ -58,6 +59,7 @@ const AppRouter: React.FC = () => {
             <Routes>
                 <Route element={<PublicLayout />}>
                     <Route path="/" element={<Home />} />
+                    <Route path="/products/:productId" element={<ProductDetailPage />} />
                 </Route>
 
                 <Route path="/login" element={<Login />} />

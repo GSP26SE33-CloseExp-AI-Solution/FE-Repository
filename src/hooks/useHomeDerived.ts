@@ -3,6 +3,7 @@ import { useMemo } from "react"
 import { orderContextStorage } from "@/utils/orderStorage"
 import {
   getHoursUntilCutoff21,
+  groupHomeProductsByProduct,
   isProductVisibleByExpiry,
   mapProductLotFromApi,
 } from "@/utils/home"
@@ -10,6 +11,7 @@ import {
 import type { CustomerOrderContext } from "@/types/order.type"
 import type {
   HomeCategoryItem,
+  HomeProductGroupView,
   HomeProductLotApiItem,
   HomeProductView,
 } from "@/types/home.type"
@@ -109,11 +111,21 @@ export const useHomeDerived = ({
   }, [deliveryCtx, matchedSupermarketIds, products, noMatchedSupermarket])
 
   const supermarketOptions = useMemo(() => {
-    const counts = new Map<string, number>()
+    const supermarketProductIds = new Map<string, Set<string>>()
 
     visibleProducts.forEach((item) => {
-      counts.set(item.supermarketId, (counts.get(item.supermarketId) ?? 0) + 1)
+      const productIds = supermarketProductIds.get(item.supermarketId) ?? new Set<string>()
+
+      productIds.add(item.productId)
+      supermarketProductIds.set(item.supermarketId, productIds)
     })
+
+    const counts = new Map(
+      Array.from(supermarketProductIds.entries()).map(([supermarketId, productIds]) => [
+        supermarketId,
+        productIds.size,
+      ])
+    )
 
     const nearbyMarkets = deliveryCtx.nearbySupermarkets ?? []
 
@@ -161,7 +173,7 @@ export const useHomeDerived = ({
         supermarketId: ALL_MARKET_KEY,
         name: "Tất cả siêu thị",
         distanceKm: undefined,
-        count: visibleProducts.length,
+        count: new Set(visibleProducts.map((item) => item.productId)).size,
       },
       ...sorted,
     ]
@@ -174,12 +186,22 @@ export const useHomeDerived = ({
   }, [activeSupermarketId, visibleProducts, noMatchedSupermarket])
 
   const categories: HomeCategoryItem[] = useMemo(() => {
-    const counts = new Map<string, number>()
+    const categoryProductIds = new Map<string, Set<string>>()
 
     marketScopedProducts.forEach((item) => {
       const value = item.categoryId?.trim() || `label:${item.category}`
-      counts.set(value, (counts.get(value) ?? 0) + 1)
+      const productIds = categoryProductIds.get(value) ?? new Set<string>()
+
+      productIds.add(item.productId)
+      categoryProductIds.set(value, productIds)
     })
+
+    const counts = new Map(
+      Array.from(categoryProductIds.entries()).map(([value, productIds]) => [
+        value,
+        productIds.size,
+      ])
+    )
 
     const mergedMaster = categoriesMaster.map((item) => ({
       ...item,
@@ -213,7 +235,11 @@ export const useHomeDerived = ({
     })
 
     return [
-      { value: ALL_CATEGORY_KEY, label: "Tất cả", count: marketScopedProducts.length },
+      {
+        value: ALL_CATEGORY_KEY,
+        label: "Tất cả",
+        count: new Set(marketScopedProducts.map((item) => item.productId)).size,
+      },
       ...sortedMaster,
       ...sortedFallback,
     ]
@@ -247,7 +273,7 @@ export const useHomeDerived = ({
     }
   }, [categories, showEmptyCategories])
 
-  const filteredProducts: HomeProductView[] = useMemo(() => {
+  const filteredLotProducts: HomeProductView[] = useMemo(() => {
     if (noMatchedSupermarket) return []
     if (activeCategory === ALL_CATEGORY_KEY) return marketScopedProducts
 
@@ -257,14 +283,24 @@ export const useHomeDerived = ({
     })
   }, [activeCategory, marketScopedProducts, noMatchedSupermarket])
 
-  const highlightCount = visibleProducts.filter(
-    (item) =>
-      item.daysToExpiry === 0 ||
-      (typeof item.daysToExpiry === "number" && item.daysToExpiry <= 3)
-  ).length
+  const filteredProducts: HomeProductGroupView[] = useMemo(() => {
+    return groupHomeProductsByProduct(filteredLotProducts, productsRaw)
+  }, [filteredLotProducts, productsRaw])
+
+  const visibleProductCount = new Set(visibleProducts.map((item) => item.productId)).size
+
+  const highlightCount = new Set(
+    visibleProducts
+      .filter(
+        (item) =>
+          item.daysToExpiry === 0 ||
+          (typeof item.daysToExpiry === "number" && item.daysToExpiry <= 3)
+      )
+      .map((item) => item.productId)
+  ).size
 
   const stats = buildHomeStats(
-    visibleProducts.length,
+    visibleProductCount,
     highlightCount,
     deliveryCtx.nearbySupermarkets?.length ?? 0
   )

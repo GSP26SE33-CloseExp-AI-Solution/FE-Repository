@@ -60,7 +60,7 @@ export const useHomeBootstrap = (deliveryCtx: CustomerOrderContext) => {
                 setProductsRaw(items)
 
                 if (!items.length) {
-                    setError("Hiện chưa có ưu đãi phù hợp để hiển thị.")
+                    setError("Hiện chưa có sản phẩm phù hợp để hiển thị.")
                 }
             } catch (err) {
                 console.error("[Home] bootstrap failed:", err)

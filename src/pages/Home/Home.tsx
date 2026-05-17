@@ -5,7 +5,7 @@ import DeliveryGateModal from "../Home/DeliveryGateModal"
 import { getAuthSession } from "@/utils/authStorage"
 import { orderContextStorage } from "@/utils/orderStorage"
 import type { CustomerOrderContext } from "@/types/order.type"
-import type { HomeCategoryItem } from "@/types/home.type"
+import type { HomeCategoryItem, HomeProductGroupView } from "@/types/home.type"
 
 import { CART_ROUTE, LOGIN_ROUTE, ALL_CATEGORY_KEY, ALL_MARKET_KEY } from "@/constants/home.constants"
 import { useHomeBootstrap } from "@/hooks/useHomeBootstrap"
@@ -43,7 +43,7 @@ const Home = () => {
   const [supermarketSortBy, setSupermarketSortBy] = useState<"distance" | "count">("distance")
   const [showEmptyCategories, setShowEmptyCategories] = useState(false)
 
-  const { cartCount, getCartQty, addToCart, increaseCart, decreaseCart } = useHomeCart()
+  const { cartCount } = useHomeCart()
 
   const { productsRaw, availableSupermarkets, categoriesMaster, loading, error } =
     useHomeBootstrap(deliveryCtx)
@@ -70,25 +70,25 @@ const Home = () => {
   const queryView = searchParams.get("view") ?? ""
   const queryKeyword = searchParams.get("q")?.trim() ?? ""
   const queryCategory = searchParams.get("category")?.trim() ?? ""
-  const queryLotId = searchParams.get("lotId")?.trim() ?? ""
+  const queryProductId = searchParams.get("productId")?.trim() ?? ""
 
   const isSearchMode =
-    queryView === "shop" || !!queryKeyword || !!queryCategory || !!queryLotId
+    queryView === "shop" || !!queryKeyword || !!queryCategory || !!queryProductId
 
-  const selectedLotProduct = useMemo(() => {
-    if (!queryLotId) return null
-    return filteredProducts.find((item) => item.lotId === queryLotId) ?? null
-  }, [filteredProducts, queryLotId])
+  const selectedProduct = useMemo(() => {
+    if (!queryProductId) return null
+    return filteredProducts.find((item) => item.productId === queryProductId) ?? null
+  }, [filteredProducts, queryProductId])
 
   const searchedProducts = useMemo(() => {
     const normalizedKeyword = normalizeText(queryKeyword)
     const normalizedCategory = normalizeText(queryCategory)
 
-    let result = [...filteredProducts]
+    let result: HomeProductGroupView[] = [...filteredProducts]
 
-    if (queryLotId) {
-      const exactLot = result.find((item) => item.lotId === queryLotId)
-      return exactLot ? [exactLot] : []
+    if (queryProductId) {
+      const exactProduct = result.find((item) => item.productId === queryProductId)
+      return exactProduct ? [exactProduct] : []
     }
 
     if (normalizedCategory) {
@@ -101,22 +101,22 @@ const Home = () => {
       result = result.filter((item) => {
         const name = normalizeText(item.name)
         const category = normalizeText(item.category || "Thực phẩm")
-        const market = normalizeText(item.supermarketName || "")
         const brand = normalizeText(item.brand || "")
         const subtitle = normalizeText(item.subtitle || "")
+        const markets = normalizeText(item.supermarketNames.join(" "))
 
         return (
           name.includes(normalizedKeyword) ||
           category.includes(normalizedKeyword) ||
-          market.includes(normalizedKeyword) ||
           brand.includes(normalizedKeyword) ||
-          subtitle.includes(normalizedKeyword)
+          subtitle.includes(normalizedKeyword) ||
+          markets.includes(normalizedKeyword)
         )
       })
     }
 
     return result
-  }, [filteredProducts, queryKeyword, queryCategory, queryLotId])
+  }, [filteredProducts, queryKeyword, queryCategory, queryProductId])
 
   const displayedProducts = useMemo(() => {
     return isSearchMode ? searchedProducts : filteredProducts
@@ -139,7 +139,7 @@ const Home = () => {
     const nonEmptyCategories = displayedCategories.filter((item) => item.count > 0)
     const emptyCategories = displayedCategories.filter((item) => item.count <= 0)
 
-      return {
+    return {
       ...visibleCategories,
       displayedCategories,
       nonEmptyCategories,
@@ -166,22 +166,22 @@ const Home = () => {
       })
     }
 
-    if (queryLotId && selectedLotProduct) {
+    if (queryProductId && selectedProduct) {
       items.push({
-        key: "lot",
+        key: "product",
         label: "Sản phẩm",
-        value: selectedLotProduct.name,
+        value: selectedProduct.name,
       })
-    } else if (queryLotId) {
+    } else if (queryProductId) {
       items.push({
-        key: "lot",
-        label: "Mã lô",
-        value: queryLotId,
+        key: "product",
+        label: "Mã sản phẩm",
+        value: queryProductId,
       })
     }
 
     return items
-  }, [queryKeyword, queryCategory, queryLotId, selectedLotProduct])
+  }, [queryKeyword, queryCategory, queryProductId, selectedProduct])
 
   useEffect(() => {
     const categoryCountMap = filteredProducts.reduce<Record<string, number>>((acc, item) => {
@@ -193,14 +193,12 @@ const Home = () => {
     const payload = {
       products: filteredProducts.map((item) => ({
         type: "product" as const,
-        lotId: item.lotId,
         productId: item.productId,
         name: item.name,
         category: item.category || "Thực phẩm",
-        supermarketId: item.supermarketId,
-        supermarketName: item.supermarketName,
+        supermarketNames: item.supermarketNames,
         imageUrl: item.imageUrl,
-        price: item.price,
+        price: item.minPrice,
       })),
       categories: visibleCategories.displayedCategories.map((item) => ({
         type: "category" as const,
@@ -252,7 +250,7 @@ const Home = () => {
     }, 120)
 
     return () => window.clearTimeout(timer)
-  }, [isSearchMode, queryKeyword, queryCategory, queryLotId])
+  }, [isSearchMode, queryKeyword, queryCategory, queryProductId])
 
   useEffect(() => {
     const handleScrollProducts = () => {
@@ -296,6 +294,12 @@ const Home = () => {
     navigate(CART_ROUTE)
   }
 
+  const handleViewProduct = (item: HomeProductGroupView) => {
+    navigate(`/products/${item.productId}`, {
+      state: { product: item },
+    })
+  }
+
   const updateSearchParams = (mutate: (params: URLSearchParams) => void) => {
     const next = new URLSearchParams(location.search)
     mutate(next)
@@ -307,19 +311,19 @@ const Home = () => {
     updateSearchParams((next) => {
       next.delete("q")
       next.delete("category")
-      next.delete("lotId")
+      next.delete("productId")
       next.delete("view")
     })
   }
 
-  const removeSingleCriteria = (key: "keyword" | "category" | "lot") => {
+  const removeSingleCriteria = (key: "keyword" | "category" | "product") => {
     updateSearchParams((next) => {
       if (key === "keyword") next.delete("q")
       if (key === "category") next.delete("category")
-      if (key === "lot") next.delete("lotId")
+      if (key === "product") next.delete("productId")
 
       const stillHasSearch =
-        !!next.get("q") || !!next.get("category") || !!next.get("lotId")
+        !!next.get("q") || !!next.get("category") || !!next.get("productId")
 
       if (!stillHasSearch) {
         next.delete("view")
@@ -336,7 +340,7 @@ const Home = () => {
     if (!isSearchMode) return
 
     updateSearchParams((next) => {
-      next.delete("lotId")
+      next.delete("productId")
       next.delete("category")
 
       const hasKeyword = !!next.get("q")
@@ -358,12 +362,12 @@ const Home = () => {
     if (categoryValue === ALL_CATEGORY_KEY || !matchedCategory) {
       updateSearchParams((next) => {
         next.delete("category")
-        next.delete("lotId")
+        next.delete("productId")
 
         const hasKeyword = !!next.get("q")
         if (hasKeyword) {
           next.set("view", "shop")
-      } else {
+        } else {
           next.delete("view")
         }
       })
@@ -373,16 +377,16 @@ const Home = () => {
     updateSearchParams((next) => {
       next.set("view", "shop")
       next.set("category", matchedCategory.label)
-      next.delete("lotId")
+      next.delete("productId")
     })
   }
 
   const resultSummaryText = useMemo(() => {
-    if (queryLotId && selectedLotProduct) {
-      return `Đang ưu tiên hiển thị đúng món "${selectedLotProduct.name}".`
+    if (queryProductId && selectedProduct) {
+      return `Đang ưu tiên hiển thị đúng sản phẩm "${selectedProduct.name}".`
     }
 
-    if (queryLotId) {
+    if (queryProductId) {
       return "Đang ưu tiên hiển thị theo sản phẩm đã chọn."
     }
 
@@ -399,7 +403,7 @@ const Home = () => {
     }
 
     return "Đang xem khu vực cửa hàng theo lựa chọn hiện tại."
-  }, [queryKeyword, queryCategory, queryLotId, selectedLotProduct])
+  }, [queryKeyword, queryCategory, queryProductId, selectedProduct])
 
   return (
     <div className="min-h-screen w-full bg-[linear-gradient(180deg,#f8fafc_0%,#f7fbfa_45%,#ffffff_100%)]">
@@ -425,23 +429,23 @@ const Home = () => {
             <section className="rounded-[28px] border border-emerald-100 bg-white/80 px-4 py-4 shadow-sm backdrop-blur-xl">
               <div className="flex flex-col gap-4">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+                  <div>
                     <p className="text-sm font-semibold text-slate-900">
                       Kết quả đang hiển thị
                     </p>
                     <p className="mt-1 text-sm text-slate-500">
                       {resultSummaryText} Hiện có {displayedProducts.length} kết quả phù hợp.
-                </p>
-              </div>
+                    </p>
+                  </div>
 
-                <button
-                  type="button"
+                  <button
+                    type="button"
                     onClick={clearSearchQuery}
                     className="rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
-                    >
+                  >
                     Xóa bộ lọc tìm kiếm
-                </button>
-              </div>
+                  </button>
+                </div>
 
                 {appliedCriteria.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -452,21 +456,21 @@ const Home = () => {
                       >
                         <span className="text-xs font-medium text-emerald-700">
                           {item.label}: <span className="font-semibold">{item.value}</span>
-              </span>
+                        </span>
 
-                      <button
-                        type="button"
+                        <button
+                          type="button"
                           onClick={() =>
                             removeSingleCriteria(
-                              item.key as "keyword" | "category" | "lot"
+                              item.key as "keyword" | "category" | "product"
                             )
                           }
                           className="text-xs font-semibold text-emerald-700 transition hover:text-emerald-900"
                         >
                           ×
-                      </button>
-                        </div>
-                      ))}
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>
@@ -496,10 +500,7 @@ const Home = () => {
               noMatchedSupermarket={noMatchedSupermarket}
               filteredProducts={displayedProducts}
               allCategoryKey={ALL_CATEGORY_KEY}
-              getCartQty={getCartQty}
-              onAddToCart={addToCart}
-              onIncreaseCart={increaseCart}
-              onDecreaseCart={decreaseCart}
+              onViewProduct={handleViewProduct}
               onOpenGate={() => setGateOpen(true)}
               onResetCategory={setActiveCategory}
             />

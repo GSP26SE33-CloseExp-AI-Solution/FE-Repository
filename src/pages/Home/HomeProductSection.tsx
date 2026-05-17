@@ -1,19 +1,16 @@
 import { Clock3 } from "lucide-react"
 
 import { cn } from "@/utils/home"
-import type { HomeProductView } from "@/types/home.type"
+import type { HomeProductGroupView } from "@/types/home.type"
 import ProductCard from "./ProductCard"
 
 type HomeProductSectionProps = {
     loading: boolean
     error: string
     noMatchedSupermarket: boolean
-    filteredProducts: HomeProductView[]
+    filteredProducts: HomeProductGroupView[]
     allCategoryKey: string
-    getCartQty: (lotId: string) => number
-    onAddToCart: (item: HomeProductView) => void
-    onIncreaseCart: (item: HomeProductView) => void
-    onDecreaseCart: (item: HomeProductView) => void
+    onViewProduct: (item: HomeProductGroupView) => void
     onOpenGate: () => void
     onResetCategory: (categoryValue: string) => void
 }
@@ -24,10 +21,7 @@ const HomeProductSection = ({
     noMatchedSupermarket,
     filteredProducts,
     allCategoryKey,
-    getCartQty,
-    onAddToCart,
-    onIncreaseCart,
-    onDecreaseCart,
+    onViewProduct,
     onOpenGate,
     onResetCategory,
 }: HomeProductSectionProps) => {
@@ -40,7 +34,7 @@ const HomeProductSection = ({
                 <div className="flex flex-col gap-3 border-b border-slate-100 pb-3 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <div className="mt-2 text-[21px] font-bold tracking-[-0.03em] text-slate-900">
-                            Món ngon giá tốt gần bạn
+                            Sản phẩm giá tốt gần bạn
                         </div>
 
                         <div className="mt-1 text-[13px] font-medium text-slate-500">
@@ -51,7 +45,7 @@ const HomeProductSection = ({
                     <div className="inline-flex w-fit items-center gap-2 rounded-full border border-sky-200 bg-sky-50/80 px-3 py-1.5">
                         <Clock3 size={14} className="text-sky-700" />
                         <span className="text-[11px] font-semibold text-sky-800">
-                            {loading ? "Đang tải..." : `${displayCount} món đang hiển thị`}
+                            {loading ? "Đang tải..." : `${displayCount} sản phẩm đang hiển thị`}
                         </span>
                     </div>
                 </div>
@@ -81,12 +75,9 @@ const HomeProductSection = ({
                     <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-5">
                         {filteredProducts.map((item) => (
                             <ProductCard
-                                key={item.lotId}
+                                key={item.productId}
                                 product={item}
-                                cartQty={getCartQty(item.lotId)}
-                                onAdd={onAddToCart}
-                                onIncrease={onIncreaseCart}
-                                onDecrease={onDecreaseCart}
+                                onViewProduct={onViewProduct}
                             />
                         ))}
                     </div>
