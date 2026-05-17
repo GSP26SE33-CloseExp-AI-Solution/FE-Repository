@@ -5,18 +5,21 @@ import type {
     ConfirmPackagingOrderPayload,
     FailPackagingOrderPayload,
     PackagePackagingOrderPayload,
+    PackagingHistoryQuery,
+    PackagingHistoryResponse,
     PackagingOrderDetail,
     PackagingOrderSummary,
     PaginationResult,
 } from "@/types/packaging.type"
 
-const BASE_URL = "/Packaging/orders"
+const BASE_PACKAGING_URL = "/Packaging"
+const BASE_ORDER_URL = `${BASE_PACKAGING_URL}/orders`
 
 export const packagingService = {
     async getPendingOrders(pageNumber = 1, pageSize = 10) {
         const response = await axiosClient.get<
             ApiResponse<PaginationResult<PackagingOrderSummary>>
-        >(`${BASE_URL}/pending`, {
+        >(`${BASE_ORDER_URL}/pending`, {
             params: { pageNumber, pageSize },
         })
 
@@ -25,7 +28,7 @@ export const packagingService = {
 
     async getOrderDetail(orderId: string) {
         const response = await axiosClient.get<ApiResponse<PackagingOrderDetail>>(
-            `${BASE_URL}/${orderId}`
+            `${BASE_ORDER_URL}/${orderId}`
         )
 
         return response.data
@@ -36,7 +39,7 @@ export const packagingService = {
         payload: ConfirmPackagingOrderPayload = {}
     ) {
         const response = await axiosClient.post<ApiResponse<PackagingOrderDetail>>(
-            `${BASE_URL}/${orderId}/confirm`,
+            `${BASE_ORDER_URL}/${orderId}/confirm`,
             payload
         )
 
@@ -48,7 +51,7 @@ export const packagingService = {
         payload: CollectPackagingOrderPayload = {}
     ) {
         const response = await axiosClient.post<ApiResponse<PackagingOrderDetail>>(
-            `${BASE_URL}/${orderId}/collect`,
+            `${BASE_ORDER_URL}/${orderId}/collect`,
             payload
         )
 
@@ -60,7 +63,7 @@ export const packagingService = {
         payload: PackagePackagingOrderPayload = {}
     ) {
         const response = await axiosClient.post<ApiResponse<PackagingOrderDetail>>(
-            `${BASE_URL}/${orderId}/package`,
+            `${BASE_ORDER_URL}/${orderId}/package`,
             payload
         )
 
@@ -69,8 +72,17 @@ export const packagingService = {
 
     async failPackaging(orderId: string, payload: FailPackagingOrderPayload) {
         const response = await axiosClient.post<ApiResponse<PackagingOrderDetail>>(
-            `${BASE_URL}/${orderId}/fail`,
+            `${BASE_ORDER_URL}/${orderId}/fail`,
             payload
+        )
+
+        return response.data
+    },
+
+    async getHistory(params?: PackagingHistoryQuery) {
+        const response = await axiosClient.get<ApiResponse<PackagingHistoryResponse>>(
+            `${BASE_PACKAGING_URL}/history`,
+            { params }
         )
 
         return response.data

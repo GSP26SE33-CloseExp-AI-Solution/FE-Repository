@@ -25,10 +25,15 @@ export type FailPackagingOrderPayload = PackagingActionPayload & {
 
 export type PackagingOrderItem = {
     orderItemId: string
+    lotId?: string | null
     productName: string
     quantity: number
     unitPrice: number
     subTotal: number
+    expiryDate?: string | null
+    manufactureDate?: string | null
+    unitName?: string | null
+    supermarketName?: string | null
     packagingStatus?: string
     deliveryStatus?: string | null
     packagedAt?: string | null
@@ -54,3 +59,28 @@ export type PackagingOrderDetail = PackagingOrderSummary & {
     lastPackagedAt?: string | null
     items: PackagingOrderItem[]
 }
+
+export type PackagingHistoryQuery = {
+    fromDate?: string
+    toDate?: string
+    status?: string
+    orderCode?: string
+    pageNumber?: number
+    pageSize?: number
+}
+
+export type PackagingHistoryItem = {
+    packagingId: string
+    orderId: string
+    orderItemId: string
+    orderCode: string
+    productName: string
+    quantity: number
+    userId: string
+    packagingStaffName: string
+    status: string
+    failureReason?: string | null
+    packagedAt?: string | null
+}
+
+export type PackagingHistoryResponse = PaginationResult<PackagingHistoryItem>

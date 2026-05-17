@@ -3,13 +3,15 @@ import { useNavigate, useSearchParams } from "react-router-dom"
 import {
     AlertTriangle,
     ArrowLeft,
-    Boxes,
-    CheckCheck,
+    CalendarDays,
     CheckCircle2,
-    Clock3,
+    ClipboardCheck,
     Loader2,
     PackageCheck,
-    ReceiptText,
+    RefreshCcw,
+    ShoppingBag,
+    Truck,
+    UserRound,
     XCircle,
 } from "lucide-react"
 
@@ -54,6 +56,68 @@ const buildActionNotes = ({
         : `${actionLabel}: ${actionTime}`
 }
 
+const formatDateOnly = (value?: string) => {
+    if (!value) return "--"
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) return "--"
+
+    return new Intl.DateTimeFormat("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+    }).format(date)
+}
+
+const getItemExpiryDate = (item: any) => {
+    return (
+        item.expiryDate ||
+        item.expiredAt ||
+        item.expirationDate ||
+        item.lotExpiryDate ||
+        item.stockLotExpiryDate ||
+        item.expireDate ||
+        ""
+    )
+}
+
+const getDaysRemaining = (value?: string) => {
+    if (!value) return null
+
+    const expiry = new Date(value)
+    if (Number.isNaN(expiry.getTime())) return null
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    expiry.setHours(0, 0, 0, 0)
+
+    return Math.ceil((expiry.getTime() - today.getTime()) / 86_400_000)
+}
+
+const getExpiryToneClass = (value?: string) => {
+    const days = getDaysRemaining(value)
+
+    if (days === null) return "bg-slate-50 text-slate-500 ring-slate-200"
+    if (days < 0) return "bg-rose-50 text-rose-700 ring-rose-200"
+    if (days <= 3) return "bg-red-50 text-red-700 ring-red-200"
+    if (days <= 7) return "bg-amber-50 text-amber-700 ring-amber-200"
+    if (days <= 30) return "bg-sky-50 text-sky-700 ring-sky-200"
+
+    return "bg-emerald-50 text-emerald-700 ring-emerald-200"
+}
+
+const getExpiryText = (value?: string) => {
+    const days = getDaysRemaining(value)
+
+    if (days === null) return "Chưa có HSD"
+    if (days < 0) return `Quá hạn ${Math.abs(days)} ngày`
+    if (days === 0) return "Hết hạn hôm nay"
+    if (days <= 30) return `Còn ${days} ngày`
+
+    return "Còn hạn"
+}
+
 const PackagePacking = () => {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
@@ -62,6 +126,7 @@ const PackagePacking = () => {
     const [order, setOrder] = useState<PackagingOrderDetail | null>(null)
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
     const [loading, setLoading] = useState(true)
+    const [refreshing, setRefreshing] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [failing, setFailing] = useState(false)
     const [notes, setNotes] = useState("")
@@ -73,49 +138,69 @@ const PackagePacking = () => {
         [order]
     )
 
+    const selectedItems = useMemo(() => {
+        if (!order) return []
+
+        return order.items.filter((item) =>
+            selectedItemIds.includes(item.orderItemId)
+        )
+    }, [order, selectedItemIds])
+
     const totalQuantity = useMemo(() => {
         return order?.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
     }, [order])
 
     const selectedQuantity = useMemo(() => {
-        if (!order) return 0
-
-        return order.items
-            .filter((item) => selectedItemIds.includes(item.orderItemId))
-            .reduce((sum, item) => sum + (item.quantity || 0), 0)
-    }, [order, selectedItemIds])
+        return selectedItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
+    }, [selectedItems])
 
     const selectedTotal = useMemo(() => {
-        if (!order) return 0
+        return selectedItems.reduce((sum, item) => sum + (item.subTotal || 0), 0)
+    }, [selectedItems])
 
-        return order.items
-            .filter((item) => selectedItemIds.includes(item.orderItemId))
-            .reduce((sum, item) => sum + (item.subTotal || 0), 0)
-    }, [order, selectedItemIds])
+    const failedItems = useMemo(() => {
+        return (
+            order?.items?.filter((item) => item.packagingFailedReason?.trim()) || []
+        )
+    }, [order])
 
-    const isAllSelected = allItemIds.length > 0 && selectedItemIds.length === allItemIds.length
+    const isAllSelected =
+        allItemIds.length > 0 && selectedItemIds.length === allItemIds.length
 
-    const fetchDetail = useCallback(async () => {
-        if (!orderId) {
-            setLoading(false)
-            return
-        }
+    const fetchDetail = useCallback(
+        async (isRefresh = false) => {
+            if (!orderId) {
+                setLoading(false)
+                return
+            }
 
-        try {
-            setLoading(true)
-            const response = await packagingService.getOrderDetail(orderId)
-            const nextOrder = response.data || null
+            try {
+                if (isRefresh) setRefreshing(true)
+                else setLoading(true)
 
-            setOrder(nextOrder)
-            setSelectedItemIds(
-                nextOrder?.items?.map((item) => item.orderItemId).filter(Boolean) || []
-            )
-        } catch (error: any) {
-            showError(getFriendlyPackagingErrorMessage(error, "Không tải được chi tiết đơn."))
-        } finally {
-            setLoading(false)
-        }
-    }, [orderId])
+                const response = await packagingService.getOrderDetail(orderId)
+                const nextOrder = response.data || null
+
+                setOrder(nextOrder)
+                setSelectedItemIds(
+                    nextOrder?.items
+                        ?.map((item) => item.orderItemId)
+                        .filter(Boolean) || []
+                )
+            } catch (error: any) {
+                showError(
+                    getFriendlyPackagingErrorMessage(
+                        error,
+                        "Không tải được chi tiết đơn."
+                    )
+                )
+            } finally {
+                setLoading(false)
+                setRefreshing(false)
+            }
+        },
+        [orderId]
+    )
 
     useEffect(() => {
         void fetchDetail()
@@ -139,25 +224,32 @@ const PackagePacking = () => {
         if (!orderId) return
 
         if (selectedItemIds.length === 0) {
-            showError("Vui lòng chọn ít nhất một sản phẩm để hoàn tất đóng gói.")
+            showError("Chọn ít nhất một món để hoàn tất đóng gói.")
             return
         }
 
         try {
             setSubmitting(true)
+
             const response = await packagingService.packageOrder(orderId, {
                 orderItemIds: selectedItemIds,
                 notes: buildActionNotes({
-                    actionLabel: "Thời gian hoàn tất đóng gói",
+                    actionLabel: "Hoàn tất đóng gói",
                     userNote: notes,
                 }),
             })
 
             setOrder(response.data)
             showSuccess(response.message || "Hoàn tất đóng gói thành công.")
-            await fetchDetail()
+            setNotes("")
+            await fetchDetail(true)
         } catch (error: any) {
-            showError(getFriendlyPackagingErrorMessage(error, "Không thể hoàn tất đóng gói."))
+            showError(
+                getFriendlyPackagingErrorMessage(
+                    error,
+                    "Không thể hoàn tất đóng gói."
+                )
+            )
         } finally {
             setSubmitting(false)
         }
@@ -167,34 +259,41 @@ const PackagePacking = () => {
         if (!orderId) return
 
         const reason = failureReason.trim()
+
         if (!reason) {
-            showError("Vui lòng nhập lý do đóng gói thất bại.")
+            showError("Nhập lý do lỗi trước khi báo lỗi đóng gói.")
             return
         }
 
         if (selectedItemIds.length === 0) {
-            showError("Vui lòng chọn ít nhất một sản phẩm bị lỗi.")
+            showError("Chọn ít nhất một món bị lỗi.")
             return
         }
 
         try {
             setFailing(true)
+
             const response = await packagingService.failPackaging(orderId, {
                 orderItemIds: selectedItemIds,
                 failureReason: reason,
                 notes: buildActionNotes({
-                    actionLabel: "Thời gian ghi nhận đóng gói thất bại",
+                    actionLabel: "Ghi nhận lỗi đóng gói",
                     userNote: failNotes,
                 }),
             })
 
             setOrder(response.data)
-            showSuccess(response.message || "Đã ghi nhận đóng gói thất bại.")
+            showSuccess(response.message || "Đã ghi nhận lỗi đóng gói.")
             setFailureReason("")
             setFailNotes("")
-            await fetchDetail()
+            await fetchDetail(true)
         } catch (error: any) {
-            showError(getFriendlyPackagingErrorMessage(error, "Không thể ghi nhận thất bại."))
+            showError(
+                getFriendlyPackagingErrorMessage(
+                    error,
+                    "Không thể ghi nhận lỗi đóng gói."
+                )
+            )
         } finally {
             setFailing(false)
         }
@@ -202,11 +301,14 @@ const PackagePacking = () => {
 
     if (!orderId) {
         return (
-            <div className="rounded-[28px] bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
-                <h1 className="text-xl font-bold text-slate-900">Chưa chọn đơn hàng</h1>
+            <div className="rounded-3xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
+                <h1 className="text-xl font-semibold text-slate-900">
+                    Chưa chọn đơn hàng
+                </h1>
                 <p className="mt-2 text-sm text-slate-500">
                     Hãy chọn một đơn từ danh sách để thực hiện bước đóng gói.
                 </p>
+
                 <button
                     type="button"
                     onClick={() => navigate("/package/orders")}
@@ -220,7 +322,7 @@ const PackagePacking = () => {
 
     if (loading) {
         return (
-            <div className="flex min-h-[320px] items-center justify-center rounded-[28px] bg-white shadow-sm ring-1 ring-slate-200">
+            <div className="flex min-h-[320px] items-center justify-center rounded-3xl bg-white shadow-sm ring-1 ring-slate-200">
                 <div className="flex items-center gap-3 text-slate-500">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Đang tải thông tin đóng gói...</span>
@@ -231,8 +333,11 @@ const PackagePacking = () => {
 
     if (!order) {
         return (
-            <div className="rounded-[28px] bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
-                <h1 className="text-xl font-bold text-slate-900">Không tìm thấy đơn</h1>
+            <div className="rounded-3xl bg-white p-10 text-center shadow-sm ring-1 ring-slate-200">
+                <h1 className="text-xl font-semibold text-slate-900">
+                    Không tìm thấy đơn
+                </h1>
+
                 <button
                     type="button"
                     onClick={() => navigate("/package/orders")}
@@ -245,394 +350,381 @@ const PackagePacking = () => {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="overflow-hidden rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-6 shadow-sm">
+        <div className="space-y-5">
+            <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                 <button
                     type="button"
                     onClick={() => navigate("/package/orders")}
-                    className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-800"
+                    className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-slate-500 transition hover:text-slate-800"
                 >
                     <ArrowLeft className="h-4 w-4" />
                     Quay lại danh sách
                 </button>
 
                 <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-                    <div className="max-w-3xl">
-                        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                            Bước 2 · Đóng gói sản phẩm
-                        </p>
-                        <h1 className="mt-2 text-2xl font-bold text-slate-900 lg:text-3xl">
-                            {order.orderCode}
+                    <div>
+                        <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+                            <PackageCheck className="h-3.5 w-3.5" />
+                            Bước 2 · Kiểm tra & đóng gói
+                        </div>
+
+                        <h1 className="mt-3 text-2xl font-semibold text-slate-900 lg:text-3xl">
+                            Đóng gói đơn {order.orderCode}
                         </h1>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">
-                            Kiểm đủ sản phẩm, đúng số lượng, rồi hoàn tất đóng gói hoặc ghi nhận lỗi theo từng dòng hàng.
+
+                        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+                            Kiểm lại món đã gom, chọn đúng món được đóng gói. Nếu thiếu hàng,
+                            sai hàng hoặc hư hỏng, chọn món đó và báo lỗi riêng.
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                        <div className="rounded-2xl border border-white/70 bg-white/85 px-4 py-3 shadow-sm">
-                            <p className="text-xs text-slate-500">Khách hàng</p>
-                            <p className="mt-1 truncate text-sm font-bold text-slate-900">
-                                {order.customerName || "--"}
-                            </p>
-                        </div>
+                    <div className="flex flex-wrap gap-2">
+                        <span
+                            className={cn(
+                                "rounded-full px-3 py-1 text-xs font-medium",
+                                getPackagingStatusClass(order.packagingStatus)
+                            )}
+                        >
+                            {getPackagingStatusLabel(order.packagingStatus)}
+                        </span>
 
-                        <div className="rounded-2xl border border-white/70 bg-white/85 px-4 py-3 shadow-sm">
-                            <p className="text-xs text-slate-500">Số dòng hàng</p>
-                            <p className="mt-1 text-sm font-bold text-slate-900">
-                                {order.totalItems ?? order.items.length}
-                            </p>
-                        </div>
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                            {getOrderStatusLabel(order.orderStatus)}
+                        </span>
+                    </div>
+                </div>
 
-                        <div className="rounded-2xl border border-white/70 bg-white/85 px-4 py-3 shadow-sm">
-                            <p className="text-xs text-slate-500">Tổng số lượng</p>
-                            <p className="mt-1 text-sm font-bold text-slate-900">
-                                {totalQuantity}
-                            </p>
+                <div className="mt-5 grid gap-3 border-t border-slate-100 pt-5 md:grid-cols-4">
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <UserRound className="h-3.5 w-3.5" />
+                            Khách hàng
                         </div>
+                        <p className="mt-1 truncate text-sm font-medium text-slate-900">
+                            {order.customerName || "--"}
+                        </p>
+                    </div>
 
-                        <div className="rounded-2xl border border-white/70 bg-white/85 px-4 py-3 shadow-sm">
-                            <p className="text-xs text-slate-500">Giá trị đơn</p>
-                            <p className="mt-1 text-sm font-bold text-emerald-700">
-                                {currency.format(order.finalAmount || 0)}
-                            </p>
+                    <div className="rounded-2xl bg-emerald-50 px-4 py-3 ring-1 ring-emerald-100">
+                        <div className="flex items-center gap-2 text-xs text-emerald-600">
+                            <PackageCheck className="h-3.5 w-3.5" />
+                            Đã chọn
                         </div>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                            {selectedItemIds.length}/{allItemIds.length} món
+                        </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <Truck className="h-3.5 w-3.5" />
+                            Giao nhận
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-slate-900">
+                            {getDeliveryTypeLabel(order.deliveryType)}
+                        </p>
+                    </div>
+
+                    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <ShoppingBag className="h-3.5 w-3.5" />
+                            Thành tiền
+                        </div>
+                        <p className="mt-1 text-sm font-semibold text-slate-900">
+                            {currency.format(order.finalAmount || 0)}
+                        </p>
                     </div>
                 </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.45fr_0.9fr]">
-                <div className="space-y-6">
-                    <div className="rounded-[28px] bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                        <div className="flex items-center gap-3">
-                            <ReceiptText className="h-5 w-5 text-slate-700" />
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">
-                                    Tóm tắt đơn hàng
-                                </h2>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Thông tin chính để đối soát trước khi niêm phong.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                            <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs text-slate-500">Trạng thái đơn</p>
-                                <p className="mt-1 font-semibold text-slate-900">
-                                    {getOrderStatusLabel(order.orderStatus)}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs text-slate-500">Trạng thái đóng gói</p>
-                                <p className="mt-1 font-semibold text-slate-900">
-                                    {getPackagingStatusLabel(order.packagingStatus)}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs text-slate-500">Khung giờ</p>
-                                <p className="mt-1 font-semibold text-slate-900">
-                                    {order.timeSlotDisplay || "--"}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs text-slate-500">Loại giao nhận</p>
-                                <p className="mt-1 font-semibold text-slate-900">
-                                    {getDeliveryTypeLabel(order.deliveryType)}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-slate-50 p-4">
-                                <p className="text-xs text-slate-500">Ngày đặt</p>
-                                <p className="mt-1 font-semibold text-slate-900">
-                                    {formatDateTime(order.orderDate)}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-emerald-50 p-4 ring-1 ring-emerald-100">
-                                <p className="text-xs text-emerald-600">Sản phẩm đã chọn</p>
-                                <p className="mt-1 font-bold text-slate-900">
-                                    {selectedItemIds.length}/{allItemIds.length} dòng · Số lượng {selectedQuantity}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="rounded-[28px] bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3">
-                                <Boxes className="h-5 w-5 text-emerald-600" />
-                                <div>
-                                    <h2 className="text-lg font-bold text-slate-900">
-                                        Sản phẩm cần đóng gói
-                                    </h2>
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        Chọn sản phẩm muốn hoàn tất đóng gói hoặc ghi nhận lỗi. Mỗi dòng hiển thị rõ số lượng cần xử lý.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={toggleAllItems}
-                                className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                            >
-                                {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-                            </button>
-                        </div>
-
-                        <div className="mt-5 space-y-3">
-                            {order.items.map((item) => {
-                                const checked = selectedItemIds.includes(item.orderItemId)
-
-                                return (
-                                    <button
-                                        key={item.orderItemId}
-                                        type="button"
-                                        onClick={() => toggleItem(item.orderItemId)}
-                                        className={cn(
-                                            "flex w-full items-stretch gap-3 rounded-3xl border p-4 text-left transition",
-                                            checked
-                                                ? "border-emerald-200 bg-emerald-50/70 ring-1 ring-emerald-100"
-                                                : "border-slate-200 bg-white hover:bg-slate-50"
-                                        )}
-                                    >
-                                        <div
-                                            className={cn(
-                                                "mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border",
-                                                checked
-                                                    ? "border-emerald-600 bg-emerald-600 text-white"
-                                                    : "border-slate-300 bg-white text-transparent"
-                                            )}
-                                        >
-                                            <CheckCircle2 className="h-4 w-4" />
-                                        </div>
-
-                                        <div className="min-w-0 flex-1">
-                                            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                                                <p className="min-w-0 flex-1 font-bold text-slate-900">
-                                                    {item.productName}
-                                                </p>
-
-                                                <span
-                                                    className={cn(
-                                                        "shrink-0 self-start rounded-full px-2.5 py-1 text-[11px] font-semibold sm:self-auto",
-                                                        getPackagingStatusClass(item.packagingStatus)
-                                                    )}
-                                                >
-                                                    {getPackagingStatusLabel(item.packagingStatus)}
-                                                </span>
-                                            </div>
-
-                                            <div className="mt-3 grid gap-3 sm:grid-cols-4">
-                                                <div className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-slate-100">
-                                                    <p className="text-xs text-slate-500">Số lượng đóng gói</p>
-                                                    <p className="mt-1 text-lg font-black text-slate-900">
-                                                        {item.quantity}
-                                                    </p>
-                                                </div>
-
-                                                <div className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-slate-100">
-                                                    <p className="text-xs text-slate-500">Đơn giá</p>
-                                                    <p className="mt-1 text-sm font-semibold text-slate-900">
-                                                        {currency.format(item.unitPrice || 0)}
-                                                    </p>
-                                                </div>
-
-                                                <div className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-slate-100">
-                                                    <p className="text-xs text-slate-500">Thành tiền</p>
-                                                    <p className="mt-1 text-sm font-bold text-slate-900">
-                                                        {currency.format(item.subTotal || 0)}
-                                                    </p>
-                                                </div>
-
-                                                <div className="rounded-2xl bg-white/80 px-3 py-2 ring-1 ring-slate-100">
-                                                    <p className="text-xs text-slate-500">Đóng gói lúc</p>
-                                                    <p className="mt-1 text-xs font-semibold text-slate-900">
-                                                        {formatDateTime(item.packagedAt ?? undefined)}
-                                                    </p>
-                                                </div>
-                                            </div>
-
-                                            {item.packagingFailedReason ? (
-                                                <p className="mt-3 rounded-2xl bg-rose-50 px-3 py-2 text-sm text-rose-700 ring-1 ring-rose-100">
-                                                    Lý do lỗi: {item.packagingFailedReason}
-                                                </p>
-                                            ) : null}
-                                        </div>
-                                    </button>
-                                )
-                            })}
+            {failedItems.length > 0 ? (
+                <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5">
+                    <div className="flex gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
+                        <div>
+                            <h2 className="font-semibold text-rose-800">
+                                Đơn này có món đã được báo lỗi
+                            </h2>
+                            <p className="mt-1 text-sm leading-6 text-rose-700">
+                                Kiểm tra lại trước khi bàn giao. Nếu lỗi đã được xử lý, chọn lại món
+                                và hoàn tất đóng gói.
+                            </p>
                         </div>
                     </div>
                 </div>
+            ) : null}
 
-                <div className="space-y-6">
-                    <div className="rounded-[28px] bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                        <div className="flex items-start gap-3">
-                            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-50 text-emerald-600">
-                                <PackageCheck className="h-5 w-5" />
+            <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+                <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <h2 className="text-lg font-semibold text-slate-900">
+                                Checklist kiểm tra cuối
+                            </h2>
+                            <p className="mt-1 text-sm text-slate-500">
+                                Đã chọn {selectedItemIds.length}/{allItemIds.length} món ·{" "}
+                                {selectedQuantity}/{totalQuantity} sản phẩm
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={toggleAllItems}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                            <CheckCircle2 className="h-4 w-4" />
+                            {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                        </button>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                        {order.items?.map((item, index) => {
+                            const checked = selectedItemIds.includes(item.orderItemId)
+                            const hasFailedReason = Boolean(
+                                item.packagingFailedReason?.trim()
+                            )
+                            const expiryDate = getItemExpiryDate(item)
+
+                            return (
+                                <label
+                                    key={item.orderItemId}
+                                    className={cn(
+                                        "flex cursor-pointer gap-4 px-5 py-4 transition hover:bg-slate-50",
+                                        checked && "bg-emerald-50/50",
+                                        hasFailedReason && "bg-rose-50/60"
+                                    )}
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={checked}
+                                        onChange={() => toggleItem(item.orderItemId)}
+                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                    />
+
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                            <div className="min-w-0">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                        Món #{index + 1}
+                                                    </span>
+
+                                                    <span
+                                                        className={cn(
+                                                            "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ring-1",
+                                                            getExpiryToneClass(expiryDate)
+                                                        )}
+                                                    >
+                                                        <CalendarDays className="h-3.5 w-3.5" />
+                                                        HSD: {formatDateOnly(expiryDate)}
+                                                    </span>
+
+                                                    <span
+                                                        className={cn(
+                                                            "rounded-full px-2.5 py-1 text-xs font-medium ring-1",
+                                                            getExpiryToneClass(expiryDate)
+                                                        )}
+                                                    >
+                                                        {getExpiryText(expiryDate)}
+                                                    </span>
+                                                </div>
+
+                                                <h3 className="mt-2 text-base font-semibold text-slate-900">
+                                                    {item.productName || "--"}
+                                                </h3>
+
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                                                        Số lượng: {item.quantity || 0}
+                                                    </span>
+
+                                                    <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+                                                        Đơn giá:{" "}
+                                                        {currency.format(item.unitPrice || 0)}
+                                                    </span>
+
+                                                    <span
+                                                        className={cn(
+                                                            "rounded-full px-3 py-1 text-xs font-medium",
+                                                            getPackagingStatusClass(
+                                                                item.packagingStatus
+                                                            )
+                                                        )}
+                                                    >
+                                                        {getPackagingStatusLabel(
+                                                            item.packagingStatus
+                                                        )}
+                                                    </span>
+
+                                                    {item.packagedAt ? (
+                                                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100">
+                                                            Đã xử lý:{" "}
+                                                            {formatDateTime(item.packagedAt)}
+                                                        </span>
+                                                    ) : null}
+
+                                                    {item.packagingFailedReason ? (
+                                                        <span className="rounded-full bg-rose-50 px-3 py-1 text-xs font-medium text-rose-700 ring-1 ring-rose-100">
+                                                            Lỗi: {item.packagingFailedReason}
+                                                        </span>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+
+                                            <div className="shrink-0 rounded-2xl bg-slate-50 px-4 py-3 text-left lg:min-w-[140px] lg:text-right">
+                                                <p className="text-xs font-medium text-slate-500">
+                                                    Thành tiền
+                                                </p>
+                                                <p className="mt-1 text-sm font-semibold text-slate-900">
+                                                    {currency.format(item.subTotal || 0)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </label>
+                            )
+                        })}
+                    </div>
+                </div>
+
+                <aside className="space-y-4">
+                    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                                <ClipboardCheck className="h-5 w-5" />
                             </div>
+
                             <div>
-                                <h2 className="text-lg font-bold text-slate-900">
-                                    Bước 3 · Hoàn tất đóng gói
+                                <h2 className="font-semibold text-slate-900">
+                                    Tóm tắt đóng gói
                                 </h2>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Gửi xác nhận hoàn tất cho các sản phẩm đã chọn kèm thời gian hiện tại.
+                                <p className="text-sm text-slate-500">
+                                    Đơn đặt: {formatDateTime(order.orderDate)}
                                 </p>
                             </div>
                         </div>
 
-                        <div className="mt-4 rounded-2xl bg-slate-50 px-4 py-3">
-                            <p className="text-xs text-slate-500">Đang chọn</p>
-                            <p className="mt-1 text-sm font-bold text-slate-900">
-                                {selectedItemIds.length} dòng hàng · {selectedQuantity} sản phẩm ·{" "}
-                                {currency.format(selectedTotal)}
-                            </p>
-                        </div>
-
-                        <div className="mt-4 space-y-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-100">
-                            <div className="flex gap-2">
-                                <CheckCheck className="mt-0.5 h-4 w-4 shrink-0" />
-                                <span>Đã kiểm đủ sản phẩm theo số lượng.</span>
+                        <div className="mt-5 grid gap-3">
+                            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                                <p className="text-xs text-slate-500">Món đã chọn</p>
+                                <p className="mt-1 text-xl font-semibold text-slate-900">
+                                    {selectedItemIds.length}/{allItemIds.length}
+                                </p>
                             </div>
-                            <div className="flex gap-2">
-                                <CheckCheck className="mt-0.5 h-4 w-4 shrink-0" />
-                                <span>Bao bì sạch, chắc chắn, sẵn sàng bàn giao.</span>
+
+                            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                                <p className="text-xs text-slate-500">Số lượng</p>
+                                <p className="mt-1 text-xl font-semibold text-slate-900">
+                                    {selectedQuantity}/{totalQuantity}
+                                </p>
+                            </div>
+
+                            <div className="rounded-2xl bg-slate-50 px-4 py-3">
+                                <p className="text-xs text-slate-500">Giá trị đã chọn</p>
+                                <p className="mt-1 text-xl font-semibold text-slate-900">
+                                    {currency.format(selectedTotal)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                                <PackageCheck className="h-5 w-5" />
+                            </div>
+
+                            <div>
+                                <h2 className="font-semibold text-slate-900">
+                                    Hoàn tất đóng gói
+                                </h2>
+                                <p className="text-sm text-slate-500">
+                                    Dùng khi các món đã đúng và sẵn sàng bàn giao.
+                                </p>
                             </div>
                         </div>
 
                         <textarea
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            rows={5}
-                            placeholder="Ghi chú hoàn tất đóng gói, nếu có..."
-                            className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-emerald-400"
+                            rows={3}
+                            placeholder="Ví dụ: đã kiểm đủ món, đóng 2 túi..."
+                            className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
                         />
 
                         <button
                             type="button"
-                            onClick={() => void handlePackage()}
-                            disabled={submitting || failing || selectedItemIds.length === 0}
-                            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={handlePackage}
+                            disabled={submitting || selectedItemIds.length === 0}
+                            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {submitting ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Đang hoàn tất...
-                                </>
+                                <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                                <>
-                                    <CheckCheck className="h-4 w-4" />
-                                    Hoàn tất đóng gói
-                                </>
+                                <CheckCircle2 className="h-4 w-4" />
                             )}
+                            Hoàn tất đóng gói
                         </button>
                     </div>
 
-                    <div className="rounded-[28px] border border-rose-100 bg-rose-50/70 p-6 shadow-sm ring-1 ring-rose-100">
-                        <div className="flex items-start gap-3">
-                            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-rose-600 ring-1 ring-rose-100">
-                                <AlertTriangle className="h-5 w-5" />
+                    <div className="rounded-3xl border border-rose-200 bg-white p-5 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-700 ring-1 ring-rose-100">
+                                <XCircle className="h-5 w-5" />
                             </div>
+
                             <div>
-                                <h2 className="text-lg font-bold text-rose-900">
-                                    Ghi nhận đóng gói thất bại
+                                <h2 className="font-semibold text-slate-900">
+                                    Báo lỗi món đã chọn
                                 </h2>
-                                <p className="mt-1 text-sm text-rose-800/90">
-                                    Dùng khi sản phẩm không thể đóng gói. Vui lòng nhập lý do cụ thể.
+                                <p className="text-sm text-slate-500">
+                                    Dùng khi thiếu hàng, sai hàng hoặc hàng hư hỏng.
                                 </p>
                             </div>
                         </div>
 
-                        <textarea
+                        <input
                             value={failureReason}
                             onChange={(e) => setFailureReason(e.target.value)}
-                            rows={3}
-                            placeholder="Lý do thất bại, ví dụ: thiếu hàng, bao bì hỏng, sản phẩm lỗi..."
-                            className="mt-4 w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm outline-none focus:border-rose-400"
+                            placeholder="Lý do lỗi, ví dụ: thiếu hàng / hàng hỏng"
+                            className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
                         />
 
                         <textarea
                             value={failNotes}
                             onChange={(e) => setFailNotes(e.target.value)}
                             rows={3}
-                            placeholder="Ghi chú thêm, nếu có..."
-                            className="mt-3 w-full rounded-2xl border border-rose-200 bg-white px-4 py-3 text-sm outline-none focus:border-rose-400"
+                            placeholder="Ghi chú thêm nếu cần..."
+                            className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
                         />
 
                         <button
                             type="button"
-                            onClick={() => void handleFailPackaging()}
-                            disabled={
-                                failing ||
-                                submitting ||
-                                selectedItemIds.length === 0 ||
-                                !failureReason.trim()
-                            }
-                            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-300 bg-white px-4 py-3 text-sm font-semibold text-rose-900 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={handleFailPackaging}
+                            disabled={failing || selectedItemIds.length === 0}
+                            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                             {failing ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Đang gửi...
-                                </>
+                                <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
-                                <>
-                                    <XCircle className="h-4 w-4" />
-                                    Ghi nhận thất bại
-                                </>
+                                <AlertTriangle className="h-4 w-4" />
                             )}
+                            Báo lỗi các món đã chọn
                         </button>
                     </div>
 
-                    <div className="rounded-[28px] border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-sky-50 p-6 shadow-sm ring-1 ring-emerald-100">
-                        <div className="flex items-center gap-3">
-                            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-white text-emerald-600 shadow-sm ring-1 ring-emerald-100">
-                                <Clock3 className="h-5 w-5" />
-                            </div>
-                            <div>
-                                <h2 className="text-lg font-bold text-slate-900">Thông tin xử lý</h2>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Theo dõi nhanh ca xử lý và người phụ trách đơn.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="mt-5 space-y-3">
-                            <div className="rounded-2xl bg-white/85 px-4 py-3 shadow-sm ring-1 ring-slate-100">
-                                <p className="text-xs font-medium text-slate-500">Khung giờ</p>
-                                <p className="mt-1 text-sm font-bold text-slate-900">
-                                    {order.timeSlotDisplay || "--"}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-white/85 px-4 py-3 shadow-sm ring-1 ring-slate-100">
-                                <p className="text-xs font-medium text-slate-500">Nhân viên</p>
-                                <p className="mt-1 text-sm font-bold text-slate-900">
-                                    {order.packagingStaffName || "--"}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-white/85 px-4 py-3 shadow-sm ring-1 ring-slate-100">
-                                <p className="text-xs font-medium text-slate-500">Mã đơn</p>
-                                <p className="mt-1 break-all text-sm font-semibold text-slate-800">
-                                    {order.orderId || "--"}
-                                </p>
-                            </div>
-
-                            <div className="rounded-2xl bg-white/85 px-4 py-3 shadow-sm ring-1 ring-slate-100">
-                                <p className="text-xs font-medium text-slate-500">Cập nhật gần nhất</p>
-                                <p className="mt-1 text-sm font-bold text-emerald-700">
-                                    {formatDateTime(order.lastPackagedAt ?? undefined)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <button
+                        type="button"
+                        onClick={() => void fetchDetail(true)}
+                        disabled={refreshing}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <RefreshCcw
+                            className={cn("h-4 w-4", refreshing && "animate-spin")}
+                        />
+                        Tải lại dữ liệu
+                    </button>
+                </aside>
             </div>
         </div>
     )
