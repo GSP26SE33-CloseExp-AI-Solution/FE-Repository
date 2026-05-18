@@ -631,7 +631,11 @@ const WorkflowLotStep: React.FC<Props> = ({
                                                     <XAxis dataKey="storeName" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
                                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
                                                     <RechartsTooltip 
-                                                        formatter={(value: number) => formatCurrencyVN(value)}
+                                                        formatter={(value) =>
+                                                            formatCurrencyVN(
+                                                                value == null ? undefined : Number(value)
+                                                            )
+                                                        }
                                                         cursor={{ fill: '#F1F5F9' }}
                                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                                     />

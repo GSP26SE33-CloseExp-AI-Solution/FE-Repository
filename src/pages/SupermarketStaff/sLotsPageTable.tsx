@@ -5,6 +5,7 @@ import {
     ChevronLeft,
     ChevronRight,
     Eye,
+    ImagePlus,
     Loader2,
     Package2,
     Pencil,
@@ -12,6 +13,7 @@ import {
     Save,
     Search,
     Sparkles,
+    Trash2,
 } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -73,6 +75,7 @@ const cn = (...classes: Array<string | false | null | undefined>) =>
 const LOT_TABLE_GRID =
     "grid grid-cols-[minmax(220px,1.35fr)_minmax(96px,0.75fr)_minmax(108px,0.8fr)_minmax(92px,0.65fr)_minmax(96px,0.7fr)_minmax(118px,0.85fr)_minmax(138px,0.95fr)_minmax(128px,0.9fr)_minmax(96px,0.7fr)_52px] items-center gap-3"
 const LOT_TABLE_MIN_WIDTH = "min-w-[1180px]"
+const EMPTY_PARTIAL_PRODUCT_LOT = {} as Partial<ProductLotItem>
 
 const compareText = (a?: string | null, b?: string | null) => {
     const left = (a || "").trim().toLocaleLowerCase("vi")
@@ -84,6 +87,27 @@ const compareBooleanLabel = (a: boolean, b: boolean) => {
     const left = a ? "tươi sống" : "thông thường"
     const right = b ? "tươi sống" : "thông thường"
     return left.localeCompare(right, "vi")
+}
+
+const API_ORIGIN = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "")
+
+const getImageUrl = (url?: string | null) => {
+    if (!url?.trim() || url === "/placeholder.png") {
+        return "/placeholder.png"
+    }
+
+    const trimmed = url.trim()
+
+    if (
+        trimmed.startsWith("http://") ||
+        trimmed.startsWith("https://") ||
+        trimmed.startsWith("blob:") ||
+        trimmed.startsWith("data:")
+    ) {
+        return trimmed
+    }
+
+    return `${API_ORIGIN}${trimmed.startsWith("/") ? trimmed : `/${trimmed}`}`
 }
 
 const formatDate = (dateString?: string | null) => {
@@ -487,7 +511,7 @@ const ProductsLotsPage: React.FC = () => {
     const [serverTotal, setServerTotal] = useState(0)
 
     const [selectedLotState, setSelectedLot] = useState<ProductLotItem | null>(null)
-    const selectedLot = selectedLotState || ({} as Partial<ProductLotItem>)
+    const selectedLot = selectedLotState ?? EMPTY_PARTIAL_PRODUCT_LOT
     const [selectedProduct, setSelectedProduct] = useState<ProductResponseDto | null>(null)
     const [selectedProductDetail, setSelectedProductDetail] =
         useState<ProductDetailDto | null>(null)
@@ -500,6 +524,8 @@ const ProductsLotsPage: React.FC = () => {
         createEmptyEditForm(),
     )
     const [editErrors, setEditErrors] = useState<Record<string, string>>({})
+    const [imageFiles, setImageFiles] = useState<File[]>([])
+    const [replaceExistingImages, setReplaceExistingImages] = useState(false)
 
     const [nutritionRows, setNutritionRows] = useState<NutritionFactRow[]>([
         createNutritionRow(),
@@ -806,11 +832,11 @@ const ProductsLotsPage: React.FC = () => {
     }, [selectedLot, selectedProduct, selectedProductDetail])
 
     const popupImageUrl =
-        selectedProductDetail?.mainImageUrl ||
         selectedProduct?.mainImageUrl ||
-        selectedLot?.mainImageUrl ||
-        selectedProductDetail?.productImages?.[0]?.imageUrl ||
         selectedProduct?.productImages?.[0]?.imageUrl ||
+        selectedProductDetail?.mainImageUrl ||
+        selectedProductDetail?.productImages?.[0]?.imageUrl ||
+        selectedLot?.mainImageUrl ||
         selectedLot?.productImages?.[0]?.imageUrl ||
         "/placeholder.png"
 
@@ -852,6 +878,8 @@ const ProductsLotsPage: React.FC = () => {
         setEditErrors({})
         setEditForm(createEmptyEditForm())
         setNutritionRows([createNutritionRow()])
+        setImageFiles([])
+        setReplaceExistingImages(false)
 
         try {
             const [product, detail] = await Promise.all([
@@ -867,6 +895,8 @@ const ProductsLotsPage: React.FC = () => {
             setNutritionRows(
                 nutritionObjectToRows(detail.nutritionFacts || product.nutritionFacts || {}),
             )
+            setImageFiles([])
+            setReplaceExistingImages(false)
         } catch (error) {
             console.error("ProductsLotsPage.handleOpenDetail -> error:", error)
             toast.error("Không tải được chi tiết sản phẩm")
@@ -919,6 +949,8 @@ const ProductsLotsPage: React.FC = () => {
             setNutritionRows(
                 nutritionObjectToRows(detail.nutritionFacts || product.nutritionFacts || {}),
             )
+            setImageFiles([])
+            setReplaceExistingImages(false)
         } catch (error) {
             console.error("ProductsLotsPage.handleOpenProductDetail -> error:", error)
             toast.error("Không tải được chi tiết sản phẩm")
@@ -1014,9 +1046,35 @@ const ProductsLotsPage: React.FC = () => {
         return Object.keys(nextErrors).length === 0
     }
 
+    const handleSelectImages = (files: FileList | null) => {
+        const nextFiles = Array.from(files || [])
+        const validImages = nextFiles.filter((file) => file.type.startsWith("image/"))
+
+        if (validImages.length !== nextFiles.length) {
+            toast.error("Chỉ được chọn file ảnh")
+        }
+
+        if (validImages.length === 0) return
+
+        setImageFiles((prev) => [...prev, ...validImages])
+    }
+
+    const handleRemoveImageFile = (index: number) => {
+        setImageFiles((prev) => prev.filter((_, currentIndex) => currentIndex !== index))
+    }
+
     const handleSaveProduct = async () => {
-        const targetId = selectedLot?.productId || selectedProductDetail?.productId
-        if (!targetId) return
+        const targetId = [
+            selectedLotState?.productId,
+            selectedProductDetail?.productId,
+            selectedProduct?.productId,
+        ].find((id): id is string => Boolean(id?.trim()))
+
+        if (!targetId) {
+            toast.error("Không tìm thấy mã sản phẩm để cập nhật")
+            return
+        }
+
         if (!validateEditForm()) return
 
         setSavingEdit(true)
@@ -1037,6 +1095,33 @@ const ProductsLotsPage: React.FC = () => {
                 targetId,
                 payload,
             )
+            let imageUpdateResponse: ProductResponseDto | null = null
+
+            console.log("[ProductsLotsPage.handleSaveProduct] image upload state:", {
+                hasImages: imageFiles.length > 0,
+                imageCount: imageFiles.length,
+                replaceExistingImages,
+                targetId,
+                imageFiles: imageFiles.map((file) => ({
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                })),
+            })
+
+            if (imageFiles.length > 0) {
+                imageUpdateResponse = await productService.updateProductImages(
+                    targetId,
+                    imageFiles,
+                    replaceExistingImages,
+                )
+
+                console.log("[ProductsLotsPage.handleSaveProduct] image update response:", {
+                    mainImageUrl: imageUpdateResponse.mainImageUrl,
+                    totalImages: imageUpdateResponse.totalImages,
+                    productImages: imageUpdateResponse.productImages,
+                })
+            }
 
             console.log(
                 "ProductsLotsPage.handleSaveProduct -> update response:",
@@ -1047,6 +1132,19 @@ const ProductsLotsPage: React.FC = () => {
                 productService.getProductById(targetId),
                 productService.getProductDetails(targetId),
             ])
+
+            console.log("[ProductsLotsPage.handleSaveProduct] refreshed image data:", {
+                product: {
+                    mainImageUrl: product.mainImageUrl,
+                    totalImages: product.totalImages,
+                    productImages: product.productImages,
+                },
+                detail: {
+                    mainImageUrl: detail.mainImageUrl,
+                    totalImages: detail.totalImages,
+                    productImages: detail.productImages,
+                },
+            })
 
             console.log("ProductsLotsPage.handleSaveProduct -> refreshed product:", product)
             console.log("ProductsLotsPage.handleSaveProduct -> refreshed detail:", detail)
@@ -1106,17 +1204,39 @@ const ProductsLotsPage: React.FC = () => {
                 return
             }
 
-            setSelectedProduct(product)
-            setSelectedProductDetail(detail)
+            const nextProduct = imageUpdateResponse || product
+
+            console.log("[ProductsLotsPage.handleSaveProduct] selected next image data:", {
+                source: imageUpdateResponse ? "imageUpdateResponse" : "refreshedProduct",
+                mainImageUrl: nextProduct.mainImageUrl,
+                totalImages: nextProduct.totalImages,
+                productImages: nextProduct.productImages,
+            })
+
+            setSelectedProduct(nextProduct)
+            setSelectedProductDetail({
+                ...detail,
+                mainImageUrl: nextProduct.mainImageUrl || detail.mainImageUrl,
+                totalImages: nextProduct.totalImages ?? detail.totalImages,
+                productImages: nextProduct.productImages?.length
+                    ? nextProduct.productImages
+                    : detail.productImages,
+            })
             setEditForm(buildEditForm(product, detail))
             setNutritionRows(
                 nutritionObjectToRows(detail.nutritionFacts || product.nutritionFacts || {}),
             )
+            setImageFiles([])
+            setReplaceExistingImages(false)
             setIsEditing(false)
 
             await loadLots()
 
-            toast.success(updateResponse.message || "Cập nhật thông tin sản phẩm thành công")
+            toast.success(
+                imageFiles.length > 0
+                    ? "Cập nhật thông tin và ảnh sản phẩm thành công"
+                    : updateResponse.message || "Cập nhật thông tin sản phẩm thành công",
+            )
         } catch (error) {
             console.error("ProductsLotsPage.handleSaveProduct -> error:", error)
 
@@ -1142,6 +1262,21 @@ const ProductsLotsPage: React.FC = () => {
             typeof selectedLot?.hoursRemaining === "number"
             ? selectedLot.hoursRemaining
             : null
+
+    console.log("[ProductsLotsPage.render] popup image source:", {
+        popupImageUrl,
+        resolvedPopupImageUrl: getImageUrl(popupImageUrl),
+        selectedProductImage: {
+            mainImageUrl: selectedProduct?.mainImageUrl,
+            totalImages: selectedProduct?.totalImages,
+            productImages: selectedProduct?.productImages,
+        },
+        selectedProductDetailImage: {
+            mainImageUrl: selectedProductDetail?.mainImageUrl,
+            totalImages: selectedProductDetail?.totalImages,
+            productImages: selectedProductDetail?.productImages,
+        },
+    })
 
     return (
         <div className="min-h-screen bg-white">
@@ -1361,11 +1496,11 @@ const ProductsLotsPage: React.FC = () => {
                                                         <div className="flex min-w-0 items-center gap-3">
                                                             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                                                                 <img
-                                                                    src={
+                                                                    src={getImageUrl(
                                                                         lot.mainImageUrl ||
                                                                         lot.productImages?.[0]?.imageUrl ||
-                                                                        "/placeholder.png"
-                                                                    }
+                                                                        "/placeholder.png",
+                                                                    )}
                                                                     alt={lot.productName || "sản phẩm"}
                                                                     className="h-full w-full object-cover"
                                                                 />
@@ -1433,12 +1568,12 @@ const ProductsLotsPage: React.FC = () => {
                                                                     : undefined
                                                                 const conversionHint = unitMeta
                                                                     ? formatConversionRateHintWithBase(
-                                                                          unitMeta,
-                                                                          unitCatalog,
-                                                                      )
+                                                                        unitMeta,
+                                                                        unitCatalog,
+                                                                    )
                                                                     : lot.conversionRate &&
                                                                         lot.conversionRate !== 1
-                                                                      ? formatConversionRateHintWithBase(
+                                                                        ? formatConversionRateHintWithBase(
                                                                             {
                                                                                 name: lot.unitName,
                                                                                 symbol: lot.unitSymbol,
@@ -1448,7 +1583,7 @@ const ProductsLotsPage: React.FC = () => {
                                                                             },
                                                                             unitCatalog,
                                                                         )
-                                                                      : null
+                                                                        : null
                                                                 return conversionHint ? (
                                                                     <div className="truncate text-[9px] text-sky-700">
                                                                         {conversionHint}
@@ -1510,302 +1645,653 @@ const ProductsLotsPage: React.FC = () => {
 
                 {openDetail ? (
                     <div
-                                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
-                                    onClick={handleCloseDetail}
-                                >
-                                    <div
-                                        className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[28px] bg-white shadow-2xl"
-                                        onClick={(e) => e.stopPropagation()}
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 px-4"
+                        onClick={handleCloseDetail}
+                    >
+                        <div
+                            className="max-h-[88vh] w-full max-w-4xl overflow-y-auto rounded-[28px] bg-white shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900">
+                                        {selectedLot.productName || selectedProductDetail?.name || selectedProduct?.name || "Chi tiết sản phẩm"}
+                                    </h3>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        {isEditing
+                                            ? "Bạn đang chỉnh sửa thông tin sản phẩm."
+                                            : "Bấm ra ngoài để đóng popup."}
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditing((prev) => !prev)}
+                                        disabled={loadingPopup || !selectedProduct}
+                                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
-                                            <div>
-                                                <h3 className="text-lg font-semibold text-slate-900">
-                                                    {selectedLot.productName || selectedProductDetail?.name || selectedProduct?.name || "Chi tiết sản phẩm"}
-                                                </h3>
-                                                <p className="mt-1 text-sm text-slate-500">
-                                                    {isEditing
-                                                        ? "Bạn đang chỉnh sửa thông tin sản phẩm."
-                                                        : "Bấm ra ngoài để đóng popup."}
-                                                </p>
+                                        <Pencil className="h-4 w-4" />
+                                        {isEditing ? "Xem" : "Sửa"}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleCloseDetail}
+                                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                                    >
+                                        Đóng
+                                    </button>
+                                </div>
+                            </div>
+
+                            {loadingPopup ? (
+                                <div className="flex h-[420px] items-center justify-center text-sm text-slate-500">
+                                    <Loader2 className="mr-2 h-4.5 w-4.5 animate-spin" />
+                                    Đang tải chi tiết sản phẩm...
+                                </div>
+                            ) : isEditing ? (
+                                <div className="p-6">
+                                    <div className="grid gap-6 lg:grid-cols-2">
+                                        <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
+                                            <div className="text-sm font-semibold text-slate-900">
+                                                Thông tin chính
                                             </div>
 
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsEditing((prev) => !prev)}
-                                                    disabled={loadingPopup || !selectedProduct}
-                                                    className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                                >
-                                                    <Pencil className="h-4 w-4" />
-                                                    {isEditing ? "Xem" : "Sửa"}
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={handleCloseDetail}
-                                                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
-                                                >
-                                                    Đóng
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {loadingPopup ? (
-                                            <div className="flex h-[420px] items-center justify-center text-sm text-slate-500">
-                                                <Loader2 className="mr-2 h-4.5 w-4.5 animate-spin" />
-                                                Đang tải chi tiết sản phẩm...
-                                            </div>
-                                        ) : isEditing ? (
-                                            <div className="p-6">
-                                                <div className="grid gap-6 lg:grid-cols-2">
-                                                    <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
-                                                        <div className="text-sm font-semibold text-slate-900">
-                                                            Thông tin chính
-                                                        </div>
-
-                                                        <FieldLabel label="Tên sản phẩm" required />
-                                                        <TextInput
-                                                            value={editForm.name}
-                                                            onChange={(value) => setEditField("name", value)}
-                                                            error={editErrors.name}
-                                                        />
-
-                                                        <FieldLabel label="Mã vạch" required />
-                                                        <TextInput
-                                                            value={editForm.barcode}
-                                                            onChange={(value) => setEditField("barcode", value)}
-                                                            error={editErrors.barcode}
-                                                        />
-
-                                                        <FieldLabel label="Danh mục" required />
-                                                        <div>
-                                                            <select
-                                                                value={editForm.categoryName}
-                                                                onChange={(e) => setEditField("categoryName", e.target.value)}
-                                                                disabled={loadingCategories}
-                                                                className={cn(
-                                                                    "w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
-                                                                    editErrors.categoryName
-                                                                        ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-50"
-                                                                        : "border-slate-200 focus:border-slate-400 focus:ring-4 focus:ring-slate-100",
-                                                                )}
-                                                            >
-                                                                <option value="">
-                                                                    {loadingCategories ? "-- Đang tải danh mục --" : "-- Chọn danh mục --"}
-                                                                </option>
-                                                                {categoryOptions.map((category) => (
-                                                                    <option key={category} value={category}>
-                                                                        {category}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                            {editErrors.categoryName ? (
-                                                                <div className="mt-1 text-xs text-rose-500">{editErrors.categoryName}</div>
-                                                            ) : null}
-                                                        </div>
-
-                                                        <FieldLabel label="Thương hiệu" />
-                                                        <TextInput
-                                                            value={editForm.brand}
-                                                            onChange={(value) => setEditField("brand", value)}
-                                                        />
-
-                                                        <FieldLabel label="SKU" />
-                                                        <TextInput
-                                                            value={editForm.sku}
-                                                            onChange={(value) => setEditField("sku", value)}
-                                                        />
-
-                                                        <FieldLabel label="Loại mặt hàng" />
-                                                        <SelectInput
-                                                            value={editForm.type}
-                                                            onChange={(value) =>
-                                                                setEditField("type", Number(value) as ProductTypeValue)
-                                                            }
-                                                            options={PRODUCT_TYPE_OPTIONS}
-                                                        />
-
-                                                        <FieldLabel label="Trạng thái sản phẩm" />
-                                                        <SelectInput
-                                                            value={editForm.status}
-                                                            onChange={(value) =>
-                                                                setEditField("status", Number(value) as ProductStateValue)
-                                                            }
-                                                            options={PRODUCT_STATUS_OPTIONS}
-                                                        />
-
-                                                        <FieldLabel label="Mã siêu thị" />
-                                                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
-                                                            {editForm.supermarketId || "—"}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
-                                                        <div className="text-sm font-semibold text-slate-900">
-                                                            Mô tả chi tiết
-                                                        </div>
-
-                                                        <FieldLabel label="Nhà sản xuất" />
-                                                        <TextInput
-                                                            value={editForm.manufacturer}
-                                                            onChange={(value) => setEditField("manufacturer", value)}
-                                                        />
-
-                                                        <FieldLabel label="Xuất xứ" />
-                                                        <TextInput
-                                                            value={editForm.origin}
-                                                            onChange={(value) => setEditField("origin", value)}
-                                                        />
-
-                                                        <FieldLabel label="Mô tả" />
-                                                        <TextArea
-                                                            value={editForm.description}
-                                                            onChange={(value) => setEditField("description", value)}
-                                                        />
-
-                                                        <FieldLabel label="Thành phần" />
-                                                        <TextArea
-                                                            value={editForm.ingredientsText}
-                                                            onChange={(value) => setEditField("ingredientsText", value)}
-                                                            placeholder="Mỗi dòng một thành phần"
-                                                        />
-
-                                                        <FieldLabel label="Thành phần dinh dưỡng" />
-
-                                                        <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                                            {nutritionRows.map((row, index) => (
-                                                                <div
-                                                                    key={row.id}
-                                                                    className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]"
-                                                                >
-                                                                    <TextInput
-                                                                        value={row.label}
-                                                                        onChange={(value) =>
-                                                                            setNutritionRow(row.id, "label", value)
-                                                                        }
-                                                                        placeholder={
-                                                                            index === 0
-                                                                                ? "Ví dụ: Năng lượng"
-                                                                                : "Tên chỉ số"
-                                                                        }
-                                                                    />
-
-                                                                    <TextInput
-                                                                        value={row.value}
-                                                                        onChange={(value) =>
-                                                                            setNutritionRow(row.id, "value", value)
-                                                                        }
-                                                                        placeholder={
-                                                                            index === 0 ? "Ví dụ: 76 kcal" : "Giá trị"
-                                                                        }
-                                                                    />
-
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => removeNutritionRow(row.id)}
-                                                                        className="inline-flex h-[42px] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-                                                                        title="Xóa dòng"
-                                                                    >
-                                                                        ×
-                                                                    </button>
-                                                                </div>
-                                                            ))}
-
-                                                            <div className="flex items-center justify-between gap-3 pt-1">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={addNutritionRow}
-                                                                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                                                                >
-                                                                    Thêm dòng
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
-                                                        {editErrors.nutritionFactsText ? (
-                                                            <div className="mt-1 text-xs text-rose-500">
-                                                                {editErrors.nutritionFactsText}
-                                                            </div>
-                                                        ) : null}
-
-                                                        <FieldLabel label="Hướng dẫn sử dụng" />
-                                                        <TextArea
-                                                            value={editForm.usageInstructions}
-                                                            onChange={(value) =>
-                                                                setEditField("usageInstructions", value)
-                                                            }
-                                                        />
-
-                                                        <FieldLabel label="Hướng dẫn bảo quản" />
-                                                        <TextArea
-                                                            value={editForm.storageInstructions}
-                                                            onChange={(value) =>
-                                                                setEditField("storageInstructions", value)
-                                                            }
-                                                        />
-
-                                                        <FieldLabel label="Cảnh báo an toàn" />
-                                                        <TextArea
-                                                            value={editForm.safetyWarnings}
-                                                            onChange={(value) => setEditField("safetyWarnings", value)}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-5 flex items-center justify-end gap-3">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setIsEditing(false)}
-                                                        disabled={savingEdit}
-                                                        className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    >
-                                                        Hủy
-                                                    </button>
-
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => void handleSaveProduct()}
-                                                        disabled={savingEdit}
-                                                        className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                                                    >
-                                                        {savingEdit ? (
-                                                            <>
-                                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                                                Đang lưu...
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <Save className="h-4 w-4" />
-                                                                Lưu thay đổi
-                                                            </>
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="grid gap-6 p-6 lg:grid-cols-[280px_1fr]">
-                                                <div>
-                                                    <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
-                                                        <img
-                                                            src={popupImageUrl}
-                                                            alt={selectedLot.productName || selectedProductDetail?.name || selectedProduct?.name || "sản phẩm"}
-                                                            className="h-[280px] w-full object-cover"
-                                                        />
-                                                    </div>
-
-                                                    <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
                                                         <div className="text-sm font-semibold text-slate-900">
                                                             Ảnh sản phẩm
                                                         </div>
-                                                        <div className="mt-2 text-sm text-slate-600">
-                                                            Tổng ảnh:{" "}
-                                                            {selectedProductDetail?.totalImages ??
-                                                                selectedProduct?.totalImages ??
-                                                                selectedLot.totalImages ??
-                                                                selectedProductDetail?.productImages?.length ??
-                                                                selectedProduct?.productImages?.length ??
-                                                                selectedLot.productImages?.length ??
-                                                                0}
+                                                        <div className="mt-1 text-xs text-slate-500">
+                                                            Chọn ảnh mới để thêm vào sản phẩm hoặc thay toàn bộ ảnh cũ.
+                                                        </div>
+                                                    </div>
+
+                                                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50">
+                                                        <ImagePlus className="h-4 w-4" />
+                                                        Chọn ảnh
+                                                        <input
+                                                            type="file"
+                                                            accept="image/*"
+                                                            multiple
+                                                            className="hidden"
+                                                            onChange={(event) => {
+                                                                handleSelectImages(event.target.files)
+                                                                event.target.value = ""
+                                                            }}
+                                                        />
+                                                    </label>
+                                                </div>
+
+                                                <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={replaceExistingImages}
+                                                        onChange={(event) => setReplaceExistingImages(event.target.checked)}
+                                                        className="h-4 w-4 rounded border-slate-300"
+                                                    />
+                                                    Thay toàn bộ ảnh hiện tại
+                                                </label>
+
+                                                {imageFiles.length > 0 ? (
+                                                    <div className="mt-4 space-y-2">
+                                                        {imageFiles.map((file, index) => (
+                                                            <div
+                                                                key={`${file.name}-${index}`}
+                                                                className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm ring-1 ring-slate-200"
+                                                            >
+                                                                <div className="min-w-0">
+                                                                    <div className="truncate font-medium text-slate-800">
+                                                                        {file.name}
+                                                                    </div>
+                                                                    <div className="text-xs text-slate-500">
+                                                                        {(file.size / 1024 / 1024).toFixed(2)} MB
+                                                                    </div>
+                                                                </div>
+
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveImageFile(index)}
+                                                                    className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-500"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-white px-3 py-4 text-center text-sm text-slate-500">
+                                                        Chưa chọn ảnh mới
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <FieldLabel label="Tên sản phẩm" required />
+                                            <TextInput
+                                                value={editForm.name}
+                                                onChange={(value) => setEditField("name", value)}
+                                                error={editErrors.name}
+                                            />
+
+                                            <FieldLabel label="Mã vạch" required />
+                                            <TextInput
+                                                value={editForm.barcode}
+                                                onChange={(value) => setEditField("barcode", value)}
+                                                error={editErrors.barcode}
+                                            />
+
+                                            <FieldLabel label="Danh mục" required />
+                                            <div>
+                                                <select
+                                                    value={editForm.categoryName}
+                                                    onChange={(e) => setEditField("categoryName", e.target.value)}
+                                                    disabled={loadingCategories}
+                                                    className={cn(
+                                                        "w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500",
+                                                        editErrors.categoryName
+                                                            ? "border-rose-300 focus:border-rose-400 focus:ring-4 focus:ring-rose-50"
+                                                            : "border-slate-200 focus:border-slate-400 focus:ring-4 focus:ring-slate-100",
+                                                    )}
+                                                >
+                                                    <option value="">
+                                                        {loadingCategories ? "-- Đang tải danh mục --" : "-- Chọn danh mục --"}
+                                                    </option>
+                                                    {categoryOptions.map((category) => (
+                                                        <option key={category} value={category}>
+                                                            {category}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {editErrors.categoryName ? (
+                                                    <div className="mt-1 text-xs text-rose-500">{editErrors.categoryName}</div>
+                                                ) : null}
+                                            </div>
+
+                                            <FieldLabel label="Thương hiệu" />
+                                            <TextInput
+                                                value={editForm.brand}
+                                                onChange={(value) => setEditField("brand", value)}
+                                            />
+
+                                            <FieldLabel label="SKU" />
+                                            <TextInput
+                                                value={editForm.sku}
+                                                onChange={(value) => setEditField("sku", value)}
+                                            />
+
+                                            <FieldLabel label="Loại mặt hàng" />
+                                            <SelectInput
+                                                value={editForm.type}
+                                                onChange={(value) =>
+                                                    setEditField("type", Number(value) as ProductTypeValue)
+                                                }
+                                                options={PRODUCT_TYPE_OPTIONS}
+                                            />
+
+                                            <FieldLabel label="Trạng thái sản phẩm" />
+                                            <SelectInput
+                                                value={editForm.status}
+                                                onChange={(value) =>
+                                                    setEditField("status", Number(value) as ProductStateValue)
+                                                }
+                                                options={PRODUCT_STATUS_OPTIONS}
+                                            />
+
+                                            <FieldLabel label="Mã siêu thị" />
+                                            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                                                {editForm.supermarketId || "—"}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
+                                            <div className="text-sm font-semibold text-slate-900">
+                                                Mô tả chi tiết
+                                            </div>
+
+                                            <FieldLabel label="Nhà sản xuất" />
+                                            <TextInput
+                                                value={editForm.manufacturer}
+                                                onChange={(value) => setEditField("manufacturer", value)}
+                                            />
+
+                                            <FieldLabel label="Xuất xứ" />
+                                            <TextInput
+                                                value={editForm.origin}
+                                                onChange={(value) => setEditField("origin", value)}
+                                            />
+
+                                            <FieldLabel label="Mô tả" />
+                                            <TextArea
+                                                value={editForm.description}
+                                                onChange={(value) => setEditField("description", value)}
+                                            />
+
+                                            <FieldLabel label="Thành phần" />
+                                            <TextArea
+                                                value={editForm.ingredientsText}
+                                                onChange={(value) => setEditField("ingredientsText", value)}
+                                                placeholder="Mỗi dòng một thành phần"
+                                            />
+
+                                            <FieldLabel label="Thành phần dinh dưỡng" />
+
+                                            <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                                                {nutritionRows.map((row, index) => (
+                                                    <div
+                                                        key={row.id}
+                                                        className="grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_40px]"
+                                                    >
+                                                        <TextInput
+                                                            value={row.label}
+                                                            onChange={(value) =>
+                                                                setNutritionRow(row.id, "label", value)
+                                                            }
+                                                            placeholder={
+                                                                index === 0
+                                                                    ? "Ví dụ: Năng lượng"
+                                                                    : "Tên chỉ số"
+                                                            }
+                                                        />
+
+                                                        <TextInput
+                                                            value={row.value}
+                                                            onChange={(value) =>
+                                                                setNutritionRow(row.id, "value", value)
+                                                            }
+                                                            placeholder={
+                                                                index === 0 ? "Ví dụ: 76 kcal" : "Giá trị"
+                                                            }
+                                                        />
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removeNutritionRow(row.id)}
+                                                            className="inline-flex h-[42px] items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                                                            title="Xóa dòng"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    </div>
+                                                ))}
+
+                                                <div className="flex items-center justify-between gap-3 pt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={addNutritionRow}
+                                                        className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+                                                    >
+                                                        Thêm dòng
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {editErrors.nutritionFactsText ? (
+                                                <div className="mt-1 text-xs text-rose-500">
+                                                    {editErrors.nutritionFactsText}
+                                                </div>
+                                            ) : null}
+
+                                            <FieldLabel label="Hướng dẫn sử dụng" />
+                                            <TextArea
+                                                value={editForm.usageInstructions}
+                                                onChange={(value) =>
+                                                    setEditField("usageInstructions", value)
+                                                }
+                                            />
+
+                                            <FieldLabel label="Hướng dẫn bảo quản" />
+                                            <TextArea
+                                                value={editForm.storageInstructions}
+                                                onChange={(value) =>
+                                                    setEditField("storageInstructions", value)
+                                                }
+                                            />
+
+                                            <FieldLabel label="Cảnh báo an toàn" />
+                                            <TextArea
+                                                value={editForm.safetyWarnings}
+                                                onChange={(value) => setEditField("safetyWarnings", value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-5 flex items-center justify-end gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsEditing(false)}
+                                            disabled={savingEdit}
+                                            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            Hủy
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleSaveProduct()}
+                                            disabled={savingEdit}
+                                            className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {savingEdit ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Đang lưu...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save className="h-4 w-4" />
+                                                    Lưu thay đổi
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid gap-6 p-6 lg:grid-cols-[280px_1fr]">
+                                    <div>
+                                        <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50">
+                                            <img
+                                                src={getImageUrl(popupImageUrl)}
+                                                alt={selectedLot.productName || selectedProductDetail?.name || selectedProduct?.name || "sản phẩm"}
+                                                className="h-[280px] w-full object-cover"
+                                                onLoad={() => {
+                                                    console.log("[Product image] load success:", {
+                                                        rawUrl: popupImageUrl,
+                                                        resolvedUrl: getImageUrl(popupImageUrl),
+                                                    })
+                                                }}
+                                                onError={(event) => {
+                                                    console.error("[Product image] load failed:", {
+                                                        rawUrl: popupImageUrl,
+                                                        resolvedUrl: getImageUrl(popupImageUrl),
+                                                    })
+
+                                                    if (event.currentTarget.src !== `${window.location.origin}/placeholder.png`) {
+                                                        event.currentTarget.src = "/placeholder.png"
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                                            <div className="text-sm font-semibold text-slate-900">
+                                                Ảnh sản phẩm
+                                            </div>
+                                            <div className="mt-2 text-sm text-slate-600">
+                                                Tổng ảnh:{" "}
+                                                {selectedProductDetail?.totalImages ??
+                                                    selectedProduct?.totalImages ??
+                                                    selectedLot.totalImages ??
+                                                    selectedProductDetail?.productImages?.length ??
+                                                    selectedProduct?.productImages?.length ??
+                                                    selectedLot.productImages?.length ??
+                                                    0}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <DetailBlock
+                                            title="Thông tin định danh"
+                                            rows={[
+                                                ["Mã lô hàng", selectedLot.lotId],
+                                                ["Mã sản phẩm", selectedLot.productId],
+                                                [
+                                                    "Mã vạch",
+                                                    selectedProductDetail?.barcode ||
+                                                    selectedProduct?.barcode ||
+                                                    selectedLot.barcode ||
+                                                    "—",
+                                                ],
+                                                [
+                                                    "Mã siêu thị",
+                                                    selectedLot.supermarketId ||
+                                                    selectedProduct?.supermarketId ||
+                                                    selectedProductDetail?.supermarketId ||
+                                                    "—",
+                                                ],
+                                                [
+                                                    "Tên siêu thị",
+                                                    selectedProductDetail?.supermarketName ||
+                                                    selectedLot.supermarketName ||
+                                                    "—",
+                                                ],
+                                                ["Mã đơn vị sản phẩm", selectedLot.unitId || "—"],
+                                                [
+                                                    "Tên đơn vị",
+                                                    formatUnitLabel(
+                                                        selectedProductDetail?.unitName || selectedLot.unitName,
+                                                        selectedProductDetail?.unitSymbol || selectedLot.unitSymbol,
+                                                    ),
+                                                ],
+                                                [
+                                                    "Loại đơn vị",
+                                                    selectedProductDetail?.unitType || selectedLot.unitType || "—",
+                                                ],
+                                                ["SKU", selectedProduct?.sku || "—"],
+                                            ]}
+                                        />
+
+                                        <DetailBlock
+                                            title="Thông tin sản phẩm"
+                                            rows={[
+                                                [
+                                                    "Tên sản phẩm",
+                                                    selectedProductDetail?.name ||
+                                                    selectedProduct?.name ||
+                                                    selectedLot.productName ||
+                                                    "—",
+                                                ],
+                                                [
+                                                    "Thương hiệu",
+                                                    selectedProductDetail?.brand ||
+                                                    selectedProduct?.brand ||
+                                                    selectedLot.brand ||
+                                                    "—",
+                                                ],
+                                                [
+                                                    "Danh mục",
+                                                    selectedProductDetail?.category ||
+                                                    selectedProduct?.category ||
+                                                    selectedLot.category ||
+                                                    "—",
+                                                ],
+                                                [
+                                                    "Loại hàng",
+                                                    getFreshFoodLabel(
+                                                        selectedProductDetail?.isFreshFood ??
+                                                        selectedProduct?.isFreshFood ??
+                                                        selectedLot.isFreshFood,
+                                                    ),
+                                                ],
+                                                [
+                                                    "Loại mặt hàng",
+                                                    getMerchandiseTypeLabel(
+                                                        selectedProduct?.type ?? selectedProductDetail?.type,
+                                                    ),
+                                                ],
+                                                ["Trạng thái lô hàng", selectedLot.status || "—"],
+                                                [
+                                                    "Trạng thái sản phẩm",
+                                                    getProductStatusLabel(
+                                                        selectedProduct?.status ??
+                                                        selectedProductDetail?.status,
+                                                    ),
+                                                ],
+                                                [
+                                                    "Mô tả",
+                                                    selectedProductDetail?.description ||
+                                                    selectedProduct?.barcodeLookupInfo?.description ||
+                                                    "—",
+                                                ],
+                                                ["Xuất xứ", selectedProductDetail?.origin || "—"],
+                                                [
+                                                    "Nhà sản xuất",
+                                                    selectedProductDetail?.manufacturer ||
+                                                    selectedProduct?.barcodeLookupInfo?.manufacturer ||
+                                                    "—",
+                                                ],
+                                            ]}
+                                        />
+
+                                        <DetailBlock
+                                            title="Thông tin lô hàng / hạn dùng"
+                                            rows={[
+                                                [
+                                                    "Mã trạng thái hạn dùng",
+                                                    typeof selectedLot.expiryStatus === "number"
+                                                        ? String(selectedLot.expiryStatus)
+                                                        : typeof selectedProductDetail?.expiryStatus ===
+                                                            "number"
+                                                            ? String(selectedProductDetail.expiryStatus)
+                                                            : "—",
+                                                ],
+                                                [
+                                                    "Chú thích hạn dùng",
+                                                    selectedLot.expiryStatusText ||
+                                                    selectedProductDetail?.expiryStatusText ||
+                                                    "—",
+                                                ],
+
+                                                ...(effectiveDaysRemaining !== null
+                                                    ? [
+                                                        [
+                                                            "Số ngày còn lại",
+                                                            String(effectiveDaysRemaining),
+                                                        ] as [string, string],
+                                                    ]
+                                                    : []),
+
+                                                ...(effectiveDaysRemaining === null &&
+                                                    effectiveHoursRemaining !== null
+                                                    ? [
+                                                        [
+                                                            "Số giờ còn lại",
+                                                            String(effectiveHoursRemaining),
+                                                        ] as [string, string],
+                                                    ]
+                                                    : []),
+
+                                                [
+                                                    "Số lượng",
+                                                    typeof selectedLot.quantity === "number"
+                                                        ? String(selectedLot.quantity)
+                                                        : typeof selectedProductDetail?.quantity === "number"
+                                                            ? String(selectedProductDetail.quantity)
+                                                            : "—",
+                                                ],
+                                                [
+                                                    "Khối lượng",
+                                                    selectedProductDetail?.weight ||
+                                                    (typeof selectedLot.weight === "number"
+                                                        ? String(selectedLot.weight)
+                                                        : "—"),
+                                                ],
+                                                [
+                                                    "Ngày sản xuất",
+                                                    formatDate(
+                                                        selectedLot.manufactureDate ||
+                                                        selectedProductDetail?.manufactureDate ||
+                                                        selectedProduct?.manufactureDate,
+                                                    ),
+                                                ],
+                                                [
+                                                    "Hạn sử dụng",
+                                                    formatDate(
+                                                        selectedLot.expiryDate ||
+                                                        selectedProductDetail?.expiryDate ||
+                                                        selectedProduct?.expiryDate,
+                                                    ),
+                                                ],
+                                                [
+                                                    "Ngày tạo",
+                                                    formatDateTime(
+                                                        selectedLot.createdAt ||
+                                                        selectedProduct?.createdAt ||
+                                                        selectedProductDetail?.createdAt,
+                                                    ),
+                                                ],
+                                                [
+                                                    "Tạo bởi",
+                                                    selectedLot.createdBy ||
+                                                    selectedProduct?.createdBy ||
+                                                    selectedProductDetail?.createdBy ||
+                                                    "—",
+                                                ],
+                                            ]}
+                                        />
+
+                                        <DetailBlock
+                                            title="Giá gốc / đề xuất / bán"
+                                            rows={[
+                                                [
+                                                    "Giá gốc",
+                                                    formatPrice(selectedLot.originalUnitPrice ?? selectedProductDetail?.originalPrice ?? selectedProduct?.originalPrice),
+                                                ],
+                                                [
+                                                    "Giá hệ thống đề xuất",
+                                                    formatPrice(selectedLot.suggestedUnitPrice ?? selectedProductDetail?.suggestedPrice ?? selectedProduct?.suggestedPrice),
+                                                ],
+                                                [
+                                                    "Giá bán cuối",
+                                                    formatPrice(
+                                                        selectedLot.finalUnitPrice ??
+                                                        selectedLot.sellingUnitPrice ??
+                                                        selectedProductDetail?.finalPrice ??
+                                                        selectedProduct?.finalPrice,
+                                                    ),
+                                                ],
+                                            ]}
+                                        />
+
+                                        <div className="rounded-2xl border border-slate-200 p-5">
+                                            <div className="text-sm font-semibold text-slate-900">
+                                                Thông tin khác / bổ sung
+                                            </div>
+
+                                            <div className="mt-4 space-y-5">
+                                                <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
+                                                    <div className="text-sm font-medium text-slate-500">
+                                                        Thành phần
+                                                    </div>
+
+                                                    <div className="text-sm leading-7 text-slate-800 whitespace-pre-line break-words">
+                                                        {ingredientsText && ingredientsText !== "undefined"
+                                                            ? ingredientsText
+                                                            : "—"}
+                                                    </div>
+                                                </div>
+
+                                                <div className="border-t border-slate-100 pt-5">
+                                                    <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
+                                                        <div className="text-sm font-medium text-slate-500">
+                                                            Thành phần dinh dưỡng
+                                                        </div>
+
+                                                        <div>
+                                                            {nutritionPairs.length === 0 ? (
+                                                                <div className="text-sm leading-7 text-slate-500">
+                                                                    —
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-2.5">
+                                                                    {nutritionPairs.map((item, index) => (
+                                                                        <div
+                                                                            key={`${item.label}-${index}`}
+                                                                            className="flex items-start justify-between gap-6 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0"
+                                                                        >
+                                                                            <div className="min-w-0 text-sm font-medium text-slate-500">
+                                                                                {item.label}
+                                                                            </div>
+
+                                                                            <div className="shrink-0 whitespace-nowrap text-right text-sm font-medium leading-7 text-slate-800">
+                                                                                {item.value || "—"}
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1856,9 +2342,9 @@ const ProductsLotsPage: React.FC = () => {
                                                                     <div className="mt-1 text-sm font-semibold text-slate-900">
                                                                         {formatUnitDisplay(
                                                                             selectedProduct?.unitName ||
-                                                                                selectedProductDetail?.unitName,
+                                                                            selectedProductDetail?.unitName,
                                                                             selectedProduct?.unitSymbol ||
-                                                                                selectedProductDetail?.unitSymbol,
+                                                                            selectedProductDetail?.unitSymbol,
                                                                         )}
                                                                     </div>
                                                                     <div className="mt-1 text-xs text-slate-500">
@@ -1868,7 +2354,7 @@ const ProductsLotsPage: React.FC = () => {
                                                                             "—"}
                                                                         {selectedProduct?.conversionRate !=
                                                                             null &&
-                                                                        selectedProduct.conversionRate !==
+                                                                            selectedProduct.conversionRate !==
                                                                             1
                                                                             ? ` • Hệ số ${selectedProduct.conversionRate}`
                                                                             : null}
@@ -1885,7 +2371,7 @@ const ProductsLotsPage: React.FC = () => {
                                                                             Đang tải...
                                                                         </div>
                                                                     ) : productPurchaseUnits.length ===
-                                                                      0 ? (
+                                                                        0 ? (
                                                                         <p className="mt-2 text-xs text-slate-500">
                                                                             Chưa có lô đang bán — tạo
                                                                             lô với đơn vị phù hợp để
@@ -1998,27 +2484,27 @@ const ProductsLotsPage: React.FC = () => {
                                                             [
                                                                 "Mã đơn vị sản phẩm",
                                                                 selectedProduct?.unitId ||
-                                                                    selectedProductDetail?.unitId ||
-                                                                    selectedLot.unitId ||
-                                                                    "—",
+                                                                selectedProductDetail?.unitId ||
+                                                                selectedLot.unitId ||
+                                                                "—",
                                                             ],
                                                             [
                                                                 "Tên đơn vị",
                                                                 formatUnitLabel(
                                                                     selectedProduct?.unitName ||
-                                                                        selectedProductDetail?.unitName ||
-                                                                        selectedLot.unitName,
+                                                                    selectedProductDetail?.unitName ||
+                                                                    selectedLot.unitName,
                                                                     selectedProduct?.unitSymbol ||
-                                                                        selectedProductDetail?.unitSymbol ||
-                                                                        selectedLot.unitSymbol,
+                                                                    selectedProductDetail?.unitSymbol ||
+                                                                    selectedLot.unitSymbol,
                                                                 ),
                                                             ],
                                                             [
                                                                 "Loại đơn vị",
                                                                 selectedProduct?.unitType ||
-                                                                    selectedProductDetail?.unitType ||
-                                                                    selectedLot.unitType ||
-                                                                    "—",
+                                                                selectedProductDetail?.unitType ||
+                                                                selectedLot.unitType ||
+                                                                "—",
                                                             ],
                                                             [
                                                                 "Hệ số quy đổi",
@@ -2028,9 +2514,9 @@ const ProductsLotsPage: React.FC = () => {
                                                                         : undefined
                                                                     const hint = unitMeta
                                                                         ? formatConversionRateHintWithBase(
-                                                                              unitMeta,
-                                                                              unitCatalog,
-                                                                          )
+                                                                            unitMeta,
+                                                                            unitCatalog,
+                                                                        )
                                                                         : null
                                                                     if (hint) return hint
                                                                     const rate =
@@ -2223,92 +2709,34 @@ const ProductsLotsPage: React.FC = () => {
                                                             Thông tin khác / bổ sung
                                                         </div>
 
-                                                        <div className="mt-4 space-y-5">
-                                                            <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
-                                                                <div className="text-sm font-medium text-slate-500">
-                                                                    Thành phần
-                                                                </div>
-
-                                                                <div className="text-sm leading-7 text-slate-800 whitespace-pre-line break-words">
-                                                                    {ingredientsText && ingredientsText !== "undefined"
-                                                                        ? ingredientsText
-                                                                        : "—"}
-                                                                </div>
+                                                        <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
+                                                            <div className="text-sm font-medium text-slate-500">
+                                                                Hướng dẫn bảo quản
                                                             </div>
-
-                                                            <div className="border-t border-slate-100 pt-5">
-                                                                <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
-                                                                    <div className="text-sm font-medium text-slate-500">
-                                                                        Thành phần dinh dưỡng
-                                                                    </div>
-
-                                                                    <div>
-                                                                        {nutritionPairs.length === 0 ? (
-                                                                            <div className="text-sm leading-7 text-slate-500">
-                                                                                —
-                                                                            </div>
-                                                                        ) : (
-                                                                            <div className="space-y-2.5">
-                                                                                {nutritionPairs.map((item, index) => (
-                                                                                    <div
-                                                                                        key={`${item.label}-${index}`}
-                                                                                        className="flex items-start justify-between gap-6 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0"
-                                                                                    >
-                                                                                        <div className="min-w-0 text-sm font-medium text-slate-500">
-                                                                                            {item.label}
-                                                                                        </div>
-
-                                                                                        <div className="shrink-0 whitespace-nowrap text-right text-sm font-medium leading-7 text-slate-800">
-                                                                                            {item.value || "—"}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                ))}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
+                                                            <div className="text-sm leading-7 text-slate-800 break-words">
+                                                                {selectedProductDetail?.storageInstructions ||
+                                                                    "—"}
                                                             </div>
+                                                        </div>
 
-                                                            <div className="border-t border-slate-100 pt-5">
-                                                                <div className="space-y-4">
-                                                                    <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
-                                                                        <div className="text-sm font-medium text-slate-500">
-                                                                            Hướng dẫn sử dụng
-                                                                        </div>
-                                                                        <div className="text-sm leading-7 text-slate-800 break-words">
-                                                                            {selectedProductDetail?.usageInstructions ||
-                                                                                "—"}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
-                                                                        <div className="text-sm font-medium text-slate-500">
-                                                                            Hướng dẫn bảo quản
-                                                                        </div>
-                                                                        <div className="text-sm leading-7 text-slate-800 break-words">
-                                                                            {selectedProductDetail?.storageInstructions ||
-                                                                                "—"}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
-                                                                        <div className="text-sm font-medium text-slate-500">
-                                                                            Cảnh báo an toàn
-                                                                        </div>
-                                                                        <div className="text-sm leading-7 text-slate-800 break-words">
-                                                                            {selectedProductDetail?.safetyWarning || "—"}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
+                                                        <div className="grid gap-5 lg:grid-cols-[180px_minmax(0,1fr)]">
+                                                            <div className="text-sm font-medium text-slate-500">
+                                                                Cảnh báo an toàn
+                                                            </div>
+                                                            <div className="text-sm leading-7 text-slate-800 break-words">
+                                                                {selectedProductDetail?.safetyWarning || "—"}
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 </div>
-                            ) : null}
+                            )}
+                        </div>
+                    </div>
+                ) : null}
 
                 {activeTab === "LOTS" && (
                     <>
@@ -2418,7 +2846,7 @@ const DetailBlock = ({
     rows,
 }: {
     title: string
-    rows: Array<[string, string]>
+    rows: Array<[string, string | number | null | undefined]>
 }) => {
     return (
         <div className="rounded-2xl border border-slate-200 p-5">
@@ -2435,7 +2863,9 @@ const DetailBlock = ({
                         </div>
 
                         <div className="text-sm leading-7 text-slate-800 break-words">
-                            {value && value !== "undefined" ? value : "—"}
+                            {value !== null && value !== undefined && String(value) !== "undefined"
+                                ? String(value)
+                                : "—"}
                         </div>
                     </div>
                 ))}

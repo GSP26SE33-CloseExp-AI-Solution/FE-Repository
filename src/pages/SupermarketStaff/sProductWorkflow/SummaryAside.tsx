@@ -83,14 +83,14 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
 
     const activeUnitConversionHint = selectedUnit
         ? formatConversionRateHintWithBase(
-              {
-                  name: selectedUnit.label,
-                  symbol: selectedUnit.unitSymbol,
-                  type: selectedUnit.unitType,
-                  conversionRate: activeConversionRate,
-              },
-              unitCatalog,
-          )
+            {
+                name: selectedUnit.label,
+                symbol: selectedUnit.unitSymbol,
+                type: selectedUnit.unitType,
+                conversionRate: activeConversionRate,
+            },
+            unitCatalog,
+        )
         : null
 
     const activeProductStatus =

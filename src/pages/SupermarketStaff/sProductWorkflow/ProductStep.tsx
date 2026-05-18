@@ -25,7 +25,6 @@ import {
     CheckboxField,
     cn,
     Field,
-    InfoRow,
     SectionCard,
     SelectField,
     TextareaField,
@@ -101,13 +100,6 @@ const formatConfidence = (value?: number | null) => {
 const stringifyIngredients = (value?: string[] | null) => {
     if (!value?.length) return "—"
     return value.filter(Boolean).join(", ")
-}
-
-const stringifyNutritionFacts = (value?: Record<string, string> | null) => {
-    if (!value || Object.keys(value).length === 0) return "—"
-    return Object.entries(value)
-        .map(([key, itemValue]) => `${key}: ${itemValue}`)
-        .join(" | ")
 }
 
 const OCR_PROGRESS_STEPS: OcrProgressStep[] = [

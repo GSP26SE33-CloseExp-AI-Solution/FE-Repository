@@ -136,4 +136,51 @@ export const productService = {
 
         return unwrap(response.data)
     },
+
+    updateProductImages: async (
+        productId: string,
+        files: File[],
+        replaceExisting = false,
+    ): Promise<ProductResponseDto> => {
+        const formData = new FormData()
+
+        files.forEach((file) => {
+            formData.append("files", file)
+        })
+
+        formData.append("replaceExisting", String(replaceExisting))
+
+        console.log("[productService.updateProductImages] request:", {
+            productId,
+            replaceExisting,
+            fileCount: files.length,
+            files: files.map((file) => ({
+                name: file.name,
+                type: file.type,
+                size: file.size,
+            })),
+        })
+
+        const response = await axiosClient.put<ApiResponse<ProductResponseDto>>(
+            `/SupermarketStaff/products/${productId}/images`,
+            formData,
+        )
+
+        console.log("[productService.updateProductImages] raw response:", response.data)
+
+        if (!response.data.success || !response.data.data) {
+            console.error("[productService.updateProductImages] failed:", response.data)
+
+            throw new Error(response.data.message || "Không thể cập nhật ảnh sản phẩm")
+        }
+
+        console.log("[productService.updateProductImages] success data:", {
+            productId: response.data.data.productId,
+            mainImageUrl: response.data.data.mainImageUrl,
+            totalImages: response.data.data.totalImages,
+            productImages: response.data.data.productImages,
+        })
+
+        return response.data.data
+    },
 }
