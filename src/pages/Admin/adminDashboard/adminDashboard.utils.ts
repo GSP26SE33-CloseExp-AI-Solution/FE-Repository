@@ -80,16 +80,13 @@ export const getErrorMessage = (error: unknown, fallback: string) => {
         return responseData.message.trim()
     }
 
-    if (Array.isArray(responseData?.errors) && responseData.errors.length > 0) {
-        return String(responseData.errors[0] ?? fallback)
+    const apiErrors = responseData?.errors
+    if (Array.isArray(apiErrors) && apiErrors.length > 0) {
+        return String(apiErrors[0] ?? fallback)
     }
 
-    if (
-        responseData?.errors &&
-        typeof responseData.errors === "object" &&
-        !Array.isArray(responseData.errors)
-    ) {
-        const firstValue = Object.values(responseData.errors)[0]
+    if (apiErrors && typeof apiErrors === "object" && !Array.isArray(apiErrors)) {
+        const firstValue = Object.values(apiErrors)[0]
 
         if (Array.isArray(firstValue) && firstValue.length > 0) {
             return String(firstValue[0] ?? fallback)
@@ -100,12 +97,13 @@ export const getErrorMessage = (error: unknown, fallback: string) => {
         }
     }
 
-    if (Array.isArray(responseData?.error) && responseData.error.length > 0) {
-        return String(responseData.error[0] ?? fallback)
+    const apiErrorField = responseData?.error
+    if (Array.isArray(apiErrorField) && apiErrorField.length > 0) {
+        return String(apiErrorField[0] ?? fallback)
     }
 
-    if (typeof responseData?.error === "string" && responseData.error.trim()) {
-        return responseData.error.trim()
+    if (typeof apiErrorField === "string" && apiErrorField.trim()) {
+        return apiErrorField.trim()
     }
 
     return err?.message || fallback

@@ -76,7 +76,7 @@ const getPartnerDestinationByRole = (roleName?: string | null) => {
 }
 
 const CustomerHeader = () => {
-    const { user, roleName, logout } = useAuthContext()
+    const { user, roleName, logout, primaryAvatarUrl } = useAuthContext()
     const { logoutAll, loggingOutAll } = useLogoutAll()
     const navigate = useNavigate()
     const location = useLocation()
@@ -658,8 +658,16 @@ const CustomerHeader = () => {
                                     onClick={() => setOpen((v) => !v)}
                                     className="flex items-center gap-3 rounded-2xl px-3 py-2 transition hover:bg-white/60"
                                 >
-                                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-500 font-bold text-white shadow-sm">
-                                        {avatarText}
+                                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-green-400 to-emerald-500 font-bold text-white shadow-sm">
+                                        {primaryAvatarUrl ? (
+                                            <img
+                                                src={primaryAvatarUrl}
+                                                alt=""
+                                                className="absolute inset-0 h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <span>{avatarText}</span>
+                                        )}
                                     </div>
 
                                     <div className="hidden flex-col text-left leading-tight lg:flex">
@@ -878,8 +886,16 @@ const CustomerHeader = () => {
                         ) : (
                             <div className="mt-4 rounded-[28px] border border-white/70 bg-white/85 p-4 shadow-[0_12px_35px_rgba(16,24,40,0.08)]">
                                 <div className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-emerald-50 via-white to-green-50 px-3 py-3">
-                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-500 font-bold text-white shadow-sm">
-                                        {avatarText}
+                                    <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-green-400 to-emerald-500 font-bold text-white shadow-sm">
+                                        {primaryAvatarUrl ? (
+                                            <img
+                                                src={primaryAvatarUrl}
+                                                alt=""
+                                                className="absolute inset-0 h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <span>{avatarText}</span>
+                                        )}
                                     </div>
 
                                     <div className="min-w-0">

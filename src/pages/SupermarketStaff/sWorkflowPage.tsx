@@ -18,6 +18,7 @@ import type {
     ExistingProductSummaryDto,
     LocalImageFile,
     ProductWorkflowState,
+    WorkflowAnalyzeImageResultDto,
     WorkflowCreateAndPublishLotRequestDto,
 } from "@/types/product-ai-workflow.type"
 import {

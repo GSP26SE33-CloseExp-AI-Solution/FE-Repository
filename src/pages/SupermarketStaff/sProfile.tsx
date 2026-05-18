@@ -17,6 +17,7 @@ import {
 import { useAuthContext } from "@/contexts/AuthContext"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
 import { showError, showSuccess } from "@/utils/toast"
+import ProfileAvatarSection from "@/components/profile/ProfileAvatarSection"
 
 const getSafeString = (value?: string | null) => value?.trim() ?? ""
 
@@ -219,9 +220,13 @@ const SupermarketProfile = () => {
                 <div className="space-y-6">
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                         <div className="flex flex-col items-center text-center">
-                            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-sky-50">
-                                <Store className="h-10 w-10 text-sky-600" />
-                            </div>
+                            <ProfileAvatarSection
+                                identityIcon={Store}
+                                fallbackWrapClassName="flex h-20 w-20 items-center justify-center rounded-full bg-sky-50"
+                                fallbackIconClassName="h-10 w-10 text-sky-600"
+                                uploadButtonClassName="inline-flex items-center justify-center rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                viewButtonClassName="inline-flex items-center justify-center gap-1 rounded-full border border-sky-200 bg-white px-3 py-1.5 text-xs font-semibold text-sky-700 transition hover:bg-sky-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            />
 
                             <h2 className="mt-4 text-lg font-bold text-slate-900">
                                 {user.fullName || "--"}
@@ -548,7 +553,7 @@ const SupermarketProfile = () => {
                 </div>
             </div>
         </div>
-    )
+)
 }
 
 export default SupermarketProfile

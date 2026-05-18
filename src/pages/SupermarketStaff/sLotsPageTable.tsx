@@ -67,6 +67,7 @@ const cn = (...classes: Array<string | false | null | undefined>) =>
 const LOT_TABLE_GRID =
     "grid grid-cols-[minmax(220px,1.35fr)_minmax(96px,0.75fr)_minmax(108px,0.8fr)_minmax(92px,0.65fr)_minmax(96px,0.7fr)_minmax(118px,0.85fr)_minmax(138px,0.95fr)_minmax(128px,0.9fr)_minmax(96px,0.7fr)_52px] items-center gap-3"
 const LOT_TABLE_MIN_WIDTH = "min-w-[1180px]"
+const EMPTY_PARTIAL_PRODUCT_LOT = {} as Partial<ProductLotItem>
 
 const compareText = (a?: string | null, b?: string | null) => {
     const left = (a || "").trim().toLocaleLowerCase("vi")
@@ -502,7 +503,7 @@ const ProductsLotsPage: React.FC = () => {
     const [serverTotal, setServerTotal] = useState(0)
 
     const [selectedLotState, setSelectedLot] = useState<ProductLotItem | null>(null)
-    const selectedLot = selectedLotState || ({} as Partial<ProductLotItem>)
+    const selectedLot = selectedLotState ?? EMPTY_PARTIAL_PRODUCT_LOT
     const [selectedProduct, setSelectedProduct] = useState<ProductResponseDto | null>(null)
     const [selectedProductDetail, setSelectedProductDetail] =
         useState<ProductDetailDto | null>(null)

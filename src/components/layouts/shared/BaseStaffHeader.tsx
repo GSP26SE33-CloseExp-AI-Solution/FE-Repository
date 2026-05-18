@@ -38,7 +38,7 @@ const BaseStaffHeader = ({
     onLogoutAll,
     loggingOutAll = false,
 }: BaseStaffHeaderProps) => {
-    const { user, logout } = useAuthContext()
+    const { user, logout, primaryAvatarUrl } = useAuthContext()
     const navigate = useNavigate()
     const location = useLocation()
 
@@ -126,9 +126,17 @@ const BaseStaffHeader = ({
                             className="flex items-center gap-3 rounded-xl px-3 py-2 transition hover:bg-white/60"
                         >
                             <div
-                                className={`flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br ${accentClass} font-bold text-white`}
+                                className={`relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br ${accentClass} font-bold text-white`}
                             >
-                                {avatarText}
+                                {primaryAvatarUrl ? (
+                                    <img
+                                        src={primaryAvatarUrl}
+                                        alt=""
+                                        className="absolute inset-0 h-full w-full object-cover"
+                                    />
+                                ) : (
+                                    <span>{avatarText}</span>
+                                )}
                             </div>
 
                             <div className="flex flex-col text-left leading-tight">

@@ -64,9 +64,6 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
         selectedUnit?.label || workflow.productForm.unitId,
     )
 
-    const activeProductStatus =
-        workflow.createdProduct?.status ?? workflow.ownProduct?.status ?? null
-
     return (
         <div className="space-y-5">
             <SectionCard title="Ảnh hiện tại">

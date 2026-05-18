@@ -1,7 +1,7 @@
 import axiosClient from "@/utils/axiosClient"
 import type {
     ApiResponse,
-    AssignDeliveryPayload,
+    AssignDeliveryGroupPayload,
     CustomerConfirmationPayload,
     DeliveryActionPayload,
     DeliveryGroupDetail,
@@ -62,7 +62,7 @@ export const deliveryService = {
     /* =========================
        Delivery Assignment
     ========================= */
-    async assignGroup(deliveryGroupId: string, payload: AssignDeliveryPayload) {
+    async assignGroup(deliveryGroupId: string, payload: AssignDeliveryGroupPayload) {
         const response = await axiosClient.post<ApiResponse<DeliveryGroupDetail>>(
             `/delivery/groups/${deliveryGroupId}/assign`,
             payload
@@ -72,7 +72,7 @@ export const deliveryService = {
 
     async updateGroupAssignment(
         deliveryGroupId: string,
-        payload: AssignDeliveryPayload
+        payload: AssignDeliveryGroupPayload
     ) {
         const response = await axiosClient.put<ApiResponse<DeliveryGroupDetail>>(
             `/delivery/groups/${deliveryGroupId}/assignment`,

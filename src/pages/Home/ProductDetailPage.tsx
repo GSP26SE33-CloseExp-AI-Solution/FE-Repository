@@ -10,7 +10,6 @@ import {
     Plus,
     ShieldCheck,
     ShoppingCart,
-    Store,
     Trash2,
     Truck,
 } from "lucide-react"
@@ -125,7 +124,7 @@ const ProductDetailPage = () => {
     const [loading, setLoading] = useState(!stateProduct)
     const [error, setError] = useState("")
 
-    const { cartCount, getCartQty, addToCart, increaseCart, decreaseCart } = useHomeCart()
+    const { getCartQty, addToCart, increaseCart, decreaseCart } = useHomeCart()
 
     useEffect(() => {
         if (product || !productId) return

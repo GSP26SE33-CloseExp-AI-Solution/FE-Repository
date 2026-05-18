@@ -374,6 +374,88 @@ export type AssignDeliveryGroupPayload = {
     reason?: string
 }
 
+export type DeliveryActionPayload = {
+    notes?: string
+}
+
+export type ConfirmDeliveryPayload = {
+    proofImageUrl: string
+    verificationCode: string
+    notes?: string
+    deliveryGroupId?: string | null
+    orderItemIds?: string[] | null
+}
+
+export type ReportDeliveryFailurePayload = {
+    failureReason: string
+    notes?: string
+    deliveryGroupId?: string | null
+    orderItemIds?: string[] | null
+}
+
+export type CustomerConfirmationPayload = {
+    notes?: string
+}
+
+export type DeliveryOrderDetailItem = {
+    orderItemId: string
+    productName: string
+    quantity: number
+    unitPrice: number
+    subTotal: number
+    packagingStatus: string
+    deliveryStatus?: string | null
+    deliveryGroupId?: string | null
+}
+
+export type DeliveryOrderDetail = {
+    orderId: string
+    deliveryGroupId?: string | null
+    orderCode: string
+    status: string
+    deliveryType: string
+    totalAmount: number
+    deliveryFee: number
+    orderDate: string
+    customerName: string
+    customerPhone: string
+    collectionPointName?: string | null
+    addressLine?: string | null
+    latitude?: number | null
+    longitude?: number | null
+    deliveryNote?: string | null
+    timeSlotDisplay: string
+    totalItems: number
+    items: DeliveryOrderDetailItem[]
+}
+
+export type DeliveryHistoryItem = {
+    deliveryId: string
+    orderId: string
+    orderCode: string
+    userId: string
+    deliveryStaffName: string
+    status: string
+    failureReason?: string | null
+    deliveredAt?: string | null
+    deliveryLatitude?: number | null
+    deliveryLongitude?: number | null
+    proofImageUrl?: string | null
+}
+
+export type DeliveryStats = {
+    deliveryStaffId: string
+    deliveryStaffName: string
+    totalAssignedGroups: number
+    totalOrders: number
+    completedOrders: number
+    failedOrders: number
+    pendingOrders: number
+    inTransitOrders: number
+    completionRate: number
+    lastDeliveryAt?: string | null
+}
+
 export type MoveOrderItemsToDraftGroupPayload = {
     orderItemIds: string[]
     deliveryGroupId?: string | null
@@ -415,6 +497,9 @@ export type DeliveryGroupSummary = {
     createdAt?: string
     updatedAt?: string
 }
+
+/** Matches DeliveryGroupSummaryDto from `/delivery/groups*` list responses. */
+export type DeliveryGroupListItem = DeliveryGroupSummary
 
 export type DeliveryGroupOrderItem = {
     orderItemId: string

@@ -3,6 +3,7 @@ import type { AuthData, AuthUser } from "@/types/auth.types"
 import { getAuthSession, clearAuth, saveAuth } from "@/utils/authStorage"
 import { authService } from "@/services/auth.service"
 import { adminService } from "@/services/admin.service"
+import { getMyPrimaryImageApi } from "@/services/user.service"
 
 type AuthContextType = {
     user: AuthUser | null
@@ -11,11 +12,13 @@ type AuthContextType = {
     isSupermarketManager: boolean
     isSubSupermarketStaff: boolean
     employeeCodeHint: string
+    primaryAvatarUrl: string | null
     initialized: boolean
     loginSuccess: (session: AuthData) => void
     logout: () => Promise<void>
     logoutAll: () => Promise<void>
     refreshProfile: () => Promise<AuthUser | null>
+    refreshPrimaryAvatar: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -56,6 +59,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [isSupermarketManager, setIsSupermarketManager] = useState(false)
     const [isSubSupermarketStaff, setIsSubSupermarketStaff] = useState(false)
     const [employeeCodeHint, setEmployeeCodeHint] = useState("")
+    const [primaryAvatarUrl, setPrimaryAvatarUrl] = useState<string | null>(null)
     const [initialized, setInitialized] = useState(false)
 
     const applyUserState = useCallback((nextUser: AuthUser | null) => {
@@ -69,6 +73,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsSupermarketManager(derived.isSupermarketManager)
         setIsSubSupermarketStaff(derived.isSubSupermarketStaff)
         setEmployeeCodeHint(derived.employeeCodeHint)
+    }, [])
+
+    const refreshPrimaryAvatar = useCallback(async () => {
+        const session = getAuthSession()
+        if (!session?.user?.userId) {
+            setPrimaryAvatarUrl(null)
+            return
+        }
+
+        try {
+            const image = await getMyPrimaryImageApi()
+            const nextUrl = image?.preSignedUrl?.trim() || image?.imageUrl?.trim() || null
+            setPrimaryAvatarUrl(nextUrl)
+        } catch {
+            setPrimaryAvatarUrl(null)
+        }
     }, [])
 
     const refreshProfile = useCallback(async (): Promise<AuthUser | null> => {
@@ -105,7 +125,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 applyUserState(session.user)
 
                 try {
-                    await refreshProfile()
+                    await Promise.all([refreshProfile(), refreshPrimaryAvatar()])
                 } finally {
                     setInitialized(true)
                 }
@@ -117,14 +137,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         void run()
-    }, [applyUserState, refreshProfile])
+    }, [applyUserState, refreshPrimaryAvatar, refreshProfile])
 
     const loginSuccess = (session: AuthData) => {
         saveAuth(session)
         applyUserState(session.user)
         setInitialized(true)
 
-        void refreshProfile()
+        void Promise.all([refreshProfile(), refreshPrimaryAvatar()])
     }
 
     const resetAuthState = () => {
@@ -138,6 +158,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setIsSupermarketManager(false)
         setIsSubSupermarketStaff(false)
         setEmployeeCodeHint("")
+        setPrimaryAvatarUrl(null)
         setInitialized(true)
     }
 
@@ -171,11 +192,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 isSupermarketManager,
                 isSubSupermarketStaff,
                 employeeCodeHint,
+                primaryAvatarUrl,
                 initialized,
                 loginSuccess,
                 logout,
                 logoutAll,
                 refreshProfile,
+                refreshPrimaryAvatar,
             }}
         >
             {children}
