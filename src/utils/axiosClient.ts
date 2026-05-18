@@ -6,8 +6,11 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
     _retry?: boolean
 }
 
+const rawApiUrl = (process.env.REACT_APP_API_URL ?? "").trim()
+const apiOrigin = rawApiUrl.replace(/\/api\/?$/i, "").replace(/\/+$/, "")
+
 const axiosClient = axios.create({
-    baseURL: `${process.env.REACT_APP_API_URL}/api`,
+    baseURL: apiOrigin ? `${apiOrigin}/api` : "/api",
 })
 
 let isRedirectingToLogin = false

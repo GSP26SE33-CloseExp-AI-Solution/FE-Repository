@@ -131,6 +131,9 @@ export type CustomerOrderContext = {
 	 */
 	timeSlotId?: TimeSlotId;
 
+	/** YYYY-MM-DD — ngày giao / nhận khách chọn ở checkout */
+	deliveryDate?: string;
+
 	addressId?: string;
 	promotionId?: string;
 	orderId?: string;
@@ -141,6 +144,7 @@ export type CustomerOrderContext = {
  * không phải raw response của carts endpoint
  */
 export type CartItem = {
+	cartItemId?: string;
 	lotId: string;
 	productId: string;
 	supermarketId: string;
@@ -148,6 +152,19 @@ export type CartItem = {
 	price: number;
 	qty: number;
 	imageUrl?: string;
+	unitId?: string;
+	unitName?: string;
+	unitSymbol?: string;
+	conversionRate?: number;
+	productUnitId?: string;
+	productUnitName?: string;
+	productUnitSymbol?: string;
+	productConversionRate?: number;
+	/** Unit the customer chose when adding to cart (Level B audit). */
+	purchaseUnitId?: string;
+	purchaseUnitName?: string;
+	purchaseUnitSymbol?: string;
+	purchaseConversionRate?: number;
 };
 
 /* =========================
@@ -185,6 +202,7 @@ export type NearbyCollectionPointPayload = {
  */
 export type CreateOrderItemPayload = {
 	lotId: string;
+	purchaseUnitId?: string;
 	quantity: number;
 	unitPrice: number;
 };
@@ -196,6 +214,7 @@ export type CreateOrderItemPayload = {
 export type UpdateOrderItemPayload = {
 	orderItemId?: string;
 	lotId: string;
+	purchaseUnitId?: string;
 	quantity: number;
 	unitPrice: number;
 };
@@ -235,6 +254,8 @@ export type CreateOrderPayload = {
  */
 export type CreateMyOrderPayload = {
 	timeSlotId: string;
+	/** UTC date-only or ISO string; BE maps to OrderDate for fulfillment grouping */
+	deliveryDate?: string;
 	collectionId?: string | null;
 	deliveryType: DeliveryMethodId;
 	addressId?: string | null;
@@ -367,6 +388,9 @@ export type OrderItemResponse = {
 	orderItemId: string;
 	orderId: string;
 	lotId: string;
+	purchaseUnitId?: string;
+	purchaseUnitName?: string;
+	purchaseUnitSymbol?: string;
 	quantity: number;
 	unitPrice: number;
 	totalPrice?: number;
@@ -489,6 +513,9 @@ export type MyOrderLineItem = {
 	lineTotal?: number;
 	productName?: string;
 	expiryDate?: string;
+	purchaseUnitId?: string;
+	purchaseUnitName?: string;
+	purchaseUnitSymbol?: string;
 };
 
 /**

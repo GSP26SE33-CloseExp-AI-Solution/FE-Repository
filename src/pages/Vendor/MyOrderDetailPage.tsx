@@ -21,6 +21,7 @@ import { supermarketService } from "@/services/supermarket.service"
 import type { OrderDetails, RefundDetails } from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
 import { googleMapsUrl, lastOrderStorage, money } from "@/utils/orderStorage"
+import { formatOrderItemPurchaseQuantityLine } from "@/utils/unitMeasure"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -606,7 +607,17 @@ const MyOrderDetailPage: React.FC = () => {
 
                                                     <div className="mt-1 text-[12px] text-slate-500">
                                                         {money(item.unitPrice)} ×{" "}
-                                                        {item.quantity}
+                                                        {formatOrderItemPurchaseQuantityLine(
+                                                            {
+                                                                quantity: item.quantity,
+                                                                purchaseUnitId:
+                                                                    item.purchaseUnitId,
+                                                                purchaseUnitName:
+                                                                    item.purchaseUnitName,
+                                                                purchaseUnitSymbol:
+                                                                    item.purchaseUnitSymbol,
+                                                            },
+                                                        )}
                                                     </div>
                                                 </div>
 

@@ -1,6 +1,7 @@
 import {
     LayoutDashboard,
     Box,
+    Scale,
     BarChart3,
     User,
     Bell,
@@ -13,6 +14,11 @@ import BaseSidebar, { type SidebarMenuItem } from "@/components/layouts/shared/B
 const supermarketStaffMenuItems: SidebarMenuItem[] = [
     { label: "Tổng quan", path: "/supermarketStaff/dashboard", icon: LayoutDashboard, end: true },
     { label: "Sản phẩm", path: "/supermarketStaff/products", icon: Box },
+    {
+        label: "Đơn vị bán",
+        path: "/supermarketStaff/purchase-units",
+        icon: Scale,
+    },
     { label: "AI Token", path: "/supermarketStaff/ai-tokens", icon: Bot },
     { label: "Thống kê", path: "/supermarketStaff/statistic", icon: BarChart3, end: true },
     { label: "Hồ sơ", path: "/supermarketStaff/profile", icon: User, end: true },

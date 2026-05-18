@@ -11,11 +11,17 @@ import {
 } from "lucide-react"
 
 import type { CartItem, CustomerOrderContext } from "@/types/order.type"
+import { cartBridge } from "@/utils/cartBridge"
 import {
     cartStorage,
     money,
     orderContextStorage,
 } from "@/utils/orderStorage"
+import {
+    formatCustomerPurchaseUnitHint,
+    formatCustomerQuantityEquivalence,
+    formatUnitDisplay,
+} from "@/utils/unitMeasure"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
@@ -42,6 +48,8 @@ const CartPage: React.FC = () => {
     useEffect(() => {
         const syncCart = () => setItems(cartStorage.get())
         const syncCtx = () => setCtx(orderContextStorage.get())
+
+        void cartBridge.refresh().then(syncCart)
 
         window.addEventListener("cart:updated", syncCart as EventListener)
         window.addEventListener(
@@ -85,30 +93,17 @@ const CartPage: React.FC = () => {
         [location.pathname],
     )
 
-    const updateQty = (lotId: string, nextQty: number) => {
-        const target = items.find((item) => item.lotId === lotId)
-        if (!target) return
-
-        if (nextQty <= 0) {
-            const next = items.filter((item) => item.lotId !== lotId)
-            setItems(next)
-            cartStorage.set(next)
-            return
-        }
-
-        const qty = Math.max(1, Math.min(99, nextQty))
-        const next = items.map((item) =>
-            item.lotId === lotId ? { ...item, qty } : item,
-        )
-
-        setItems(next)
-        cartStorage.set(next)
+    const updateQty = (target: CartItem, nextQty: number) => {
+        const qty = Math.max(0, Math.min(99, nextQty))
+        void cartBridge.setQuantity(target, qty).then(() => {
+            setItems(cartStorage.get())
+        })
     }
 
-    const removeItem = (lotId: string) => {
-        const next = items.filter((item) => item.lotId !== lotId)
-        setItems(next)
-        cartStorage.set(next)
+    const removeItem = (target: CartItem) => {
+        void cartBridge.setQuantity(target, 0).then(() => {
+            setItems(cartStorage.get())
+        })
     }
 
     const clearCart = () => {
@@ -116,8 +111,7 @@ const CartPage: React.FC = () => {
         const ok = window.confirm("Bạn muốn xóa toàn bộ giỏ hàng?")
         if (!ok) return
 
-        setItems([])
-        cartStorage.clear()
+        void cartBridge.clear().then(() => setItems([]))
     }
 
     const handleCheckout = () => {
@@ -281,9 +275,32 @@ const CartPage: React.FC = () => {
                                                     <div className="mt-1 text-[12px] font-semibold text-rose-600">
                                                         {money(item.price)}
                                                         <span className="ml-1 font-normal text-slate-400">
-                                                            / đơn vị
+                                                            /{" "}
+                                                            {formatUnitDisplay(
+                                                                item.purchaseUnitName ??
+                                                                    item.unitName,
+                                                                item.purchaseUnitSymbol ??
+                                                                    item.unitSymbol,
+                                                                "đơn vị",
+                                                            )}
                                                         </span>
                                                     </div>
+
+                                                    {formatCustomerQuantityEquivalence(
+                                                        item.qty,
+                                                        item,
+                                                    ) ? (
+                                                        <p className="mt-1 text-[11px] font-medium text-sky-700">
+                                                            {formatCustomerQuantityEquivalence(
+                                                                item.qty,
+                                                                item,
+                                                            )}
+                                                        </p>
+                                                    ) : null}
+
+                                                    <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">
+                                                        {formatCustomerPurchaseUnitHint(item)}
+                                                    </p>
 
                                                     <div className="mt-1 line-clamp-1 text-[11px] text-slate-400">
                                                         Lô: {item.lotId}
@@ -301,7 +318,7 @@ const CartPage: React.FC = () => {
                                                         type="button"
                                                         onClick={() =>
                                                             updateQty(
-                                                                item.lotId,
+                                                                item,
                                                                 item.qty - 1,
                                                             )
                                                         }
@@ -319,7 +336,7 @@ const CartPage: React.FC = () => {
                                                         type="button"
                                                         onClick={() =>
                                                             updateQty(
-                                                                item.lotId,
+                                                                item,
                                                                 item.qty + 1,
                                                             )
                                                         }
@@ -344,7 +361,7 @@ const CartPage: React.FC = () => {
                                                 <button
                                                     type="button"
                                                     onClick={() =>
-                                                        removeItem(item.lotId)
+                                                        removeItem(item)
                                                     }
                                                     className="grid h-9 w-9 place-items-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
                                                     aria-label="Xóa sản phẩm"

@@ -18,6 +18,10 @@ import type {
     WorkflowNextAction,
 } from "@/types/product-ai-workflow.type"
 import {
+    formatConversionRateHintWithBase,
+    formatUnitOptionLabel,
+} from "@/utils/unitMeasure"
+import {
     CheckboxField,
     cn,
     Field,
@@ -45,6 +49,7 @@ type ProductUnitOption = {
     value: string
     unitType?: string
     unitSymbol?: string
+    conversionRate?: number
 }
 
 type Props = {
@@ -241,6 +246,25 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
         form.barcode.trim() &&
         form.unitId.trim(),
     )
+
+    const selectedUnit = unitOptions.find((item) => item.unitId === form.unitId)
+    const unitCatalog = unitOptions.map((item) => ({
+        name: item.label,
+        symbol: item.unitSymbol,
+        type: item.unitType,
+        conversionRate: item.conversionRate,
+    }))
+    const selectedUnitConversionHint = selectedUnit
+        ? formatConversionRateHintWithBase(
+              {
+                  name: selectedUnit.label,
+                  symbol: selectedUnit.unitSymbol,
+                  type: selectedUnit.unitType,
+                  conversionRate: selectedUnit.conversionRate,
+              },
+              unitCatalog,
+          )
+        : null
 
     const showOcrStep = mode === "CREATE_NEW_PRODUCT" && nextAction === "CREATE_PRODUCT"
 
@@ -533,20 +557,40 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                         }))}
                     />
 
-                    <SelectField
-                        label="Đơn vị bán cho lô hàng *"
-                        value={form.unitId}
-                        onChange={(value) =>
-                            onChange({
-                                ...form,
-                                unitId: value ? String(value) : "",
-                            })
-                        }
-                        options={unitOptions.map((item) => ({
-                            label: item.label,
-                            value: item.unitId,
-                        }))}
-                    />
+                    <div className="space-y-2">
+                        <SelectField
+                            label="Đơn vị chuẩn sản phẩm *"
+                            value={form.unitId}
+                            onChange={(value) =>
+                                onChange({
+                                    ...form,
+                                    unitId: value ? String(value) : "",
+                                })
+                            }
+                            options={unitOptions.map((item) => ({
+                                label: formatUnitOptionLabel(
+                                    {
+                                        name: item.label,
+                                        symbol: item.unitSymbol,
+                                        type: item.unitType,
+                                        conversionRate: item.conversionRate,
+                                    },
+                                    unitCatalog,
+                                ),
+                                value: item.unitId,
+                            }))}
+                        />
+                        {selectedUnitConversionHint ? (
+                            <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-800">
+                                {selectedUnitConversionHint}. Đây là đơn vị chuẩn của sản phẩm;
+                                ở bước tạo lô bạn có thể chọn đơn vị bán khác (Hộp, Gói…).
+                            </p>
+                        ) : selectedUnit ? (
+                            <p className="text-xs text-slate-500">
+                                Đơn vị gốc trong nhóm {selectedUnit.unitType || "—"} (hệ số = 1).
+                            </p>
+                        ) : null}
+                    </div>
 
                     <Field
                         label="Loại thực phẩm"

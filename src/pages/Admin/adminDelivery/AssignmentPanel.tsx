@@ -29,6 +29,7 @@ import {
     mapOrderStatusLabel,
     mapPackagingStatusLabel,
 } from "./adminDelivery.utils"
+import { formatOrderItemPurchaseQuantityLine } from "@/utils/unitMeasure"
 import { EmptyState, SectionCard, StaffCard } from "./Shared"
 
 type AssignFormState = {
@@ -720,10 +721,27 @@ export const AdminDeliveryAssignmentPanel = ({
                                                                             <span className="font-medium text-slate-900">
                                                                                 Số lượng:
                                                                             </span>{" "}
-                                                                            {formatNumber(
-                                                                                item.quantity
+                                                                            {formatOrderItemPurchaseQuantityLine(
+                                                                                {
+                                                                                    quantity:
+                                                                                        item.quantity,
+                                                                                    purchaseUnitName:
+                                                                                        item.purchaseUnitName,
+                                                                                    purchaseUnitSymbol:
+                                                                                        item.purchaseUnitSymbol,
+                                                                                    purchaseQuantity:
+                                                                                        item.purchaseQuantity,
+                                                                                },
                                                                             )}
                                                                         </p>
+                                                                        {item.lotUnitName ? (
+                                                                            <p>
+                                                                                <span className="font-medium text-slate-900">
+                                                                                    Đơn vị lô:
+                                                                                </span>{" "}
+                                                                                {item.lotUnitName}
+                                                                            </p>
+                                                                        ) : null}
                                                                         <p>
                                                                             <span className="font-medium text-slate-900">
                                                                                 Đơn giá:

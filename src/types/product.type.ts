@@ -79,6 +79,7 @@ export type ProductResponseDto = {
     unitName?: string | null
     unitType?: string | null
     unitSymbol?: string | null
+    conversionRate?: number | null
 
     // FE-safe optional fields
     responsibleOrg?: string
@@ -103,7 +104,11 @@ export type ProductDetailDto = {
     distributor?: string
     nutritionFacts?: ProductNutritionFacts
     category?: string
+    unitId?: string
     unitName?: string
+    unitType?: string
+    unitSymbol?: string
+    conversionRate?: number
     quantity?: number
     originalPrice?: number
     finalPrice?: number
@@ -124,6 +129,7 @@ export type ProductDetailDto = {
     unitId?: string | null
     unitType?: string | null
     unitSymbol?: string | null
+    conversionRate?: number | null
 
     // FE-safe optional fields
     supermarketId?: string

@@ -8,6 +8,7 @@ export type ProductUnitInfoDto = {
     unitName?: string | null
     unitType?: string | null
     unitSymbol?: string | null
+    conversionRate?: number | null
 }
 
 export type NutritionFactsMap = ProductNutritionFacts
@@ -303,6 +304,7 @@ export type ProductFormState = {
 }
 
 export type LotFormState = {
+    unitId: string
     expiryDate: string
     manufactureDate: string
     quantity: number | ""
@@ -361,6 +363,7 @@ export const emptyProductForm = (): ProductFormState => ({
 })
 
 export const emptyLotForm = (): LotFormState => ({
+    unitId: "",
     expiryDate: "",
     manufactureDate: "",
     quantity: 1,

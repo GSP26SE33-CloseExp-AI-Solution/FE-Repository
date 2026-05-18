@@ -121,6 +121,7 @@ export type UnitItem = {
     name: string
     type: string
     symbol: string
+    conversionRate: number
     createdAt: string
     updatedAt: string
     relatedStockLotCount: number
@@ -131,6 +132,7 @@ export type UpsertUnitPayload = {
     name: string
     type: string
     symbol: string
+    conversionRate?: number
 }
 
 export type PromotionItem = {
@@ -296,6 +298,10 @@ export type InternalStaffRow = {
 export type AdminOrderItem = {
     orderItemId: string
     lotId: string
+    purchaseUnitId?: string | null
+    purchaseUnitName?: string | null
+    purchaseUnitSymbol?: string | null
+    purchaseQuantity?: number | null
     quantity: number
     unitPrice: number
     totalPrice?: number
@@ -422,6 +428,11 @@ export type DeliveryGroupOrderItem = {
     quantity: number
     unitPrice: number
     subTotal: number
+    purchaseUnitId?: string | null
+    purchaseUnitName?: string | null
+    purchaseUnitSymbol?: string | null
+    purchaseQuantity?: number | null
+    lotUnitName?: string | null
     packagingStatus: string
     deliveryStatus: string
     deliveryGroupId: string
@@ -558,10 +569,19 @@ export type PackagingPendingOrderItem = {
 
 export type PackagingOrderProductItem = {
     orderItemId: string
+    lotId: string
     productName: string
     quantity: number
     unitPrice: number
     subTotal: number
+    expiryDate?: string | null
+    manufactureDate?: string | null
+    unitName?: string | null
+    supermarketName?: string | null
+    packagingStatus?: string
+    deliveryStatus?: string | null
+    packagedAt?: string | null
+    packagingFailedReason?: string | null
 }
 
 export type PackagingOrderDetail = {

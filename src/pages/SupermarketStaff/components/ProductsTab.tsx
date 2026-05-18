@@ -4,6 +4,7 @@ import toast from "react-hot-toast"
 import { productService } from "@/services/product.service"
 import type { ProductResponseDto } from "@/types/product.type"
 import { PRODUCT_STATUS_OPTIONS, PRODUCT_TYPE_OPTIONS } from "@/types/product.type"
+import { formatUnitDisplay } from "@/utils/unitMeasure"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")
@@ -145,12 +146,13 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ supermarketId, onViewDetail }
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <div className="min-w-[900px]">
-                            <div className="grid grid-cols-[72px_minmax(180px,1fr)_100px_100px_100px_120px_100px_48px] items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-600">
+                        <div className="min-w-[1020px]">
+                            <div className="grid grid-cols-[72px_minmax(180px,1fr)_100px_100px_120px_100px_120px_100px_48px] items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.04em] text-slate-600">
                                 <div>Ảnh</div>
                                 <div>Sản phẩm / Mã vạch</div>
                                 <div>Thương hiệu</div>
                                 <div>Danh mục</div>
+                                <div>Đơn vị chuẩn</div>
                                 <div>Loại hàng</div>
                                 <div>Trạng thái</div>
                                 <div className="text-right">Giá cơ sở</div>
@@ -161,7 +163,7 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ supermarketId, onViewDetail }
                                 {products.map((product) => (
                                     <div
                                         key={product.productId}
-                                        className="grid grid-cols-[72px_minmax(180px,1fr)_100px_100px_100px_120px_100px_48px] items-center gap-2 px-4 py-3 text-[12px] text-slate-700 transition hover:bg-emerald-50/30"
+                                        className="grid grid-cols-[72px_minmax(180px,1fr)_100px_100px_120px_100px_120px_100px_48px] items-center gap-2 px-4 py-3 text-[12px] text-slate-700 transition hover:bg-emerald-50/30"
                                     >
                                         <div>
                                             <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
@@ -192,6 +194,18 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ supermarketId, onViewDetail }
 
                                         <div className="truncate text-slate-600">
                                             {product.category || "—"}
+                                        </div>
+
+                                        <div className="min-w-0">
+                                            <div className="truncate font-medium text-slate-800">
+                                                {formatUnitDisplay(
+                                                    product.unitName,
+                                                    product.unitSymbol,
+                                                )}
+                                            </div>
+                                            <div className="mt-0.5 truncate text-[10px] text-slate-400">
+                                                {product.unitType || "—"}
+                                            </div>
                                         </div>
 
                                         <div className="truncate text-slate-600">

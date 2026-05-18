@@ -17,6 +17,7 @@ import type {
     PackagingHistoryQuery,
 } from "@/types/packaging.type"
 import { showError } from "@/utils/toast"
+import { formatPackagingItemQuantityLabel } from "@/pages/PackagingStaff/packagingShared"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")
@@ -427,7 +428,7 @@ const PReports = () => {
                                             </td>
 
                                             <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-slate-700">
-                                                {item.quantity}
+                                                {formatPackagingItemQuantityLabel(item)}
                                             </td>
 
                                             <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">

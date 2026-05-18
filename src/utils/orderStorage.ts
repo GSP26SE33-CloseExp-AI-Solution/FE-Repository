@@ -36,9 +36,15 @@ export const cartStorage = {
 		window.dispatchEvent(new Event("cart:updated"));
 	},
 
+	cartLineKey(item: Pick<CartItem, "lotId" | "purchaseUnitId" | "unitId">) {
+		const purchaseUnitId = item.purchaseUnitId ?? item.unitId ?? "";
+		return `${item.lotId}:${purchaseUnitId}`;
+	},
+
 	add(item: Omit<CartItem, "qty">, qty = 1) {
 		const items = this.get();
-		const found = items.find((x) => x.lotId === item.lotId);
+		const key = this.cartLineKey(item);
+		const found = items.find((x) => this.cartLineKey(x) === key);
 
 		if (found) {
 			found.qty += qty;

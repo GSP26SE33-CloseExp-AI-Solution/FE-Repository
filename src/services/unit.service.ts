@@ -34,6 +34,13 @@ export const unitService = {
             },
         )
 
-        return unwrap(response.data)
+        const items = unwrap(response.data) ?? []
+        return items.map((item) => ({
+            ...item,
+            conversionRate:
+                item.conversionRate ??
+                (item as UnitItem & { ConversionRate?: number }).ConversionRate ??
+                1,
+        }))
     },
 }

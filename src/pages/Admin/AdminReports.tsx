@@ -26,6 +26,7 @@ import type {
   SlaAlertItem,
 } from "@/types/admin.type"
 import { showError, showSuccess } from "@/utils/toast"
+import { formatOrderItemPurchaseQuantityLine } from "@/utils/unitMeasure"
 
 type ReportTab = "quick" | "custom"
 type ExportFormat = "excel" | "csv"
@@ -42,6 +43,7 @@ type SheetKey =
   | "summary"
   | "revenue"
   | "orders"
+  | "order-lines"
   | "delivery"
   | "sla"
   | "users"
@@ -129,6 +131,21 @@ const sheetDefinitions: SheetDefinition[] = [
     ],
   },
   {
+    key: "order-lines",
+    title: "Chi tiết đơn (đơn vị mua)",
+    description: "Từng dòng sản phẩm kèm đơn vị mua và số lượng quy đổi.",
+    icon: PackageSearch,
+    columns: [
+      "Mã đơn",
+      "Ngày đặt",
+      "Sản phẩm",
+      "Số lượng",
+      "Đơn giá",
+      "Thành tiền",
+      "HSD",
+    ],
+  },
+  {
     key: "delivery",
     title: "Giao hàng",
     description: "Hiệu suất giao hàng theo từng nhân sự giao hàng.",
@@ -208,7 +225,7 @@ const quickReportOptions: QuickReportOption[] = [
     description: "Phù hợp để đối soát đơn hàng trong giai đoạn chọn.",
     icon: PackageSearch,
     suggestedFileName: "bao-cao-don-hang",
-    defaultSheets: ["summary", "orders"],
+    defaultSheets: ["summary", "orders", "order-lines"],
   },
   {
     id: "delivery",
@@ -569,6 +586,28 @@ const buildOrderRows = (items: AdminOrder[]): SheetRow[] =>
       "Khung giờ": item.timeSlotDisplay || "--",
     }))
 
+const buildOrderLineRows = (items: AdminOrder[]): SheetRow[] =>
+  items
+    .slice()
+    .sort((a, b) => compareText(b.orderDate, a.orderDate))
+    .flatMap((order) =>
+      (order.orderItems ?? []).map((line) => ({
+        "Mã đơn": order.orderCode || order.orderId,
+        "Ngày đặt": formatDateTime(order.orderDate),
+        "Sản phẩm": line.productName || "--",
+        "Số lượng": formatOrderItemPurchaseQuantityLine({
+          quantity: line.quantity,
+          purchaseUnitId: line.purchaseUnitId,
+          purchaseUnitName: line.purchaseUnitName,
+          purchaseUnitSymbol: line.purchaseUnitSymbol,
+          purchaseQuantity: line.purchaseQuantity,
+        }),
+        "Đơn giá": line.unitPrice ?? 0,
+        "Thành tiền": line.totalPrice ?? line.quantity * line.unitPrice,
+        "HSD": line.expiryDate ? formatDateDisplay(line.expiryDate) : "--",
+      })),
+    )
+
 const buildDeliveryRows = (items: DeliveryStaffBoardItem[]): SheetRow[] =>
   items
     .slice()
@@ -805,6 +844,8 @@ const AdminReports = () => {
         return buildRevenueRows(bundle.revenueTrend ?? [])
       case "orders":
         return buildOrderRows(bundle.orders ?? [])
+      case "order-lines":
+        return buildOrderLineRows(bundle.orders ?? [])
       case "delivery":
         return buildDeliveryRows(bundle.deliveryBoard ?? [])
       case "sla":
@@ -820,7 +861,10 @@ const AdminReports = () => {
 
   const fetchDataBundle = async (sheetKeys: SheetKey[]) => {
     const needRevenue = sheetKeys.includes("summary") || sheetKeys.includes("revenue")
-    const needOrders = sheetKeys.includes("summary") || sheetKeys.includes("orders")
+    const needOrders =
+      sheetKeys.includes("summary") ||
+      sheetKeys.includes("orders") ||
+      sheetKeys.includes("order-lines")
     const needDelivery = sheetKeys.includes("summary") || sheetKeys.includes("delivery")
     const needSla = sheetKeys.includes("summary") || sheetKeys.includes("sla")
     const needUsers = sheetKeys.includes("summary") || sheetKeys.includes("users")

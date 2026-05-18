@@ -25,7 +25,7 @@ export type FailPackagingOrderPayload = PackagingActionPayload & {
 
 export type PackagingOrderItem = {
     orderItemId: string
-    lotId?: string | null
+    lotId: string
     productName: string
     quantity: number
     unitPrice: number
@@ -33,6 +33,10 @@ export type PackagingOrderItem = {
     expiryDate?: string | null
     manufactureDate?: string | null
     unitName?: string | null
+    purchaseUnitId?: string | null
+    purchaseUnitName?: string | null
+    purchaseUnitSymbol?: string | null
+    purchaseQuantity?: number | null
     supermarketName?: string | null
     packagingStatus?: string
     deliveryStatus?: string | null
@@ -60,21 +64,13 @@ export type PackagingOrderDetail = PackagingOrderSummary & {
     items: PackagingOrderItem[]
 }
 
-export type PackagingHistoryQuery = {
-    fromDate?: string
-    toDate?: string
-    status?: string
-    orderCode?: string
-    pageNumber?: number
-    pageSize?: number
-}
-
-export type PackagingHistoryItem = {
+/** GET /api/Packaging/history */
+export type PackagingHistoryRecord = {
     packagingId: string
     orderId: string
-    orderItemId: string
+    orderItemId?: string | null
     orderCode: string
-    productName: string
+    productName?: string | null
     quantity: number
     userId: string
     packagingStaffName: string
@@ -82,5 +78,3 @@ export type PackagingHistoryItem = {
     failureReason?: string | null
     packagedAt?: string | null
 }
-
-export type PackagingHistoryResponse = PaginationResult<PackagingHistoryItem>

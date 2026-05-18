@@ -31,6 +31,8 @@ import {
     getExpiryToneClass,
     getFriendlyPackagingErrorMessage,
     getOrderStatusLabel,
+    countPackagingOrderLines,
+    formatPackagingItemQuantityLabel,
     getPackagingItemMeta,
     getPackagingStatusClass,
     getPackagingStatusLabel,
@@ -63,13 +65,15 @@ const PackageCollect = () => {
         )
     }, [order, selectedItemIds])
 
-    const totalQuantity = useMemo(() => {
-        return order?.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0
-    }, [order])
+    const totalQuantity = useMemo(
+        () => countPackagingOrderLines(order?.items),
+        [order],
+    )
 
-    const selectedQuantity = useMemo(() => {
-        return selectedItems.reduce((sum, item) => sum + (item.quantity || 0), 0)
-    }, [selectedItems])
+    const selectedQuantity = useMemo(
+        () => countPackagingOrderLines(selectedItems),
+        [selectedItems],
+    )
 
     const selectedTotal = useMemo(() => {
         return selectedItems.reduce((sum, item) => sum + (item.subTotal || 0), 0)
@@ -462,7 +466,8 @@ const PackageCollect = () => {
 
                                                 <div className="mt-2 flex flex-wrap gap-2">
                                                     <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                                                        Số lượng: {item.quantity || 0}
+                                                        Số lượng:{" "}
+                                                        {formatPackagingItemQuantityLabel(item)}
                                                     </span>
 
                                                     <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 
 import DeliveryGateModal from "../Home/DeliveryGateModal"
-import { getAuthSession } from "@/utils/authStorage"
+import { useAuthContext } from "@/contexts/AuthContext"
+import { authStorage } from "@/utils/authStorage"
 import { orderContextStorage } from "@/utils/orderStorage"
 import type { CustomerOrderContext } from "@/types/order.type"
 import type { HomeCategoryItem, HomeProductGroupView } from "@/types/home.type"
@@ -17,8 +18,6 @@ import HomeStatsSection from "./HomeStatsSection"
 import HomeMobileCartBar from "./HomeMobileCartBar"
 import HomeSidebar from "./HomeSidebar"
 import HomeProductSection from "./HomeProductSection"
-
-const isUserLoggedIn = () => !!getAuthSession()?.accessToken
 
 const normalizeText = (value: string) =>
   value
@@ -43,6 +42,7 @@ const Home = () => {
   const [supermarketSortBy, setSupermarketSortBy] = useState<"distance" | "count">("distance")
   const [showEmptyCategories, setShowEmptyCategories] = useState(false)
 
+  const { user } = useAuthContext()
   const { cartCount } = useHomeCart()
 
   const { productsRaw, availableSupermarkets, categoriesMaster, loading, error } =
@@ -284,7 +284,7 @@ const Home = () => {
   }
 
   const handleViewCart = () => {
-    if (!isUserLoggedIn()) {
+    if (!authStorage.isAuthenticated() || !user) {
       navigate(LOGIN_ROUTE, {
         state: { redirectTo: CART_ROUTE },
       })

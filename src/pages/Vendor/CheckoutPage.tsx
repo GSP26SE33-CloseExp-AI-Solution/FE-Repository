@@ -2,6 +2,7 @@ import React, { Fragment, useCallback, useEffect, useMemo, useState } from "reac
 import { useLocation, useNavigate } from "react-router-dom"
 import {
   AlertCircle,
+  CalendarDays,
   ChevronRight,
   Clock3,
   CreditCard,
@@ -41,6 +42,141 @@ const muted = "text-slate-500"
 
 const SERVICE_FEE = 5000
 const SLOT_CUTOFF_MINUTES = 15
+/** Inclusive window: today + 6 days = 7 selectable days (1 week). */
+const MAX_DELIVERY_DAYS_AHEAD = 6
+
+const WEEKDAY_HEADERS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"] as const
+
+const toDateKey = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+const parseDateKey = (value: string) => {
+  const [year, month, day] = value.split("-").map(Number)
+  return new Date(year, (month ?? 1) - 1, day ?? 1)
+}
+
+const startOfLocalDay = (date: Date) => {
+  const next = new Date(date)
+  next.setHours(0, 0, 0, 0)
+  return next
+}
+
+const formatDeliveryDateLabel = (dateKey: string, todayKey: string) => {
+  if (dateKey === todayKey) return "Hôm nay"
+
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  if (dateKey === toDateKey(tomorrow)) return "Ngày mai"
+
+  const date = parseDateKey(dateKey)
+  return date.toLocaleDateString("vi-VN", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+  })
+}
+
+const buildSelectableDeliveryDateKeys = (today = new Date()) => {
+  const keys = new Set<string>()
+  for (let offset = 0; offset <= MAX_DELIVERY_DAYS_AHEAD; offset += 1) {
+    const date = new Date(today)
+    date.setDate(today.getDate() + offset)
+    keys.add(toDateKey(date))
+  }
+  return keys
+}
+
+const buildDeliveryDateOptions = (today = new Date()) => {
+  const todayKey = toDateKey(today)
+  const options: Array<{ value: string; label: string; subLabel: string }> = []
+
+  for (let offset = 0; offset <= MAX_DELIVERY_DAYS_AHEAD; offset += 1) {
+    const date = new Date(today)
+    date.setDate(today.getDate() + offset)
+    const value = toDateKey(date)
+    options.push({
+      value,
+      label: formatDeliveryDateLabel(value, todayKey),
+      subLabel: date.toLocaleDateString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+      }),
+    })
+  }
+
+  return options
+}
+
+type CalendarDayCell =
+  | { kind: "empty" }
+  | {
+      kind: "day"
+      day: number
+      dateKey: string
+      selectable: boolean
+    }
+
+const getMondayFirstOffset = (date: Date) => {
+  const day = date.getDay()
+  return day === 0 ? 6 : day - 1
+}
+
+const buildMonthCalendar = (
+  monthStart: Date,
+  selectableKeys: Set<string>,
+): CalendarDayCell[] => {
+  const year = monthStart.getFullYear()
+  const month = monthStart.getMonth()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const leadingEmpty = getMondayFirstOffset(new Date(year, month, 1))
+
+  const cells: CalendarDayCell[] = []
+  for (let i = 0; i < leadingEmpty; i += 1) {
+    cells.push({ kind: "empty" })
+  }
+
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const dateKey = toDateKey(new Date(year, month, day))
+    cells.push({
+      kind: "day",
+      day,
+      dateKey,
+      selectable: selectableKeys.has(dateKey),
+    })
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push({ kind: "empty" })
+  }
+
+  return cells
+}
+
+const getDeliveryCalendarMonths = (today = new Date()) => {
+  const months: Date[] = []
+  const seen = new Set<string>()
+
+  for (let offset = 0; offset <= MAX_DELIVERY_DAYS_AHEAD; offset += 1) {
+    const date = new Date(today)
+    date.setDate(today.getDate() + offset)
+    const key = `${date.getFullYear()}-${date.getMonth()}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    months.push(new Date(date.getFullYear(), date.getMonth(), 1))
+  }
+
+  return months
+}
+
+const formatCalendarMonthTitle = (monthStart: Date) => {
+  const raw = monthStart.toLocaleDateString("vi-VN", { month: "long" })
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+}
 
 type SlotClockTime = {
   hours: number
@@ -139,18 +275,60 @@ const getSlotStartClock = (slot: OrderTimeSlot): SlotClockTime | null => {
   )
 }
 
-const getTimeSlotStartDate = (slot: OrderTimeSlot, now = new Date()) => {
+const getTimeSlotStartDate = (
+  slot: OrderTimeSlot,
+  deliveryDateKey: string,
+) => {
   const clock = getSlotStartClock(slot)
   if (!clock) return null
 
-  const date = new Date(now)
+  const date = parseDateKey(deliveryDateKey)
   date.setHours(clock.hours, clock.minutes, clock.seconds, 0)
 
   return date
 }
 
-const getSlotAvailability = (slot: OrderTimeSlot, now = new Date()) => {
-  const startDate = getTimeSlotStartDate(slot, now)
+const getSlotAvailability = (
+  slot: OrderTimeSlot,
+  now: Date,
+  deliveryDateKey: string,
+) => {
+  const todayKey = toDateKey(now)
+  const deliveryDay = startOfLocalDay(parseDateKey(deliveryDateKey))
+  const todayStart = startOfLocalDay(now)
+
+  if (deliveryDay.getTime() < todayStart.getTime()) {
+    return {
+      disabled: true,
+      reason: "Ngày giao đã qua",
+    }
+  }
+
+  const maxDay = new Date(todayStart)
+  maxDay.setDate(maxDay.getDate() + MAX_DELIVERY_DAYS_AHEAD)
+  if (deliveryDay.getTime() > maxDay.getTime()) {
+    return {
+      disabled: true,
+      reason: `Chỉ đặt trước tối đa ${MAX_DELIVERY_DAYS_AHEAD} ngày`,
+    }
+  }
+
+  if (deliveryDateKey !== todayKey) {
+    const startDate = getTimeSlotStartDate(slot, deliveryDateKey)
+    if (!startDate) {
+      return {
+        disabled: true,
+        reason: "Không đọc được giờ bắt đầu",
+      }
+    }
+
+    return {
+      disabled: false,
+      reason: "",
+    }
+  }
+
+  const startDate = getTimeSlotStartDate(slot, deliveryDateKey)
 
   if (!startDate) {
     return {
@@ -198,9 +376,34 @@ const CheckoutPage: React.FC = () => {
   const [submitError, setSubmitError] = useState("")
   const [now, setNow] = useState(() => new Date())
 
+  const todayKey = useMemo(() => toDateKey(now), [now])
+  const deliveryDateOptions = useMemo(
+    () => buildDeliveryDateOptions(now),
+    [now],
+  )
+  const selectableDeliveryKeys = useMemo(
+    () => buildSelectableDeliveryDateKeys(now),
+    [now],
+  )
+  const deliveryCalendarMonths = useMemo(
+    () => getDeliveryCalendarMonths(now),
+    [now],
+  )
+
+  const effectiveDeliveryDate = ctx.deliveryDate || todayKey
+
   useEffect(() => {
     const syncCart = () => setCart(cartStorage.get())
-    const syncCtx = () => setCtx(orderContextStorage.get())
+    const syncCtx = () => {
+      const stored = orderContextStorage.get()
+      const withDate = stored.deliveryDate
+        ? stored
+        : { ...stored, deliveryDate: toDateKey(new Date()) }
+      if (!stored.deliveryDate) {
+        orderContextStorage.set(withDate)
+      }
+      setCtx(withDate)
+    }
 
     syncCart()
     syncCtx()
@@ -276,22 +479,23 @@ const CheckoutPage: React.FC = () => {
     if (!ctx.timeSlotId || !timeSlots.length) return
 
     const exists = timeSlots.some((slot) => slot.timeSlotId === ctx.timeSlotId)
-    if (exists) return
+    const selected = timeSlots.find((slot) => slot.timeSlotId === ctx.timeSlotId)
+    const slotStillValid =
+      exists &&
+      selected &&
+      !getSlotAvailability(selected, now, effectiveDeliveryDate).disabled
+
+    if (slotStillValid) return
 
     const nextCtx: CustomerOrderContext = {
       ...ctx,
       timeSlotId: undefined,
     }
 
-    console.warn(
-      "CheckoutPage -> current timeSlotId is no longer valid, clearing from context:",
-      ctx.timeSlotId,
-    )
-
     setCtx(nextCtx)
     orderContextStorage.set(nextCtx)
     setSubmitError("Khung giờ đã chọn không còn hợp lệ. Vui lòng chọn lại.")
-  }, [ctx, timeSlots])
+  }, [ctx, effectiveDeliveryDate, now, timeSlots])
 
   const breadcrumbs = useMemo(
     () => getBreadcrumbsByPath(location.pathname),
@@ -324,16 +528,20 @@ const CheckoutPage: React.FC = () => {
   const selectedSlotAvailability = useMemo(
     () =>
       selectedTimeSlot
-        ? getSlotAvailability(selectedTimeSlot, now)
+        ? getSlotAvailability(selectedTimeSlot, now, effectiveDeliveryDate)
         : { disabled: true, reason: "" },
-    [selectedTimeSlot, now],
+    [selectedTimeSlot, now, effectiveDeliveryDate],
   )
 
   const canCheckoutBase = cart.length > 0 && orderContextStorage.isReady(ctx)
+  const hasDeliveryDate = deliveryDateOptions.some(
+    (option) => option.value === effectiveDeliveryDate,
+  )
   const hasTimeSlot = !!ctx.timeSlotId && !selectedSlotAvailability.disabled
 
   const canSubmit =
     canCheckoutBase &&
+    hasDeliveryDate &&
     hasTimeSlot &&
     !loadingSlots &&
     timeSlots.length > 0 &&
@@ -370,8 +578,21 @@ const CheckoutPage: React.FC = () => {
     }
   }, [ctx])
 
+  const handleSelectDeliveryDate = (deliveryDate: string) => {
+    setSubmitError("")
+
+    const nextCtx: CustomerOrderContext = {
+      ...ctx,
+      deliveryDate,
+      timeSlotId: undefined,
+    }
+
+    setCtx(nextCtx)
+    orderContextStorage.set(nextCtx)
+  }
+
   const handleSelectSlot = (slot: OrderTimeSlot) => {
-    const availability = getSlotAvailability(slot, now)
+    const availability = getSlotAvailability(slot, now, effectiveDeliveryDate)
 
     if (availability.disabled) {
       setSubmitError(availability.reason || "Khung giờ này không còn khả dụng.")
@@ -468,6 +689,11 @@ const CheckoutPage: React.FC = () => {
   const handlePayAndRedirect = async () => {
     if (!canSubmit) return
 
+    if (!hasDeliveryDate) {
+      setSubmitError("Bạn chưa chọn ngày giao / nhận.")
+      return
+    }
+
     if (!ctx.timeSlotId) {
       setSubmitError("Bạn chưa chọn khung giờ giao / nhận.")
       return
@@ -484,7 +710,11 @@ const CheckoutPage: React.FC = () => {
     }
 
     if (selectedTimeSlot) {
-      const availability = getSlotAvailability(selectedTimeSlot, new Date())
+      const availability = getSlotAvailability(
+        selectedTimeSlot,
+        new Date(),
+        effectiveDeliveryDate,
+      )
       if (availability.disabled) {
         setSubmitError(
           availability.reason ||
@@ -526,6 +756,7 @@ const CheckoutPage: React.FC = () => {
 
       const order = await orderService.createMyOrder({
         timeSlotId: submitCtx.timeSlotId ?? ctx.timeSlotId,
+        deliveryDate: `${effectiveDeliveryDate}T00:00:00.000Z`,
         deliveryType: submitCtx.deliveryMethodId ?? ctx.deliveryMethodId,
         deliveryFee,
         ...(submitCtx.deliveryMethodId === "PICKUP"
@@ -547,6 +778,7 @@ const CheckoutPage: React.FC = () => {
             undefined,
         orderItems: cart.map((item) => ({
           lotId: item.lotId,
+          purchaseUnitId: item.purchaseUnitId ?? item.unitId,
           quantity: item.qty,
           unitPrice: item.price,
         })),
@@ -692,15 +924,113 @@ const CheckoutPage: React.FC = () => {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    Ngày giao
+                  </div>
+                  <h2 className="mt-1 text-[15px] font-bold text-slate-950">
+                    Chọn ngày giao / nhận
+                  </h2>
+                  <p className="mt-1 text-[12px] text-slate-500">
+                    Chỉ giao / nhận trong vòng 1 tuần (7 ngày kể từ hôm nay).
+                    Hôm nay cần chọn khung giờ còn cách hiện tại ít nhất{" "}
+                    {SLOT_CUTOFF_MINUTES} phút.
+                  </p>
+                </div>
+
+                <div className="inline-flex w-fit items-center gap-1.5 rounded-full bg-sky-50 px-2.5 py-1 text-[11px] font-semibold text-sky-700 ring-1 ring-sky-100">
+                  <CalendarDays size={13} />
+                  Bắt buộc
+                </div>
+              </div>
+
+              <div className="mt-5 space-y-8">
+                {deliveryCalendarMonths.map((monthStart) => {
+                  const cells = buildMonthCalendar(
+                    monthStart,
+                    selectableDeliveryKeys,
+                  )
+                  const monthKey = `${monthStart.getFullYear()}-${monthStart.getMonth()}`
+
+                  return (
+                    <div key={monthKey} className="mx-auto max-w-[320px]">
+                      <h3 className="text-center text-[22px] font-normal tracking-tight text-sky-600">
+                        {formatCalendarMonthTitle(monthStart)}
+                      </h3>
+
+                      <div className="mt-3 grid grid-cols-7 text-center text-[13px] font-medium text-slate-800">
+                        {WEEKDAY_HEADERS.map((label) => (
+                          <div key={label} className="py-1">
+                            {label}
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-1 border-t border-slate-300" />
+
+                      <div className="mt-2 grid grid-cols-7 text-center text-[14px] text-slate-900">
+                        {cells.map((cell, index) => {
+                          if (cell.kind === "empty") {
+                            return (
+                              <div
+                                key={`${monthKey}-empty-${index}`}
+                                className="aspect-square"
+                                aria-hidden
+                              />
+                            )
+                          }
+
+                          const active =
+                            effectiveDeliveryDate === cell.dateKey
+                          const disabled = !cell.selectable
+
+                          return (
+                            <button
+                              key={cell.dateKey}
+                              type="button"
+                              disabled={disabled}
+                              onClick={() =>
+                                handleSelectDeliveryDate(cell.dateKey)
+                              }
+                              className={cn(
+                                "mx-auto flex aspect-square w-9 items-center justify-center rounded-full transition",
+                                disabled &&
+                                  "cursor-not-allowed text-slate-300",
+                                !disabled &&
+                                  !active &&
+                                  "text-slate-900 hover:bg-sky-50",
+                                !disabled &&
+                                  active &&
+                                  "bg-sky-600 font-semibold text-white",
+                              )}
+                              aria-label={formatDeliveryDateLabel(
+                                cell.dateKey,
+                                todayKey,
+                              )}
+                              aria-pressed={active}
+                            >
+                              {cell.day}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
                     Khung giờ
                   </div>
                   <h2 className="mt-1 text-[15px] font-bold text-slate-950">
                     Chọn khung giờ giao / nhận
                   </h2>
                   <p className="mt-1 text-[12px] text-slate-500">
-                    Chỉ hỗ trợ đặt trong ngày. Vui lòng chọn
-                    khung giờ còn cách hiện tại ít nhất{" "}
-                    {SLOT_CUTOFF_MINUTES} phút.
+                    {effectiveDeliveryDate === todayKey
+                      ? `Khung giờ trong ngày ${formatDeliveryDateLabel(effectiveDeliveryDate, todayKey)}.`
+                      : `Khung giờ cho ngày ${formatDeliveryDateLabel(effectiveDeliveryDate, todayKey)} (${parseDateKey(effectiveDeliveryDate).toLocaleDateString("vi-VN")}).`}
                   </p>
                 </div>
 
@@ -755,6 +1085,7 @@ const CheckoutPage: React.FC = () => {
                       const availability = getSlotAvailability(
                         slot,
                         now,
+                        effectiveDeliveryDate,
                       )
                       const disabled = availability.disabled
 
@@ -824,10 +1155,13 @@ const CheckoutPage: React.FC = () => {
                     <div className="mt-3 text-[12px] text-slate-500">
                       Đã chọn:{" "}
                       <span className="font-semibold text-slate-900">
+                        {formatDeliveryDateLabel(
+                          effectiveDeliveryDate,
+                          todayKey,
+                        )}{" "}
+                        ·{" "}
                         {selectedTimeSlot
-                          ? formatTimeSlotLabel(
-                            selectedTimeSlot,
-                          )
+                          ? formatTimeSlotLabel(selectedTimeSlot)
                           : "Khung giờ không hợp lệ"}
                       </span>
                     </div>

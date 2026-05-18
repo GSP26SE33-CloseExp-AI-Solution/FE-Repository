@@ -51,10 +51,10 @@ const ProductCard = ({ product, onViewProduct }: ProductCardProps) => {
             : `Từ ${formatCurrency(product.minPrice)}`
 
     const unitText = product.unitNames.length
-        ? product.unitNames.slice(0, 2).join(", ")
+        ? product.unitNames.slice(0, 3).join(", ")
         : "Nhiều lựa chọn"
 
-    const extraUnitCount = Math.max(product.unitNames.length - 2, 0)
+    const extraUnitCount = Math.max(product.unitNames.length - 3, 0)
     const supermarketText =
         product.supermarketCount > 1
             ? `${product.supermarketCount} siêu thị`
@@ -172,7 +172,7 @@ const ProductCard = ({ product, onViewProduct }: ProductCardProps) => {
 
                     <div className="mt-2 space-y-1">
                         <div className="line-clamp-1 text-[10px] font-medium text-slate-500">
-                            Đơn vị: {unitText}
+                            Mua được: {unitText}
                             {extraUnitCount > 0 ? ` +${extraUnitCount}` : ""}
                         </div>
 

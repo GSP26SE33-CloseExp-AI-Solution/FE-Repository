@@ -21,6 +21,7 @@ import type {
 } from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
 import { lastOrderStorage, money } from "@/utils/orderStorage"
+import { formatOrderItemPurchaseQuantityLine } from "@/utils/unitMeasure"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -584,9 +585,18 @@ const MyOrdersPage: React.FC = () => {
                                                                             item.unitPrice,
                                                                         )}{" "}
                                                                         ×{" "}
-                                                                        {
-                                                                            item.quantity
-                                                                        }
+                                                                        {formatOrderItemPurchaseQuantityLine(
+                                                                            {
+                                                                                quantity:
+                                                                                    item.quantity,
+                                                                                purchaseUnitId:
+                                                                                    item.purchaseUnitId,
+                                                                                purchaseUnitName:
+                                                                                    item.purchaseUnitName,
+                                                                                purchaseUnitSymbol:
+                                                                                    item.purchaseUnitSymbol,
+                                                                            },
+                                                                        )}
                                                                     </div>
                                                                 </div>
 

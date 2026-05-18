@@ -284,17 +284,27 @@ export const mapWorkflowIdentifyResultToState = (
         canCreateLotDirectly,
         canCreatePrivateProductForCurrentSupermarket,
 
-        productForm: mapReferenceIntoProductForm({
-            barcode: result.barcode,
-            ownProduct,
-            referenceProduct,
-            lookup: result.barcodeLookupInfo,
-            unitId: result.unitId,
-        }),
-        lotForm: {
-            ...emptyLotForm(),
-            quantity: 1,
-        },
+        ...(() => {
+            const productForm = mapReferenceIntoProductForm({
+                barcode: result.barcode,
+                ownProduct,
+                referenceProduct,
+                lookup: result.barcodeLookupInfo,
+                unitId: result.unitId,
+            })
+
+            const productDefaultUnitId = firstText(productForm.unitId)
+
+            return {
+                productForm,
+                lotForm: {
+                    ...emptyLotForm(),
+                    quantity: 1,
+                    // Đơn vị gốc lô mới = đơn vị chuẩn sản phẩm (không lấy đơn vị bán của lô cũ).
+                    unitId: productDefaultUnitId,
+                },
+            }
+        })(),
     }
 }
 
@@ -401,6 +411,14 @@ export const mapWorkflowCreateProductResultToState = (
             ...previous.productForm,
             unitId: firstText(result.unitId, previous.productForm.unitId),
         },
+        lotForm: {
+            ...previous.lotForm,
+            unitId: firstText(
+                result.unitId,
+                previous.productForm.unitId,
+                previous.lotForm.unitId,
+            ),
+        },
         requiresVerification: false,
         verificationProductId: null,
         canCreateLotDirectly: true,
@@ -453,6 +471,7 @@ export const mapWorkflowCreateAndPublishLotResultToState = (
         },
         lotForm: {
             ...previous.lotForm,
+            unitId: firstText(stockLot?.unitId, previous.lotForm.unitId),
             expiryDate:
                 normalizeDateInput(stockLot?.expiryDate) || previous.lotForm.expiryDate,
             manufactureDate:

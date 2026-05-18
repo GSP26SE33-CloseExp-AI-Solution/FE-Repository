@@ -6,6 +6,10 @@ import type {
     ProductWorkflowState,
 } from "@/types/product-ai-workflow.type"
 import type { UnitOption } from "@/types/unit.type"
+import {
+    formatConversionRateHintWithBase,
+    formatConversionRateValue,
+} from "@/utils/unitMeasure"
 import { InfoRow, SectionCard } from "./WorkflowShared"
 
 type Props = {
@@ -64,6 +68,31 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
         selectedUnit?.label || workflow.productForm.unitId,
     )
 
+    const unitCatalog = unitOptions.map((item) => ({
+        name: item.label,
+        symbol: item.unitSymbol,
+        type: item.unitType,
+        conversionRate: item.conversionRate,
+    }))
+
+    const activeConversionRate =
+        workflow.createdLot?.stockLot?.conversionRate ??
+        workflow.createdProduct?.conversionRate ??
+        selectedUnit?.conversionRate ??
+        1
+
+    const activeUnitConversionHint = selectedUnit
+        ? formatConversionRateHintWithBase(
+              {
+                  name: selectedUnit.label,
+                  symbol: selectedUnit.unitSymbol,
+                  type: selectedUnit.unitType,
+                  conversionRate: activeConversionRate,
+              },
+              unitCatalog,
+          )
+        : null
+
     const activeProductStatus =
         workflow.createdProduct?.status ?? workflow.ownProduct?.status ?? null
 
@@ -93,6 +122,14 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
                     <InfoRow label="Bước hiện tại" value={workflow.step} />
                     <InfoRow label="Mã vạch" value={workflow.barcode || workflow.productForm.barcode || "—"} />
                     <InfoRow label="Đơn vị" value={activeUnit} />
+                    {activeUnitConversionHint ? (
+                        <InfoRow label="Hệ số quy đổi" value={activeUnitConversionHint} />
+                    ) : selectedUnit ? (
+                        <InfoRow
+                            label="Hệ số quy đổi"
+                            value={`${formatConversionRateValue(activeConversionRate)} (đơn vị gốc)`}
+                        />
+                    ) : null}
 
                     {workflow.analyzeResult ? (
                         <InfoRow label="Độ tin cậy OCR" value={ocrConfidence} />

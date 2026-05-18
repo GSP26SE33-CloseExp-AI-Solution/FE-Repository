@@ -25,6 +25,7 @@ import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage"
 import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard"
 import ProductsLotsPage from "@/pages/SupermarketStaff/sLotsPageTable"
 import ProductWorkflowPage from "@/pages/SupermarketStaff/sWorkflowPage"
+import SupermarketPurchaseUnitsPage from "@/pages/SupermarketStaff/sPurchaseUnitsPage"
 import ProfilePage from "@/pages/SupermarketStaff/sProfile"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
@@ -49,6 +50,7 @@ import PackageProfile from "@/pages/PackagingStaff/pProfile"
 import MarketingProfile from "@/pages/MarketingStaff/mProfile"
 import MarketingPromotions from "@/pages/MarketingStaff/mPromotions"
 import MarketingReports from "@/pages/MarketingStaff/mReports"
+import MarketingPurchaseUnits from "@/pages/MarketingStaff/mPurchaseUnits"
 
 import NotFound from "@/pages/Common/NotFound"
 import Forbidden from "@/pages/Common/Forbidden"
@@ -144,6 +146,10 @@ const AppRouter: React.FC = () => {
                                 element={<ProductWorkflowPage />}
                             />
                             <Route
+                                path="/supermarketStaff/purchase-units"
+                                element={<SupermarketPurchaseUnitsPage />}
+                            />
+                            <Route
                                 path="/supermarketStaff/profile"
                                 element={<ProfilePage />}
                             />
@@ -204,6 +210,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/marketing/reports"
                                 element={<MarketingReports />}
+                            />
+                            <Route
+                                path="/marketing/purchase-units"
+                                element={<MarketingPurchaseUnits />}
                             />
                         </Route>
                     </Route>

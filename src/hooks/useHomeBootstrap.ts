@@ -6,6 +6,7 @@ import axiosClient from "@/utils/axiosClient"
 import { orderContextStorage } from "@/utils/orderStorage"
 
 import type { CustomerOrderContext } from "@/types/order.type"
+import { normalizeHomeLotApiItem } from "@/utils/home"
 import type {
     HomeCategoryItem,
     HomeProductLotApiItem,
@@ -56,7 +57,9 @@ export const useHomeBootstrap = (deliveryCtx: CustomerOrderContext) => {
                     }))
                 )
 
-                const items = response.data?.data?.items ?? []
+                const items = (response.data?.data?.items ?? []).map((item) =>
+                    normalizeHomeLotApiItem(item),
+                )
                 setProductsRaw(items)
 
                 if (!items.length) {

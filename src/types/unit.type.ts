@@ -3,6 +3,7 @@ export type UnitItem = {
     name: string
     type?: string | null
     symbol?: string | null
+    conversionRate?: number | null
 }
 
 export type UnitOption = {
@@ -11,4 +12,5 @@ export type UnitOption = {
     value: string
     unitType?: string
     unitSymbol?: string
+    conversionRate?: number
 }

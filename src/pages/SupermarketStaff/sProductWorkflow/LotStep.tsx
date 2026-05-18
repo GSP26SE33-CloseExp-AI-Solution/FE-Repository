@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useMemo, useState } from "react"
 import { CheckCircle2, Loader2, X, TrendingUp } from "lucide-react"
 import toast from "react-hot-toast"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell } from "recharts"
@@ -20,10 +20,15 @@ import {
     InfoRow,
     NumberField,
     SectionCard,
+    SelectField,
     TextareaField,
     cn,
 } from "./WorkflowShared"
 import { mapProductStateLabel } from "@/mappers/product-ai.mapper"
+import {
+    formatConversionRateHintWithBase,
+    formatUnitOptionLabel,
+} from "@/utils/unitMeasure"
 
 type ProductUnitOption = {
     unitId: string
@@ -31,12 +36,14 @@ type ProductUnitOption = {
     value: string
     unitType?: string
     unitSymbol?: string
+    conversionRate?: number
 }
 
 type Props = {
     ownProduct: ExistingProductSummaryDto | null
     createdProduct: WorkflowCreateProductResultDto | null
     selectedUnit?: ProductUnitOption
+    productDefaultUnitId?: string
     form: LotFormState
     loading: boolean
     createdLot: WorkflowCreateAndPublishLotResultDto | null
@@ -103,6 +110,8 @@ const WorkflowLotStep: React.FC<Props> = ({
     ownProduct,
     createdProduct,
     selectedUnit,
+    productDefaultUnitId = "",
+    unitOptions = [],
     form,
     loading,
     createdLot,
@@ -160,13 +169,70 @@ const WorkflowLotStep: React.FC<Props> = ({
         stockLot?.finalPrice ??
         (form.acceptedSuggestion ? suggestedPrice : undefined)
 
-    const effectiveUnit = formatUnit(
-        stockLot?.unitName || createdProduct?.unitName || selectedUnit?.label,
-        stockLot?.unitSymbol || createdProduct?.unitSymbol || selectedUnit?.unitSymbol,
+    const lotSelectedUnit =
+        unitOptions.find((item) => item.unitId === form.unitId) || selectedUnit
+
+    const effectiveUnitName =
+        stockLot?.unitName || lotSelectedUnit?.label || createdProduct?.unitName
+    const effectiveUnitSymbol =
+        stockLot?.unitSymbol ||
+        lotSelectedUnit?.unitSymbol ||
+        createdProduct?.unitSymbol
+    const effectiveConversionRate =
+        stockLot?.conversionRate ??
+        lotSelectedUnit?.conversionRate ??
+        createdProduct?.conversionRate ??
+        null
+
+    const effectiveUnit = formatUnit(effectiveUnitName, effectiveUnitSymbol)
+
+    const productDefaultUnit = unitOptions.find(
+        (item) => item.unitId === productDefaultUnitId,
+    )
+
+    const compatibleUnitOptions = useMemo(() => {
+        const targetType =
+            productDefaultUnit?.unitType ||
+            createdProduct?.unitType ||
+            selectedUnit?.unitType
+
+        if (!targetType?.trim()) return unitOptions
+
+        const normalized = targetType.trim().toLowerCase()
+        return unitOptions.filter(
+            (item) => item.unitType?.trim().toLowerCase() === normalized,
+        )
+    }, [
+        unitOptions,
+        productDefaultUnit?.unitType,
+        createdProduct?.unitType,
+        selectedUnit?.unitType,
+    ])
+
+    const unitCatalog = compatibleUnitOptions.map((item) => ({
+        name: item.label,
+        symbol: item.unitSymbol,
+        type: item.unitType,
+        conversionRate: item.conversionRate,
+    }))
+
+    const unitConversionHint = formatConversionRateHintWithBase(
+        {
+            name: effectiveUnitName,
+            symbol: effectiveUnitSymbol,
+            type:
+                stockLot?.unitType ||
+                lotSelectedUnit?.unitType ||
+                createdProduct?.unitType,
+            conversionRate: effectiveConversionRate ?? undefined,
+        },
+        unitCatalog,
     )
 
     const effectiveUnitType = normalizeUnitType(
-        stockLot?.unitType || createdProduct?.unitType || selectedUnit?.unitType,
+        stockLot?.unitType ||
+            lotSelectedUnit?.unitType ||
+            createdProduct?.unitType,
     )
 
     const quantityValid = typeof form.quantity === "number" && form.quantity > 0
@@ -188,6 +254,7 @@ const WorkflowLotStep: React.FC<Props> = ({
 
     const canSubmit = Boolean(
         effectiveProductId &&
+        form.unitId.trim() &&
         form.expiryDate &&
         typeof form.originalUnitPrice === "number" &&
         form.originalUnitPrice > 0 &&
@@ -208,7 +275,52 @@ const WorkflowLotStep: React.FC<Props> = ({
                     <Field label="Mã vạch" value={effectiveBarcode} readOnly />
                     <Field label="Thương hiệu" value={effectiveBrand} readOnly />
                     <Field label="Danh mục" value={effectiveCategory} readOnly />
-                    <Field label="Đơn vị" value={effectiveUnit} readOnly />
+                    {productDefaultUnitId && productDefaultUnit ? (
+                        <Field
+                            label="Đơn vị chuẩn sản phẩm"
+                            value={formatUnit(
+                                productDefaultUnit.label,
+                                productDefaultUnit.unitSymbol,
+                            )}
+                            readOnly
+                        />
+                    ) : null}
+
+                    <div className="md:col-span-2 space-y-2">
+                        <SelectField
+                            label="Đơn vị bán lô hàng *"
+                            value={form.unitId}
+                            onChange={(value) =>
+                                onChange({
+                                    ...form,
+                                    unitId: value ? String(value) : "",
+                                })
+                            }
+                            options={compatibleUnitOptions.map((item) => ({
+                                label: formatUnitOptionLabel(
+                                    {
+                                        name: item.label,
+                                        symbol: item.unitSymbol,
+                                        type: item.unitType,
+                                        conversionRate: item.conversionRate,
+                                    },
+                                    unitCatalog,
+                                ),
+                                value: item.unitId,
+                            }))}
+                        />
+                        <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-800">
+                            Khách có thể chọn đơn vị này khi mua nếu lô được đăng bán.
+                            Muốn thêm đơn vị khác, tạo thêm lô với đơn vị tương ứng hoặc
+                            đổi đơn vị chuẩn ở bước sản phẩm.
+                        </p>
+                    </div>
+
+                    {unitConversionHint ? (
+                        <div className="md:col-span-2 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-800">
+                            <span className="font-medium">Quy đổi:</span> {unitConversionHint}
+                        </div>
+                    ) : null}
                     <Field
                         label="Loại thực phẩm"
                         value={isFreshFood ? "Tươi sống" : "Thông thường"}

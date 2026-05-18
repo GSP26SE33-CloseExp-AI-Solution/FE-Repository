@@ -2,6 +2,7 @@ import type {
     PackagingOrderItem,
     PackagingOrderSummary,
 } from "@/types/packaging.type"
+import { formatOrderItemPurchaseQuantityLine } from "@/utils/unitMeasure"
 
 export const currency = new Intl.NumberFormat("vi-VN", {
     style: "currency",
@@ -185,6 +186,21 @@ export const getPackagingProgressClass = (status?: string) => {
     return "bg-amber-500"
 }
 
+export const formatPackagingItemQuantityLabel = (item: PackagingOrderItem) =>
+    formatOrderItemPurchaseQuantityLine({
+        quantity: item.quantity,
+        purchaseUnitId: item.purchaseUnitId,
+        purchaseUnitName: item.purchaseUnitName,
+        purchaseUnitSymbol: item.purchaseUnitSymbol,
+        purchaseQuantity: item.purchaseQuantity,
+        productUnitName: item.unitName,
+        productUnitSymbol: item.unitSymbol,
+    })
+
+/** Line count for summaries when purchase units may differ per row. */
+export const countPackagingOrderLines = (items?: PackagingOrderItem[]) =>
+    items?.length ?? 0
+
 export const getPackagingItemMeta = (item: PackagingOrderItem) => [
     {
         label: "NSX",
@@ -195,7 +211,14 @@ export const getPackagingItemMeta = (item: PackagingOrderItem) => [
         value: formatDate(item.expiryDate),
     },
     {
-        label: "Đơn vị",
+        label: "Đơn vị mua",
+        value:
+            item.purchaseUnitName && item.purchaseQuantity != null
+                ? `${item.purchaseQuantity} ${item.purchaseUnitName}${item.purchaseUnitSymbol ? ` (${item.purchaseUnitSymbol})` : ""}`
+                : item.purchaseUnitName || item.unitName || "--",
+    },
+    {
+        label: "Đơn vị lô",
         value: item.unitName || "--",
     },
     {

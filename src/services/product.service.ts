@@ -9,6 +9,8 @@ import type {
     ProductResponseDto,
     ProductUpdatePayload,
 } from "@/types/product.type"
+import type { ProductPurchaseUnit } from "@/types/purchase-unit.type"
+import { parsePurchaseUnitsResponse } from "@/utils/purchaseUnits"
 
 const unwrap = <T,>(response?: ApiResponse<T> | null): T => {
     if (!response) {
@@ -74,6 +76,15 @@ export const productService = {
         )
 
         return unwrap(response.data)
+    },
+
+    async getPurchaseUnits(productId: string): Promise<ProductPurchaseUnit[]> {
+        const response = await axiosClient.get<ApiResponse<ProductPurchaseUnit[]>>(
+            `/Products/${productId}/purchase-units`,
+        )
+
+        unwrap(response.data)
+        return parsePurchaseUnitsResponse(response.data ?? {})
     },
 
     async getExpiryStatuses(): Promise<ProductEnumOptionDto[]> {

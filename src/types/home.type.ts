@@ -9,6 +9,14 @@ export type HomeProductLotApiItem = {
     supermarketName?: string
     unitId?: string
     unitName?: string
+    unitType?: string
+    unitSymbol?: string
+    conversionRate?: number
+    productUnitId?: string
+    productUnitName?: string
+    productUnitType?: string
+    productUnitSymbol?: string
+    productConversionRate?: number
     quantity?: number
     weight?: number
     status?: string
@@ -72,6 +80,17 @@ export type HomeProductView = {
     daysToExpiry: number | null
     hoursRemaining: number | null
     quantity: number
+
+    unitId?: string
+    unitName?: string
+    unitType?: string
+    unitSymbol?: string
+    conversionRate?: number
+    productUnitId?: string
+    productUnitName?: string
+    productUnitType?: string
+    productUnitSymbol?: string
+    productConversionRate?: number
 }
 
 export type HomeProductGroupView = {

@@ -26,13 +26,23 @@ const EMPTY_UNIT_FORM: UpsertUnitPayload = {
     name: "",
     type: "",
     symbol: "",
+    conversionRate: 1,
 }
 
-const normalizeUnitPayload = (source: UpsertUnitPayload): UpsertUnitPayload => ({
-    name: source.name.trim(),
-    type: source.type.trim(),
-    symbol: source.symbol.trim() || source.name.trim(),
-})
+const normalizeUnitPayload = (source: UpsertUnitPayload): UpsertUnitPayload => {
+    const rate = source.conversionRate
+    const payload: UpsertUnitPayload = {
+        name: source.name.trim(),
+        type: source.type.trim(),
+        symbol: source.symbol.trim() || source.name.trim(),
+    }
+
+    if (rate != null && rate > 0) {
+        payload.conversionRate = rate
+    }
+
+    return payload
+}
 
 const normalizeText = (value?: string) =>
     (value ?? "")
@@ -50,12 +60,13 @@ const compareText = (left?: string, right?: string) =>
     })
 
 const TABLE_COLS = {
-    name: "w-[24%]",
-    type: "w-[18%]",
-    symbol: "w-[14%]",
-    usage: "w-[14%]",
-    updatedAt: "w-[16%]",
-    actions: "w-[14%]",
+    name: "w-[20%]",
+    type: "w-[14%]",
+    symbol: "w-[12%]",
+    rate: "w-[12%]",
+    usage: "w-[12%]",
+    updatedAt: "w-[14%]",
+    actions: "w-[16%]",
 }
 
 const cellBase = "px-4 py-3 align-top"
@@ -227,6 +238,11 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
             return
         }
 
+        if ((newUnit.conversionRate ?? 1) <= 0) {
+            showError("Hệ số quy đổi phải lớn hơn 0")
+            return
+        }
+
         const payload = normalizeUnitPayload(newUnit)
 
         try {
@@ -258,6 +274,7 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
             name: item.name ?? "",
             type: currentType,
             symbol: item.symbol ?? "",
+            conversionRate: item.conversionRate ?? 1,
         })
         setEditTypeMode(isExistingType ? currentType : CUSTOM_TYPE_VALUE)
     }
@@ -278,6 +295,11 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
 
         if (!editUnit.type.trim()) {
             showError("Vui lòng chọn hoặc nhập loại đơn vị")
+            return
+        }
+
+        if ((editUnit.conversionRate ?? 1) <= 0) {
+            showError("Hệ số quy đổi phải lớn hơn 0")
             return
         }
 
@@ -323,7 +345,7 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
             <div>
                 <h2 className="text-lg font-bold text-slate-900">Đơn vị tính</h2>
                 <p className="mt-1 text-sm text-slate-500">
-                    Tạo mới, chỉnh sửa và quản lý theo loại đơn vị.
+                    Tạo mới, chỉnh sửa và quản lý theo loại đơn vị. Hệ số quy đổi: 1 đơn vị = rate × đơn vị gốc (cùng loại).
                 </p>
             </div>
 
@@ -355,7 +377,7 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
                     <h3 className="text-base font-semibold text-slate-900">Tạo đơn vị mới</h3>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                     <input
                         value={newUnit.name}
                         onChange={(e) =>
@@ -409,6 +431,22 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
                             />
                         ) : null}
                     </div>
+
+                    <input
+                        type="number"
+                        min={0.0001}
+                        step="any"
+                        value={newUnit.conversionRate ?? 1}
+                        onChange={(e) =>
+                            setNewUnit((prev) => ({
+                                ...prev,
+                                conversionRate: Number(e.target.value),
+                            }))
+                        }
+                        placeholder="Hệ số quy đổi"
+                        title="1 đơn vị = rate × đơn vị gốc (cùng loại)"
+                        className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                    />
 
                     <button
                         onClick={() => void handleCreateUnit()}
@@ -520,6 +558,9 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
                                                 </th>
                                                 <th className={`${cellBase} ${TABLE_COLS.symbol} text-left font-medium`}>
                                                     Ký hiệu
+                                                </th>
+                                                <th className={`${cellBase} ${TABLE_COLS.rate} text-left font-medium`}>
+                                                    Hệ số
                                                 </th>
                                                 <th className={`${cellBase} ${TABLE_COLS.usage} text-left font-medium`}>
                                                     Sử dụng
@@ -636,6 +677,30 @@ const AdminSettingsUnits = ({ loading, units, onRefresh }: Props) => {
                                                                         </span>
                                                                     </span>
                                                                 </div>
+                                                            )}
+                                                        </td>
+
+                                                        <td className={`${cellBase} ${TABLE_COLS.rate}`}>
+                                                            {isEditing ? (
+                                                                <input
+                                                                    type="number"
+                                                                    min={0.0001}
+                                                                    step="any"
+                                                                    value={editUnit.conversionRate ?? 1}
+                                                                    onChange={(e) =>
+                                                                        setEditUnit((prev) => ({
+                                                                            ...prev,
+                                                                            conversionRate: Number(
+                                                                                e.target.value
+                                                                            ),
+                                                                        }))
+                                                                    }
+                                                                    className={inputBase}
+                                                                />
+                                                            ) : (
+                                                                <span className="font-mono text-slate-700">
+                                                                    {item.conversionRate ?? 1}
+                                                                </span>
                                                             )}
                                                         </td>
 

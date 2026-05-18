@@ -33,7 +33,15 @@ import {
     PRODUCT_TYPE_OPTIONS,
 } from "@/types/product.type"
 import type { ProductLotItem } from "@/types/product-lot.type"
+import type { ProductPurchaseUnit } from "@/types/purchase-unit.type"
 import { categoryService } from "@/services/category.service"
+import { unitService } from "@/services/unit.service"
+import type { UnitItem } from "@/types/unit.type"
+import { getApiErrorMessage } from "@/utils/apiError"
+import {
+    formatConversionRateHintWithBase,
+    formatUnitDisplay,
+} from "@/utils/unitMeasure"
 
 type LotStatusFilter = "ALL" | "DRAFT" | "PRICED" | "PUBLISHED"
 type ExpiryFilter =
@@ -501,6 +509,39 @@ const ProductsLotsPage: React.FC = () => {
     const [loadingCategories, setLoadingCategories] = useState(false)
 
     const [activeTab, setActiveTab] = useState<"PRODUCTS" | "LOTS">("PRODUCTS")
+    const [unitById, setUnitById] = useState<Record<string, UnitItem>>({})
+    const [lotUnitDraft, setLotUnitDraft] = useState("")
+    const [savingLotUnit, setSavingLotUnit] = useState(false)
+    const [productPurchaseUnits, setProductPurchaseUnits] = useState<
+        ProductPurchaseUnit[]
+    >([])
+    const [productPurchaseUnitsLoading, setProductPurchaseUnitsLoading] =
+        useState(false)
+
+    const unitCatalog = useMemo(
+        () => Object.values(unitById),
+        [unitById],
+    )
+
+    const lotUnitSelectOptions = useMemo(() => {
+        const productType =
+            selectedProductDetail?.unitType?.trim() ||
+            selectedProduct?.unitType?.trim() ||
+            selectedLot?.unitType?.trim() ||
+            ""
+
+        if (!productType) return unitCatalog
+
+        const normalized = productType.toLowerCase()
+        return unitCatalog.filter(
+            (unit) => unit.type?.trim().toLowerCase() === normalized,
+        )
+    }, [
+        unitCatalog,
+        selectedProductDetail?.unitType,
+        selectedProduct?.unitType,
+        selectedLot?.unitType,
+    ])
 
     const handleAddProduct = () => {
         navigate("/supermarketStaff/products/workflow")
@@ -638,6 +679,22 @@ const ProductsLotsPage: React.FC = () => {
         void loadCategories()
     }, [])
 
+    useEffect(() => {
+        const loadUnits = async () => {
+            try {
+                const units = await unitService.getUnits()
+                const map = Object.fromEntries(
+                    (Array.isArray(units) ? units : []).map((unit) => [unit.unitId, unit]),
+                )
+                setUnitById(map)
+            } catch (error) {
+                console.error("ProductsLotsPage.loadUnits -> error:", error)
+            }
+        }
+
+        void loadUnits()
+    }, [])
+
     const displayLots = useMemo(() => {
         if (sortRules.length === 0) return lots
 
@@ -757,6 +814,33 @@ const ProductsLotsPage: React.FC = () => {
         selectedLot?.productImages?.[0]?.imageUrl ||
         "/placeholder.png"
 
+    useEffect(() => {
+        setLotUnitDraft(selectedLot.unitId || "")
+    }, [selectedLot.unitId, openDetail])
+
+    const handleSaveLotUnit = async () => {
+        if (!selectedLot.lotId || !lotUnitDraft) return
+        if (lotUnitDraft === selectedLot.unitId) {
+            toast.success("Đơn vị lô không thay đổi")
+            return
+        }
+
+        setSavingLotUnit(true)
+        try {
+            await productLotService.updateLotUnit(selectedLot.lotId, lotUnitDraft)
+            await loadLots()
+            const refreshed = lots.find((item) => item.lotId === selectedLot.lotId)
+            if (refreshed) setSelectedLot(refreshed)
+            toast.success("Đã cập nhật đơn vị bán lô hàng")
+        } catch (error) {
+            toast.error(
+                getApiErrorMessage(error, "Không thể cập nhật đơn vị bán lô hàng"),
+            )
+        } finally {
+            setSavingLotUnit(false)
+        }
+    }
+
     const handleOpenDetail = async (lot: ProductLotItem) => {
         setSelectedLot(lot)
         setSelectedProduct(null)
@@ -802,6 +886,7 @@ const ProductsLotsPage: React.FC = () => {
         setEditErrors({})
         setEditForm(createEmptyEditForm())
         setNutritionRows([createNutritionRow()])
+        setProductPurchaseUnits([])
     }
 
     const handleOpenProductDetail = async (productId: string) => {
@@ -815,15 +900,19 @@ const ProductsLotsPage: React.FC = () => {
         setEditErrors({})
         setEditForm(createEmptyEditForm())
         setNutritionRows([createNutritionRow()])
+        setProductPurchaseUnits([])
+        setProductPurchaseUnitsLoading(true)
 
         try {
-            const [product, detail] = await Promise.all([
+            const [product, detail, purchaseUnits] = await Promise.all([
                 productService.getProductById(productId),
                 productService.getProductDetails(productId),
+                productService.getPurchaseUnits(productId).catch(() => []),
             ])
 
             setSelectedProduct(product)
             setSelectedProductDetail(detail)
+            setProductPurchaseUnits(purchaseUnits)
 
             const nextForm = buildEditForm(product, detail)
             setEditForm(nextForm)
@@ -836,8 +925,11 @@ const ProductsLotsPage: React.FC = () => {
             setOpenDetail(false)
         } finally {
             setLoadingPopup(false)
+            setProductPurchaseUnitsLoading(false)
         }
     }
+
+    const isProductOnlyDetail = Boolean(selectedProduct && !selectedLotState)
 
     const setEditField = <K extends keyof ProductEditFormValues>(
         key: K,
@@ -1335,6 +1427,34 @@ const ProductsLotsPage: React.FC = () => {
                                                                     ? ` • KL: ${lot.weight}`
                                                                     : ""}
                                                             </div>
+                                                            {(() => {
+                                                                const unitMeta = lot.unitId
+                                                                    ? unitById[lot.unitId]
+                                                                    : undefined
+                                                                const conversionHint = unitMeta
+                                                                    ? formatConversionRateHintWithBase(
+                                                                          unitMeta,
+                                                                          unitCatalog,
+                                                                      )
+                                                                    : lot.conversionRate &&
+                                                                        lot.conversionRate !== 1
+                                                                      ? formatConversionRateHintWithBase(
+                                                                            {
+                                                                                name: lot.unitName,
+                                                                                symbol: lot.unitSymbol,
+                                                                                type: lot.unitType,
+                                                                                conversionRate:
+                                                                                    lot.conversionRate,
+                                                                            },
+                                                                            unitCatalog,
+                                                                        )
+                                                                      : null
+                                                                return conversionHint ? (
+                                                                    <div className="truncate text-[9px] text-sky-700">
+                                                                        {conversionHint}
+                                                                    </div>
+                                                                ) : null
+                                                            })()}
                                                         </div>
 
                                                         <div className="min-w-0">
@@ -1691,6 +1811,165 @@ const ProductsLotsPage: React.FC = () => {
                                                 </div>
 
                                                 <div className="space-y-4">
+                                                    {isProductOnlyDetail ? (
+                                                        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+                                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                                <div>
+                                                                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                                                                        <Package2 className="h-4 w-4 text-emerald-600" />
+                                                                        Đơn vị chuẩn & đơn vị bán
+                                                                    </div>
+                                                                    <p className="mt-1 text-xs text-slate-600">
+                                                                        Đơn vị gốc khi tạo sản phẩm; các lô
+                                                                        chỉ dùng đơn vị cùng loại (
+                                                                        {selectedProduct?.unitType ||
+                                                                            selectedProductDetail?.unitType ||
+                                                                            "—"}
+                                                                        ).
+                                                                    </p>
+                                                                </div>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        handleCloseDetail()
+                                                                        navigate(
+                                                                            "/supermarketStaff/purchase-units",
+                                                                            {
+                                                                                state: {
+                                                                                    productId:
+                                                                                        selectedProduct?.productId,
+                                                                                },
+                                                                            },
+                                                                        )
+                                                                    }}
+                                                                    className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-white px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-50"
+                                                                >
+                                                                    Quản lý chi tiết
+                                                                </button>
+                                                            </div>
+
+                                                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                                                                <div className="rounded-xl border border-white/80 bg-white p-3">
+                                                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                                                        Đơn vị chuẩn
+                                                                    </div>
+                                                                    <div className="mt-1 text-sm font-semibold text-slate-900">
+                                                                        {formatUnitDisplay(
+                                                                            selectedProduct?.unitName ||
+                                                                                selectedProductDetail?.unitName,
+                                                                            selectedProduct?.unitSymbol ||
+                                                                                selectedProductDetail?.unitSymbol,
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="mt-1 text-xs text-slate-500">
+                                                                        Loại:{" "}
+                                                                        {selectedProduct?.unitType ||
+                                                                            selectedProductDetail?.unitType ||
+                                                                            "—"}
+                                                                        {selectedProduct?.conversionRate !=
+                                                                            null &&
+                                                                        selectedProduct.conversionRate !==
+                                                                            1
+                                                                            ? ` • Hệ số ${selectedProduct.conversionRate}`
+                                                                            : null}
+                                                                    </div>
+                                                                </div>
+
+                                                                <div className="rounded-xl border border-white/80 bg-white p-3">
+                                                                    <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                                                                        Đơn vị khách mua được
+                                                                    </div>
+                                                                    {productPurchaseUnitsLoading ? (
+                                                                        <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                                            Đang tải...
+                                                                        </div>
+                                                                    ) : productPurchaseUnits.length ===
+                                                                      0 ? (
+                                                                        <p className="mt-2 text-xs text-slate-500">
+                                                                            Chưa có lô đang bán — tạo
+                                                                            lô với đơn vị phù hợp để
+                                                                            mở thêm đơn vị mua.
+                                                                        </p>
+                                                                    ) : (
+                                                                        <ul className="mt-2 space-y-1.5">
+                                                                            {productPurchaseUnits.map(
+                                                                                (unit) => (
+                                                                                    <li
+                                                                                        key={
+                                                                                            unit.unitId
+                                                                                        }
+                                                                                        className="flex flex-wrap items-center justify-between gap-2 text-xs"
+                                                                                    >
+                                                                                        <span className="font-medium text-slate-800">
+                                                                                            {formatUnitDisplay(
+                                                                                                unit.name,
+                                                                                                unit.symbol,
+                                                                                            )}
+                                                                                            {unit.isProductDefault
+                                                                                                ? " (chuẩn)"
+                                                                                                : ""}
+                                                                                        </span>
+                                                                                        <span className="text-slate-500">
+                                                                                            {unit.hasPublishedLot
+                                                                                                ? "Có lô bán"
+                                                                                                : "Chưa có lô"}
+                                                                                        </span>
+                                                                                    </li>
+                                                                                ),
+                                                                            )}
+                                                                        </ul>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
+
+                                                    {selectedLot.lotId && (
+                                                        <div className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+                                                            <div className="text-sm font-semibold text-slate-900">
+                                                                Đơn vị bán lô hàng
+                                                            </div>
+                                                            <p className="mt-1 text-xs text-slate-600">
+                                                                Đổi đơn vị sẽ quy đổi tồn kho và giá theo hệ số.
+                                                            </p>
+                                                            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                                                                <label className="flex-1 text-sm">
+                                                                    <span className="mb-1 block font-medium text-slate-700">
+                                                                        Chọn đơn vị
+                                                                    </span>
+                                                                    <select
+                                                                        value={lotUnitDraft}
+                                                                        onChange={(event) =>
+                                                                            setLotUnitDraft(event.target.value)
+                                                                        }
+                                                                        className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
+                                                                    >
+                                                                        <option value="">— Chọn đơn vị —</option>
+                                                                        {lotUnitSelectOptions.map((unit) => (
+                                                                            <option key={unit.unitId} value={unit.unitId}>
+                                                                                {formatUnitLabel(unit.name, unit.symbol)}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                </label>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => void handleSaveLotUnit()}
+                                                                    disabled={savingLotUnit || !lotUnitDraft}
+                                                                    className="inline-flex items-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                                                                >
+                                                                    {savingLotUnit ? (
+                                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Save className="h-4 w-4" />
+                                                                    )}
+                                                                    Lưu đơn vị lô
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <DetailBlock
                                                         title="Thông tin định danh"
                                                         rows={[
@@ -1716,17 +1995,52 @@ const ProductsLotsPage: React.FC = () => {
                                                                 selectedLot.supermarketName ||
                                                                 "—",
                                                             ],
-                                                            ["Mã đơn vị sản phẩm", selectedLot.unitId || "—"],
+                                                            [
+                                                                "Mã đơn vị sản phẩm",
+                                                                selectedProduct?.unitId ||
+                                                                    selectedProductDetail?.unitId ||
+                                                                    selectedLot.unitId ||
+                                                                    "—",
+                                                            ],
                                                             [
                                                                 "Tên đơn vị",
                                                                 formatUnitLabel(
-                                                                    selectedProductDetail?.unitName || selectedLot.unitName,
-                                                                    selectedProductDetail?.unitSymbol || selectedLot.unitSymbol,
+                                                                    selectedProduct?.unitName ||
+                                                                        selectedProductDetail?.unitName ||
+                                                                        selectedLot.unitName,
+                                                                    selectedProduct?.unitSymbol ||
+                                                                        selectedProductDetail?.unitSymbol ||
+                                                                        selectedLot.unitSymbol,
                                                                 ),
                                                             ],
                                                             [
                                                                 "Loại đơn vị",
-                                                                selectedProductDetail?.unitType || selectedLot.unitType || "—",
+                                                                selectedProduct?.unitType ||
+                                                                    selectedProductDetail?.unitType ||
+                                                                    selectedLot.unitType ||
+                                                                    "—",
+                                                            ],
+                                                            [
+                                                                "Hệ số quy đổi",
+                                                                (() => {
+                                                                    const unitMeta = selectedLot.unitId
+                                                                        ? unitById[selectedLot.unitId]
+                                                                        : undefined
+                                                                    const hint = unitMeta
+                                                                        ? formatConversionRateHintWithBase(
+                                                                              unitMeta,
+                                                                              unitCatalog,
+                                                                          )
+                                                                        : null
+                                                                    if (hint) return hint
+                                                                    const rate =
+                                                                        selectedProduct?.conversionRate ??
+                                                                        selectedProductDetail?.conversionRate ??
+                                                                        selectedLot.conversionRate
+                                                                    return rate != null && rate !== 1
+                                                                        ? `1 đơn vị = ${rate} (cùng loại)`
+                                                                        : "Đơn vị gốc (hệ số = 1)"
+                                                                })(),
                                                             ],
                                                             ["SKU", selectedProduct?.sku || "—"],
                                                         ]}

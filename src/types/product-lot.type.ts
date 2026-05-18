@@ -24,6 +24,7 @@ export type ProductLotItem = {
     unitName?: string | null
     unitType?: string | null
     unitSymbol?: string | null
+    conversionRate?: number | null
 
     originalUnitPrice?: number | null
     suggestedUnitPrice?: number | null

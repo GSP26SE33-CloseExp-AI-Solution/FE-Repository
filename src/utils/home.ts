@@ -107,6 +107,32 @@ export const formatSupermarketLabel = (supermarketId?: string) => {
     return `Siêu thị ${supermarketId.slice(0, 8)}`
 }
 
+type RawHomeLotApiItem = HomeProductLotApiItem & {
+    ConversionRate?: number
+    ProductUnitId?: string
+    ProductUnitName?: string
+    ProductUnitType?: string
+    ProductUnitSymbol?: string
+    ProductConversionRate?: number
+    UnitType?: string
+    UnitSymbol?: string
+}
+
+export const normalizeHomeLotApiItem = (
+    item: RawHomeLotApiItem,
+): HomeProductLotApiItem => ({
+    ...item,
+    unitType: item.unitType ?? item.UnitType,
+    unitSymbol: item.unitSymbol ?? item.UnitSymbol,
+    conversionRate: item.conversionRate ?? item.ConversionRate ?? 1,
+    productUnitId: item.productUnitId ?? item.ProductUnitId,
+    productUnitName: item.productUnitName ?? item.ProductUnitName,
+    productUnitType: item.productUnitType ?? item.ProductUnitType,
+    productUnitSymbol: item.productUnitSymbol ?? item.ProductUnitSymbol,
+    productConversionRate:
+        item.productConversionRate ?? item.ProductConversionRate ?? 1,
+})
+
 export const mapProductLotFromApi = (
     item: HomeProductLotApiItem,
     supermarketNameMap: Map<string, string>
@@ -163,6 +189,17 @@ export const mapProductLotFromApi = (
         daysToExpiry,
         hoursRemaining,
         quantity: Number(item.quantity ?? 0),
+
+        unitId: item.unitId,
+        unitName: item.unitName,
+        unitType: item.unitType,
+        unitSymbol: item.unitSymbol,
+        conversionRate: item.conversionRate,
+        productUnitId: item.productUnitId,
+        productUnitName: item.productUnitName,
+        productUnitType: item.productUnitType,
+        productUnitSymbol: item.productUnitSymbol,
+        productConversionRate: item.productConversionRate,
     }
 }
 
@@ -250,7 +287,10 @@ export const groupHomeProductsByProduct = (
                 totalQuantity: product.quantity,
                 supermarketCount: 1,
                 supermarketNames: product.supermarketName ? [product.supermarketName] : [],
-                unitNames: rawLot?.unitName ? [rawLot.unitName] : [],
+                unitNames: [
+                    ...(rawLot?.productUnitName ? [rawLot.productUnitName] : []),
+                    ...(rawLot?.unitName ? [rawLot.unitName] : []),
+                ],
 
                 nearestExpiryDate: rawLot?.expiryDate,
                 nearestDaysToExpiry: product.daysToExpiry,
@@ -268,6 +308,7 @@ export const groupHomeProductsByProduct = (
 
         const unitNames = new Set(current.unitNames)
         if (rawLot?.unitName) unitNames.add(rawLot.unitName)
+        if (rawLot?.productUnitName) unitNames.add(rawLot.productUnitName)
 
         const nextLots = [...current.lots, product]
         const nextRawLots = rawLot ? [...current.rawLots, rawLot] : current.rawLots

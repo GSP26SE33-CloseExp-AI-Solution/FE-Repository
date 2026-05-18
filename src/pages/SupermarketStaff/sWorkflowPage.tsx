@@ -387,6 +387,7 @@ const ProductWorkflowPage: React.FC = () => {
                             value: item.unitId,
                             unitType: item.type || undefined,
                             unitSymbol: item.symbol || undefined,
+                            conversionRate: item.conversionRate ?? 1,
                         }))
                         : [],
                 )
@@ -416,6 +417,28 @@ const ProductWorkflowPage: React.FC = () => {
     useEffect(() => {
         imagesRef.current = images
     }, [images])
+
+    useEffect(() => {
+        if (workflow.step !== "LOT" || workflow.lotForm.unitId.trim()) return
+
+        const defaultUnitId =
+            workflow.createdProduct?.unitId || workflow.productForm.unitId || ""
+
+        if (!defaultUnitId) return
+
+        setWorkflow((prev) => ({
+            ...prev,
+            lotForm: {
+                ...prev.lotForm,
+                unitId: defaultUnitId,
+            },
+        }))
+    }, [
+        workflow.step,
+        workflow.lotForm.unitId,
+        workflow.createdProduct?.unitId,
+        workflow.productForm.unitId,
+    ])
 
     useEffect(() => {
         return () => {
@@ -805,6 +828,17 @@ const ProductWorkflowPage: React.FC = () => {
             return
         }
 
+        const lotUnitId =
+            form.unitId.trim() ||
+            workflow.createdProduct?.unitId ||
+            workflow.productForm.unitId ||
+            ""
+
+        if (!lotUnitId) {
+            toast.error("Chọn đơn vị bán cho lô hàng")
+            return
+        }
+
         const payload: WorkflowCreateAndPublishLotRequestDto = {
             productId,
             expiryDate: new Date(form.expiryDate).toISOString(),
@@ -824,7 +858,7 @@ const ProductWorkflowPage: React.FC = () => {
             acceptedSuggestion: form.acceptedSuggestion,
             priceFeedback: form.priceFeedback.trim() || undefined,
             isManualFallback: form.isManualFallback,
-            unitId: workflow.createdProduct?.unitId || workflow.productForm.unitId || undefined,
+            unitId: lotUnitId,
         }
 
         setLoading("CREATE_LOT")
@@ -978,8 +1012,16 @@ const ProductWorkflowPage: React.FC = () => {
                                 ownProduct={workflow.ownProduct}
                                 createdProduct={workflow.createdProduct}
                                 selectedUnit={unitOptions.find(
-                                    (item) => item.unitId === workflow.productForm.unitId,
+                                    (item) =>
+                                        item.unitId ===
+                                        (workflow.lotForm.unitId ||
+                                            workflow.productForm.unitId),
                                 )}
+                                productDefaultUnitId={
+                                    workflow.createdProduct?.unitId ||
+                                    workflow.productForm.unitId
+                                }
+                                unitOptions={unitOptions}
                                 form={workflow.lotForm}
                                 loading={loading === "CREATE_LOT" || loading === "PREVIEW_PRICE"}
                                 createdLot={workflow.createdLot}
