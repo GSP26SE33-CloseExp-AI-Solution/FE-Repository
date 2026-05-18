@@ -20,7 +20,12 @@ import { orderService } from "@/services/order.service"
 import { supermarketService } from "@/services/supermarket.service"
 import type { OrderDetails, RefundDetails } from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
-import { googleMapsUrl, lastOrderStorage, money } from "@/utils/orderStorage"
+import {
+    googleMapsUrl,
+    lastOrderStorage,
+    money,
+    pendingPaymentOrderStorage,
+} from "@/utils/orderStorage"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -128,6 +133,7 @@ const MyOrderDetailPage: React.FC = () => {
     const [refunds, setRefunds] = useState<RefundDetails[]>([])
     const [loading, setLoading] = useState(true)
     const [canceling, setCanceling] = useState(false)
+    const [paying, setPaying] = useState(false)
     const [error, setError] = useState("")
     const [pickupCatalogPoint, setPickupCatalogPoint] =
         useState<PickupPoint | null>(null)
@@ -264,6 +270,11 @@ const MyOrderDetailPage: React.FC = () => {
         [order?.status],
     )
 
+    const isPending = useMemo(
+        () => (order?.status || "").toLowerCase() === "pending",
+        [order?.status],
+    )
+
     const latestRefund = useMemo(() => {
         if (!refunds.length) return null
 
@@ -276,11 +287,31 @@ const MyOrderDetailPage: React.FC = () => {
 
     const canCancelOrder = useMemo(() => {
         if (!order) return false
-        if ((order.status || "").toLowerCase() !== "paid") return false
+        const status = (order.status || "").toLowerCase()
+        if (status === "pending") return true
+        if (status !== "paid") return false
         if (!order.cancelDeadline) return false
 
         return new Date(order.cancelDeadline).getTime() >= Date.now()
     }, [order])
+
+    const paymentStatusLabel = useMemo(() => {
+        const status = (order?.status || "").toLowerCase()
+
+        if (status === "pending") return "Chưa thanh toán"
+        if (
+            status === "paid" ||
+            status === "readytoship" ||
+            status === "deliveredwaitconfirm" ||
+            status === "completed"
+        ) {
+            return "Đã thanh toán"
+        }
+        if (status === "refunded") return "Đã hoàn tiền"
+        if (status === "canceled" || status === "failed") return "Không thanh toán"
+
+        return "Chưa rõ"
+    }, [order?.status])
 
     const subtotal = useMemo(() => {
         if (!order?.orderItems?.length) return order?.totalAmount || 0
@@ -397,6 +428,32 @@ const MyOrderDetailPage: React.FC = () => {
             toast.error(e?.message || "Không thể hủy đơn hàng.")
         } finally {
             setCanceling(false)
+        }
+    }
+
+    const handlePayAgain = async () => {
+        if (!order || !isPending || paying) return
+
+        try {
+            setPaying(true)
+            pendingPaymentOrderStorage.set(order)
+
+            const origin = window.location.origin
+            const { checkoutUrl } = await orderService.createPaymentLink({
+                orderId: order.orderId,
+                returnUrl: `${origin}/payment-return`,
+                cancelUrl: `${origin}/payment-return`,
+            })
+
+            window.location.href = checkoutUrl
+        } catch (err: unknown) {
+            const message =
+                err instanceof Error
+                    ? err.message
+                    : "Không thể tạo link thanh toán."
+            toast.error(message)
+        } finally {
+            setPaying(false)
         }
     }
 
@@ -526,12 +583,35 @@ const MyOrderDetailPage: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">
+                            {isPending ? (
+                                <button
+                                    type="button"
+                                    onClick={handlePayAgain}
+                                    disabled={paying}
+                                    className={cn(
+                                        primaryBtn,
+                                        "!bg-emerald-600 hover:!bg-emerald-700",
+                                    )}
+                                >
+                                    {paying ? (
+                                        <Loader2
+                                            size={14}
+                                            className="animate-spin"
+                                        />
+                                    ) : null}
+                                    Thanh toán lại
+                                </button>
+                            ) : null}
+
                             {canCancelOrder ? (
                                 <button
                                     type="button"
                                     onClick={handleCancelOrder}
                                     disabled={canceling}
-                                    className={secondaryBtn}
+                                    className={cn(
+                                        secondaryBtn,
+                                        "!border-rose-200 !text-rose-700 hover:!bg-rose-50",
+                                    )}
                                 >
                                     {canceling ? (
                                         <Loader2
@@ -800,7 +880,7 @@ const MyOrderDetailPage: React.FC = () => {
                                     </div>
                                     <div className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-emerald-700">
                                         <CreditCard size={14} />
-                                        Đã thanh toán
+                                        {paymentStatusLabel}
                                     </div>
                                 </div>
                             </section>
