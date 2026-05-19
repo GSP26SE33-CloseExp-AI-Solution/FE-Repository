@@ -16,6 +16,7 @@
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@zxing/browser": "^0.1.5",
+    "@zxing/library": "^0.21.0",
     "axios": "^1.13.2",
     "blockhash-core": "^0.1.0",
     "browser-image-hash": "^0.0.5",
