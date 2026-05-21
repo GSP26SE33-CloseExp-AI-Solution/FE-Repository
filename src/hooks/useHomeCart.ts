@@ -7,6 +7,7 @@ import type { HomeProductView } from "@/types/home.type"
 import type { CartItem } from "@/types/order.type"
 
 export type HomeCartLineInput = HomeProductView & {
+    expiryDate?: string
     purchaseUnitId?: string
     purchaseUnitName?: string
     purchaseUnitSymbol?: string
@@ -43,6 +44,8 @@ export const useHomeCart = () => {
         lotId: item.lotId,
         productId: item.productId,
         supermarketId: item.supermarketId,
+        supermarketName: item.supermarketName || undefined,
+        expiryDate: item.expiryDate || undefined,
         name: item.name,
         price: item.displayPrice ?? item.price,
         imageUrl: item.imageUrl,
