@@ -17,6 +17,7 @@ import {
     money,
     orderContextStorage,
 } from "@/utils/orderStorage"
+import { formatBestBefore } from "@/utils/home"
 import {
     formatCustomerPurchaseUnitHint,
     formatCustomerQuantityEquivalence,
@@ -301,6 +302,22 @@ const CartPage: React.FC = () => {
                                                     <p className="mt-1 line-clamp-2 text-[11px] text-slate-500">
                                                         {formatCustomerPurchaseUnitHint(item)}
                                                     </p>
+
+                                                    {item.supermarketName?.trim() ? (
+                                                        <p className="mt-1 line-clamp-1 text-[11px] font-medium text-slate-600">
+                                                            Siêu thị:{" "}
+                                                            {item.supermarketName.trim()}
+                                                        </p>
+                                                    ) : null}
+
+                                                    {item.expiryDate ? (
+                                                        <p className="mt-0.5 text-[11px] font-medium text-amber-700">
+                                                            HSD:{" "}
+                                                            {formatBestBefore(
+                                                                item.expiryDate,
+                                                            )}
+                                                        </p>
+                                                    ) : null}
 
                                                     <div className="mt-1 line-clamp-1 text-[11px] text-slate-400">
                                                         Lô: {item.lotId}

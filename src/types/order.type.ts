@@ -148,6 +148,8 @@ export type CartItem = {
 	lotId: string;
 	productId: string;
 	supermarketId: string;
+	supermarketName?: string;
+	expiryDate?: string;
 	name: string;
 	price: number;
 	qty: number;

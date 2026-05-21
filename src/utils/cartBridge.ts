@@ -31,6 +31,8 @@ const mapApiItemToCartItem = (item: ApiCartItem): CartItem => ({
     lotId: item.lotId,
     productId: item.productId,
     supermarketId: item.supermarketId,
+    supermarketName: item.supermarketName ?? undefined,
+    expiryDate: item.expiryDate || undefined,
     name: item.productName,
     price: item.unitPrice,
     imageUrl: item.productImageUrl ?? undefined,

@@ -471,6 +471,7 @@ const ProductDetailPage = () => {
 
         return {
             ...selectedLot,
+            expiryDate: selectedRawLot.expiryDate,
             purchaseUnitId:
                 selectedPurchaseUnit?.unitId ?? selectedRawLot.unitId,
             purchaseUnitName:
