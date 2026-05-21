@@ -28,6 +28,7 @@ import { mapProductStateLabel } from "@/mappers/product-ai.mapper"
 import {
     formatConversionRateHintWithBase,
     formatUnitOptionLabel,
+    normalizeUnitMeasureKind,
 } from "@/utils/unitMeasure"
 
 type ProductUnitOption = {
@@ -44,6 +45,7 @@ type Props = {
     createdProduct: WorkflowCreateProductResultDto | null
     selectedUnit?: ProductUnitOption
     productDefaultUnitId?: string
+    unitOptions?: ProductUnitOption[]
     form: LotFormState
     loading: boolean
     createdLot: WorkflowCreateAndPublishLotResultDto | null
@@ -77,33 +79,6 @@ const formatUnit = (name?: string | null, symbol?: string | null) => {
 
     if (safeName === "—") return "—"
     return safeSymbol ? `${safeName} (${safeSymbol})` : safeName
-}
-
-const normalizeUnitType = (value?: string | null) => {
-    const normalized = value?.trim().toLowerCase() || ""
-
-    if (
-        normalized.includes("variable") ||
-        normalized.includes("weight") ||
-        normalized.includes("mass") ||
-        normalized.includes("kg") ||
-        normalized.includes("gram") ||
-        normalized.includes("khối lượng")
-    ) {
-        return "VARIABLE"
-    }
-
-    if (
-        normalized.includes("fixed") ||
-        normalized.includes("piece") ||
-        normalized.includes("unit") ||
-        normalized.includes("cố định") ||
-        normalized.includes("số lượng")
-    ) {
-        return "FIXED"
-    }
-
-    return "UNKNOWN"
 }
 
 const WorkflowLotStep: React.FC<Props> = ({
@@ -229,28 +204,31 @@ const WorkflowLotStep: React.FC<Props> = ({
         unitCatalog,
     )
 
-    const effectiveUnitType = normalizeUnitType(
+    const effectiveUnitKind = normalizeUnitMeasureKind(
         stockLot?.unitType ||
             lotSelectedUnit?.unitType ||
             createdProduct?.unitType,
     )
 
+    const quantityLocked = effectiveUnitKind === "WEIGHT"
+    const weightLocked = effectiveUnitKind === "COUNT"
+
     const quantityValid = typeof form.quantity === "number" && form.quantity > 0
     const weightValid = typeof form.weight === "number" && form.weight > 0
 
     const requiredAmountValid =
-        effectiveUnitType === "VARIABLE"
+        effectiveUnitKind === "WEIGHT"
             ? weightValid
-            : effectiveUnitType === "FIXED"
+            : effectiveUnitKind === "COUNT"
                 ? quantityValid
                 : quantityValid || weightValid
 
     const amountHint =
-        effectiveUnitType === "VARIABLE"
-            ? "Đơn vị theo khối lượng nên cần nhập khối lượng."
-            : effectiveUnitType === "FIXED"
-                ? "Đơn vị cố định nên cần nhập số lượng."
-                : "Chưa xác định được loại đơn vị, bạn có thể nhập số lượng hoặc khối lượng."
+        effectiveUnitKind === "WEIGHT"
+            ? "Đơn vị theo khối lượng — chỉ nhập khối lượng (kg)."
+            : effectiveUnitKind === "COUNT"
+                ? "Đơn vị đếm — chỉ nhập số lượng."
+                : "Chọn đơn vị bán để biết nhập số lượng hay khối lượng."
 
     const canSubmit = Boolean(
         effectiveProductId &&
@@ -290,12 +268,24 @@ const WorkflowLotStep: React.FC<Props> = ({
                         <SelectField
                             label="Đơn vị bán lô hàng *"
                             value={form.unitId}
-                            onChange={(value) =>
+                            onChange={(value) => {
+                                const nextUnit = value
+                                    ? compatibleUnitOptions.find(
+                                          (item) => item.unitId === String(value),
+                                      )
+                                    : undefined
+                                const nextKind = normalizeUnitMeasureKind(
+                                    nextUnit?.unitType,
+                                )
+
                                 onChange({
                                     ...form,
                                     unitId: value ? String(value) : "",
+                                    quantity:
+                                        nextKind === "WEIGHT" ? "" : form.quantity,
+                                    weight: nextKind === "COUNT" ? "" : form.weight,
                                 })
-                            }
+                            }}
                             options={compatibleUnitOptions.map((item) => ({
                                 label: formatUnitOptionLabel(
                                     {
@@ -341,14 +331,28 @@ const WorkflowLotStep: React.FC<Props> = ({
                     />
 
                     <NumberField
-                        label={effectiveUnitType === "FIXED" ? "Số lượng *" : "Số lượng"}
-                        value={form.quantity}
+                        label={
+                            effectiveUnitKind === "COUNT"
+                                ? "Số lượng *"
+                                : quantityLocked
+                                  ? "Số lượng (không áp dụng)"
+                                  : "Số lượng"
+                        }
+                        value={quantityLocked ? "" : form.quantity}
+                        disabled={quantityLocked}
                         onChange={(value) => onChange({ ...form, quantity: value })}
                     />
 
                     <NumberField
-                        label={effectiveUnitType === "VARIABLE" ? "Khối lượng *" : "Khối lượng"}
-                        value={form.weight}
+                        label={
+                            effectiveUnitKind === "WEIGHT"
+                                ? "Khối lượng (kg) *"
+                                : weightLocked
+                                  ? "Khối lượng (không áp dụng)"
+                                  : "Khối lượng (kg)"
+                        }
+                        value={weightLocked ? "" : form.weight}
+                        disabled={weightLocked}
                         onChange={(value) => onChange({ ...form, weight: value })}
                     />
 
@@ -363,8 +367,17 @@ const WorkflowLotStep: React.FC<Props> = ({
                     />
 
                     <CurrencyField
-                        label="Giá bán mong muốn *"
-                        value={form.finalUnitPrice}
+                        label={
+                            form.acceptedSuggestion
+                                ? "Giá bán (theo gợi ý hệ thống)"
+                                : "Giá bán mong muốn *"
+                        }
+                        value={
+                            form.acceptedSuggestion && typeof suggestedPrice === "number"
+                                ? suggestedPrice
+                                : form.finalUnitPrice
+                        }
+                        disabled={form.acceptedSuggestion}
                         onChange={(value) => onChange({ ...form, finalUnitPrice: value })}
                     />
 
@@ -406,7 +419,14 @@ const WorkflowLotStep: React.FC<Props> = ({
                             label="Dùng giá gợi ý từ hệ thống"
                             checked={form.acceptedSuggestion}
                             onChange={(checked) =>
-                                onChange({ ...form, acceptedSuggestion: checked })
+                                onChange({
+                                    ...form,
+                                    acceptedSuggestion: checked,
+                                    finalUnitPrice:
+                                        checked && typeof suggestedPrice === "number"
+                                            ? suggestedPrice
+                                            : form.finalUnitPrice,
+                                })
                             }
                         />
                         <CheckboxField

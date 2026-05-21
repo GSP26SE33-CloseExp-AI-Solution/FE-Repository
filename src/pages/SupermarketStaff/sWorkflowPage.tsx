@@ -23,9 +23,11 @@ import type {
 } from "@/types/product-ai-workflow.type"
 import {
     buildInitialWorkflowState,
+    emptyLotForm,
     joinIngredientsForRequest,
     stringifyNutritionFactsForRequest,
 } from "@/types/product-ai-workflow.type"
+import { normalizeUnitMeasureKind } from "@/utils/unitMeasure"
 import type { CategoryItem } from "@/types/category.type"
 import type { UnitOption } from "@/types/unit.type"
 
@@ -814,21 +816,6 @@ const ProductWorkflowPage: React.FC = () => {
             return
         }
 
-        if (
-            !(
-                (typeof form.quantity === "number" && form.quantity > 0) ||
-                (typeof form.weight === "number" && form.weight > 0)
-            )
-        ) {
-            toast.error("Bạn cần nhập số lượng hoặc khối lượng")
-            return
-        }
-
-        if (!form.acceptedSuggestion && !finalUnitPrice) {
-            toast.error("Khi không dùng giá gợi ý từ hệ thống, bạn cần nhập giá cuối mong muốn")
-            return
-        }
-
         const lotUnitId =
             form.unitId.trim() ||
             workflow.createdProduct?.unitId ||
@@ -840,6 +827,34 @@ const ProductWorkflowPage: React.FC = () => {
             return
         }
 
+        const lotUnitType =
+            unitOptions.find((item) => item.unitId === lotUnitId)?.unitType ||
+            workflow.createdProduct?.unitType
+        const lotUnitKind = normalizeUnitMeasureKind(lotUnitType)
+
+        const quantityOk = typeof form.quantity === "number" && form.quantity > 0
+        const weightOk = typeof form.weight === "number" && form.weight > 0
+
+        if (lotUnitKind === "COUNT" && !quantityOk) {
+            toast.error("Bạn cần nhập số lượng")
+            return
+        }
+
+        if (lotUnitKind === "WEIGHT" && !weightOk) {
+            toast.error("Bạn cần nhập khối lượng")
+            return
+        }
+
+        if (lotUnitKind === "UNKNOWN" && !quantityOk && !weightOk) {
+            toast.error("Bạn cần nhập số lượng hoặc khối lượng")
+            return
+        }
+
+        if (!form.acceptedSuggestion && !finalUnitPrice) {
+            toast.error("Khi không dùng giá gợi ý từ hệ thống, bạn cần nhập giá cuối mong muốn")
+            return
+        }
+
         const payload: WorkflowCreateAndPublishLotRequestDto = {
             productId,
             expiryDate: new Date(form.expiryDate).toISOString(),
@@ -847,13 +862,17 @@ const ProductWorkflowPage: React.FC = () => {
                 ? new Date(form.manufactureDate).toISOString()
                 : undefined,
             quantity:
-                typeof form.quantity === "number" && form.quantity > 0
-                    ? form.quantity
-                    : undefined,
+                lotUnitKind === "WEIGHT"
+                    ? undefined
+                    : quantityOk
+                      ? form.quantity
+                      : undefined,
             weight:
-                typeof form.weight === "number" && form.weight > 0
-                    ? form.weight
-                    : undefined,
+                lotUnitKind === "COUNT"
+                    ? undefined
+                    : weightOk
+                      ? form.weight
+                      : undefined,
             originalUnitPrice,
             finalUnitPrice,
             acceptedSuggestion: form.acceptedSuggestion,
@@ -908,6 +927,34 @@ const ProductWorkflowPage: React.FC = () => {
             setLoading(null)
         }
     }
+
+    const handleContinueLotForSameProduct = () => {
+        const productUnitId =
+            workflow.createdProduct?.unitId ||
+            workflow.productForm.unitId ||
+            ""
+
+        setWorkflow((prev) => ({
+            ...prev,
+            step: "LOT",
+            mode: "CREATE_STOCKLOT",
+            nextAction: "CREATE_STOCKLOT",
+            createdLot: null,
+            statusText: "Tạo thêm lô hàng cho sản phẩm hiện tại",
+            productForm: {
+                ...prev.productForm,
+                unitId: productUnitId || prev.productForm.unitId,
+            },
+            lotForm: {
+                ...emptyLotForm(),
+                unitId: productUnitId,
+            },
+        }))
+    }
+
+    const canContinueLotForSameProduct = Boolean(
+        workflow.createdProduct?.productId || workflow.ownProduct?.productId,
+    )
 
     return (
         <div className="min-h-screen bg-white">
@@ -1102,14 +1149,24 @@ const ProductWorkflowPage: React.FC = () => {
                                         Đã tạo lot thành công
                                     </div>
                                     <p className="mt-1 text-sm leading-6 text-emerald-800">
-                                        Bạn có thể quay về danh sách sản phẩm hoặc bắt đầu một workflow mới.
+                                        Bạn có thể tạo thêm lô cho cùng sản phẩm, quay về danh sách hoặc bắt đầu workflow mới.
                                     </p>
 
                                     <div className="mt-4 flex flex-wrap gap-3">
+                                        {canContinueLotForSameProduct ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleContinueLotForSameProduct}
+                                                className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                                            >
+                                                Tạo thêm lô cho sản phẩm này
+                                            </button>
+                                        ) : null}
+
                                         <button
                                             type="button"
                                             onClick={() => navigate("/supermarketStaff/products")}
-                                            className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700"
+                                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100"
                                         >
                                             Danh sách sản phẩm
                                         </button>

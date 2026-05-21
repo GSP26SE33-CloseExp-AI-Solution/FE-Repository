@@ -61,7 +61,9 @@ const Register = () => {
     const [email, setEmail] = useState("")
     const [phone, setPhone] = useState("")
     const [password, setPassword] = useState("")
+    const [confirmPassword, setConfirmPassword] = useState("")
     const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     const [otpDigits, setOtpDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""))
     const [otpCountdown, setOtpCountdown] = useState(OTP_RESEND_SECONDS)
@@ -94,6 +96,12 @@ const Register = () => {
 
     const passwordError = useMemo(() => getPasswordError(password), [password])
 
+    const confirmPasswordError = useMemo(() => {
+        if (!confirmPassword) return "Vui lòng nhập lại mật khẩu"
+        if (confirmPassword !== password) return "Mật khẩu xác nhận không khớp"
+        return ""
+    }, [confirmPassword, password])
+
     const fieldErrors = useMemo(() => {
         return {
             fullName: !fullName.trim() ? "Vui lòng nhập họ và tên" : "",
@@ -110,8 +118,9 @@ const Register = () => {
                         ? "Số điện thoại Việt Nam không hợp lệ"
                         : "",
             password: password ? passwordError : "",
+            confirmPassword: confirmPassword ? confirmPasswordError : "",
         }
-    }, [fullName, email, phone, password, passwordError])
+    }, [fullName, email, phone, password, passwordError, confirmPassword, confirmPasswordError])
 
     const canSubmit = useMemo(() => {
         return Boolean(
@@ -119,11 +128,13 @@ const Register = () => {
             email.trim() &&
             phone.trim() &&
             password.trim() &&
+            confirmPassword.trim() &&
             validateEmail(email.trim()) &&
             validateVietnamPhone(phone.trim()) &&
-            validateStrongPassword(password)
+            validateStrongPassword(password) &&
+            password === confirmPassword
         )
-    }, [fullName, email, phone, password])
+    }, [fullName, email, phone, password, confirmPassword])
 
     if (isAuthenticated()) {
         return <Navigate to="/" replace />
@@ -338,7 +349,7 @@ const Register = () => {
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div className="flex flex-col gap-4">
                                 <Input
                                     icon={<User size={16} />}
                                     label="Họ và tên"
@@ -369,6 +380,14 @@ const Register = () => {
                                     setShow={setShowPassword}
                                     error={fieldErrors.password}
                                     hint="Ít nhất 8 ký tự, gồm chữ hoa, chữ thường, số và 1 ký hiệu trong nhóm @ . $ ! % * ? &"
+                                />
+                                <PasswordInput
+                                    label="Xác nhận mật khẩu"
+                                    value={confirmPassword}
+                                    setValue={setConfirmPassword}
+                                    show={showConfirmPassword}
+                                    setShow={setShowConfirmPassword}
+                                    error={fieldErrors.confirmPassword}
                                 />
                             </div>
                         </div>
@@ -406,9 +425,10 @@ const Register = () => {
                                 <div>
                                     <p className="font-semibold text-emerald-800">Kiểm tra email của bạn</p>
                                     <p className="mt-1 text-sm text-emerald-700">
-                                        Chúng tôi đã gửi mã OTP đến{" "}
-                                        <span className="font-medium">{email}</span>. Vui lòng nhập mã để
-                                        xác minh tài khoản đăng ký.
+                                        Mã OTP đang được gửi đến{" "}
+                                        <span className="font-medium">{email}</span>. Email có thể
+                                        đến chậm 1–2 phút — kiểm tra cả hộp thư spam. Nếu chưa nhận
+                                        được, dùng nút gửi lại sau khi hết đếm ngược.
                                     </p>
                                 </div>
                             </div>

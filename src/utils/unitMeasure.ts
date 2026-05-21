@@ -5,6 +5,38 @@ export type UnitMeasureLike = {
     conversionRate?: number | null
 }
 
+export type UnitMeasureKind = "COUNT" | "WEIGHT" | "UNKNOWN"
+
+/** Phân loại đơn vị: đếm (số lượng) vs khối lượng. */
+export const normalizeUnitMeasureKind = (value?: string | null): UnitMeasureKind => {
+    const normalized = value?.trim().toLowerCase() || ""
+
+    if (
+        normalized.includes("đếm") ||
+        normalized.includes("count") ||
+        normalized.includes("fixed") ||
+        normalized.includes("piece") ||
+        normalized.includes("cố định") ||
+        normalized.includes("số lượng")
+    ) {
+        return "COUNT"
+    }
+
+    if (
+        normalized.includes("khối lượng") ||
+        normalized.includes("weight") ||
+        normalized.includes("mass") ||
+        normalized.includes("variable") ||
+        normalized.includes("kg") ||
+        normalized.includes("gram") ||
+        normalized.includes("gam")
+    ) {
+        return "WEIGHT"
+    }
+
+    return "UNKNOWN"
+}
+
 export const formatUnitDisplay = (
     name?: string | null,
     symbol?: string | null,

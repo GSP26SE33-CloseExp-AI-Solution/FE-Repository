@@ -174,10 +174,12 @@ export const NumberField = ({
     label,
     value,
     onChange,
+    disabled = false,
 }: {
     label: string
     value: number | ""
     onChange: (value: number | "") => void
+    disabled?: boolean
 }) => (
     <label className="block">
         <div className="mb-2 text-sm font-medium text-slate-700">{label}</div>
@@ -185,6 +187,7 @@ export const NumberField = ({
             type="number"
             min={0}
             step="any"
+            disabled={disabled}
             value={value}
             onChange={(e) => {
                 const raw = e.target.value
@@ -197,7 +200,12 @@ export const NumberField = ({
                 const parsed = Number(raw)
                 onChange(Number.isNaN(parsed) ? "" : parsed)
             }}
-            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+            className={cn(
+                "w-full rounded-xl border px-4 py-3 text-sm outline-none transition",
+                disabled
+                    ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                    : "border-slate-200 bg-white text-slate-900 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100",
+            )}
         />
     </label>
 )
@@ -226,10 +234,12 @@ export const CurrencyField = ({
     label,
     value,
     onChange,
+    disabled = false,
 }: {
     label: string
     value: number | ""
     onChange: (value: number | "") => void
+    disabled?: boolean
 }) => {
     const [focused, setFocused] = React.useState(false)
     const [draftValue, setDraftValue] = React.useState("")
@@ -252,8 +262,10 @@ export const CurrencyField = ({
             <input
                 type="text"
                 inputMode="numeric"
+                disabled={disabled}
                 value={displayValue}
                 onFocus={() => {
+                    if (disabled) return
                     setFocused(true)
                     setDraftValue(typeof value === "number" ? String(value) : "")
                 }}
@@ -261,6 +273,7 @@ export const CurrencyField = ({
                     setFocused(false)
                 }}
                 onChange={(e) => {
+                    if (disabled) return
                     const digitsOnly = e.target.value.replace(/[^\d]/g, "")
 
                     setDraftValue(digitsOnly)
@@ -273,8 +286,13 @@ export const CurrencyField = ({
                     const parsed = Number(digitsOnly)
                     onChange(Number.isNaN(parsed) ? "" : parsed)
                 }}
-                placeholder="Nhập số tiền"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100"
+                placeholder={disabled ? "Đang dùng giá gợi ý từ hệ thống" : "Nhập số tiền"}
+                className={cn(
+                    "w-full rounded-xl border px-4 py-3 text-sm outline-none transition",
+                    disabled
+                        ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                        : "border-slate-200 bg-white text-slate-900 focus:border-emerald-400 focus:ring-4 focus:ring-emerald-100",
+                )}
             />
         </label>
     )

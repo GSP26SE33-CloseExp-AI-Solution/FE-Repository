@@ -459,7 +459,10 @@ export const mapWorkflowCreateAndPublishLotResultToState = (
         createdLot: result,
         productForm: {
             ...previous.productForm,
-            unitId: firstText(stockLot?.unitId, previous.productForm.unitId),
+            unitId: firstText(
+                previous.createdProduct?.unitId,
+                previous.productForm.unitId,
+            ),
             categoryName: firstText(
                 result.productCategory,
                 previous.productForm.categoryName,
