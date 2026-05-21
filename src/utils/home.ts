@@ -116,12 +116,15 @@ type RawHomeLotApiItem = HomeProductLotApiItem & {
     ProductConversionRate?: number
     UnitType?: string
     UnitSymbol?: string
+    ProductImagePreSignedUrl?: string | null
 }
 
 export const normalizeHomeLotApiItem = (
     item: RawHomeLotApiItem,
 ): HomeProductLotApiItem => ({
     ...item,
+    productImagePreSignedUrl:
+        item.productImagePreSignedUrl ?? item.ProductImagePreSignedUrl ?? null,
     unitType: item.unitType ?? item.UnitType,
     unitSymbol: item.unitSymbol ?? item.UnitSymbol,
     conversionRate: item.conversionRate ?? item.ConversionRate ?? 1,
@@ -152,6 +155,10 @@ export const mapProductLotFromApi = (
                     : originalPrice
 
     const fallbackImage = item.productImages?.find((img) => img.imageUrl)?.imageUrl || ""
+    const rawImageUrl =
+        item.productImageUrl || item.mainImageUrl || fallbackImage || undefined
+    const displayImageUrl =
+        item.productImagePreSignedUrl?.trim() || rawImageUrl
 
     const resolvedCategory = resolveCategoryFromApi(item)
 
@@ -183,7 +190,8 @@ export const mapProductLotFromApi = (
             resolvedPrice
         ),
         timeLeft: getTimeLeftText(item.daysRemaining, item.hoursRemaining),
-        imageUrl: item.productImageUrl || item.mainImageUrl || fallbackImage || undefined,
+        imageUrl: rawImageUrl,
+        preSignedImageUrl: displayImageUrl,
         imageVariant: inferImageVariant(item.productName || "", resolvedCategory.categoryName),
         isFreshFood: resolvedCategory.isFreshFood,
         daysToExpiry,
@@ -275,6 +283,7 @@ export const groupHomeProductsByProduct = (
                 category: product.category,
                 categoryId: product.categoryId,
                 imageUrl: product.imageUrl,
+                preSignedImageUrl: product.preSignedImageUrl,
                 imageVariant: product.imageVariant,
                 isFreshFood: product.isFreshFood,
 
@@ -336,6 +345,11 @@ export const groupHomeProductsByProduct = (
 
             const nearestRawLot = rawByLotId.get(nearestLot.lotId)
             current.nearestExpiryDate = nearestRawLot?.expiryDate
+        }
+
+        if (!current.preSignedImageUrl && product.preSignedImageUrl) {
+            current.preSignedImageUrl = product.preSignedImageUrl
+            current.imageUrl = product.imageUrl ?? current.imageUrl
         }
 
         current.discountLabel = getBestDiscountLabel(current.lots)
