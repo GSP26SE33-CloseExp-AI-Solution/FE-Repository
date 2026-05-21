@@ -230,12 +230,15 @@ const ProductDetailPage = () => {
     }, [productId])
 
     const productDefaultUnitType = useMemo(() => {
-        const fromProduct = product?.unitType?.trim()
-        if (fromProduct) return fromProduct
+        const fromRawLots = product?.rawLots?.[0]?.unitType?.trim()
+        if (fromRawLots) return fromRawLots
+
+        const fromLots = product?.lots?.[0]?.unitType?.trim()
+        if (fromLots) return fromLots
 
         const defaultUnit = purchaseUnits.find((unit) => unit.isProductDefault)
         return defaultUnit?.type?.trim() ?? ""
-    }, [product?.unitType, purchaseUnits])
+    }, [product?.rawLots, product?.lots, purchaseUnits])
 
     const effectivePurchaseUnits = useMemo(() => {
         const merged = mergePurchaseUnits(purchaseUnits, product?.rawLots ?? [])

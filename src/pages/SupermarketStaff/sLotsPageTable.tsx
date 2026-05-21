@@ -632,7 +632,6 @@ const ProductsLotsPage: React.FC = () => {
 
             setApiCategoryOptions(names)
         } catch (error) {
-            console.error("ProductsLotsPage.loadCategories -> error:", error)
             setApiCategoryOptions([])
         } finally {
             setLoadingCategories(false)
@@ -682,7 +681,6 @@ const ProductsLotsPage: React.FC = () => {
                 ),
             )
         } catch (error) {
-            console.error("ProductsLotsPage.loadLots -> error:", error)
             toast.error("Không tải được danh sách lô hàng")
             setLots([])
             setServerTotal(0)
@@ -898,7 +896,6 @@ const ProductsLotsPage: React.FC = () => {
             setImageFiles([])
             setReplaceExistingImages(false)
         } catch (error) {
-            console.error("ProductsLotsPage.handleOpenDetail -> error:", error)
             toast.error("Không tải được chi tiết sản phẩm")
         } finally {
             setLoadingPopup(false)
@@ -952,7 +949,6 @@ const ProductsLotsPage: React.FC = () => {
             setImageFiles([])
             setReplaceExistingImages(false)
         } catch (error) {
-            console.error("ProductsLotsPage.handleOpenProductDetail -> error:", error)
             toast.error("Không tải được chi tiết sản phẩm")
             setOpenDetail(false)
         } finally {
@@ -1085,29 +1081,11 @@ const ProductsLotsPage: React.FC = () => {
                 nutritionFactsText: nutritionRowsToJsonString(nutritionRows),
             })
 
-            console.log(
-                "ProductsLotsPage.handleSaveProduct -> productId:",
-                targetId,
-            )
-            console.log("ProductsLotsPage.handleSaveProduct -> payload:", payload)
-
             const updateResponse = await productService.updateProduct(
                 targetId,
                 payload,
             )
             let imageUpdateResponse: ProductResponseDto | null = null
-
-            console.log("[ProductsLotsPage.handleSaveProduct] image upload state:", {
-                hasImages: imageFiles.length > 0,
-                imageCount: imageFiles.length,
-                replaceExistingImages,
-                targetId,
-                imageFiles: imageFiles.map((file) => ({
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                })),
-            })
 
             if (imageFiles.length > 0) {
                 imageUpdateResponse = await productService.updateProductImages(
@@ -1115,39 +1093,12 @@ const ProductsLotsPage: React.FC = () => {
                     imageFiles,
                     replaceExistingImages,
                 )
-
-                console.log("[ProductsLotsPage.handleSaveProduct] image update response:", {
-                    mainImageUrl: imageUpdateResponse.mainImageUrl,
-                    totalImages: imageUpdateResponse.totalImages,
-                    productImages: imageUpdateResponse.productImages,
-                })
             }
-
-            console.log(
-                "ProductsLotsPage.handleSaveProduct -> update response:",
-                updateResponse,
-            )
 
             const [product, detail] = await Promise.all([
                 productService.getProductById(targetId),
                 productService.getProductDetails(targetId),
             ])
-
-            console.log("[ProductsLotsPage.handleSaveProduct] refreshed image data:", {
-                product: {
-                    mainImageUrl: product.mainImageUrl,
-                    totalImages: product.totalImages,
-                    productImages: product.productImages,
-                },
-                detail: {
-                    mainImageUrl: detail.mainImageUrl,
-                    totalImages: detail.totalImages,
-                    productImages: detail.productImages,
-                },
-            })
-
-            console.log("ProductsLotsPage.handleSaveProduct -> refreshed product:", product)
-            console.log("ProductsLotsPage.handleSaveProduct -> refreshed detail:", detail)
 
             const normalizedIngredients = (payload.detail.ingredients ?? "")
                 .split(",")
@@ -1206,13 +1157,6 @@ const ProductsLotsPage: React.FC = () => {
 
             const nextProduct = imageUpdateResponse || product
 
-            console.log("[ProductsLotsPage.handleSaveProduct] selected next image data:", {
-                source: imageUpdateResponse ? "imageUpdateResponse" : "refreshedProduct",
-                mainImageUrl: nextProduct.mainImageUrl,
-                totalImages: nextProduct.totalImages,
-                productImages: nextProduct.productImages,
-            })
-
             setSelectedProduct(nextProduct)
             setSelectedProductDetail({
                 ...detail,
@@ -1262,21 +1206,6 @@ const ProductsLotsPage: React.FC = () => {
             typeof selectedLot?.hoursRemaining === "number"
             ? selectedLot.hoursRemaining
             : null
-
-    console.log("[ProductsLotsPage.render] popup image source:", {
-        popupImageUrl,
-        resolvedPopupImageUrl: getImageUrl(popupImageUrl),
-        selectedProductImage: {
-            mainImageUrl: selectedProduct?.mainImageUrl,
-            totalImages: selectedProduct?.totalImages,
-            productImages: selectedProduct?.productImages,
-        },
-        selectedProductDetailImage: {
-            mainImageUrl: selectedProductDetail?.mainImageUrl,
-            totalImages: selectedProductDetail?.totalImages,
-            productImages: selectedProductDetail?.productImages,
-        },
-    })
 
     return (
         <div className="min-h-screen bg-white">

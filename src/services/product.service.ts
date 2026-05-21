@@ -107,15 +107,10 @@ export const productService = {
         productId: string,
         payload: ProductUpdatePayload,
     ): Promise<ApiResponse<string>> {
-        console.log("[productService.updateProduct] -> productId:", productId)
-        console.log("[productService.updateProduct] -> payload:", payload)
-
         const response = await axiosClient.put<ApiResponse<string>>(
             `/Products/${productId}`,
             payload,
         )
-
-        console.log("[productService.updateProduct] -> raw response:", response.data)
 
         if (!response.data?.success) {
             const message =
@@ -150,36 +145,14 @@ export const productService = {
 
         formData.append("replaceExisting", String(replaceExisting))
 
-        console.log("[productService.updateProductImages] request:", {
-            productId,
-            replaceExisting,
-            fileCount: files.length,
-            files: files.map((file) => ({
-                name: file.name,
-                type: file.type,
-                size: file.size,
-            })),
-        })
-
         const response = await axiosClient.put<ApiResponse<ProductResponseDto>>(
             `/SupermarketStaff/products/${productId}/images`,
             formData,
         )
 
-        console.log("[productService.updateProductImages] raw response:", response.data)
-
         if (!response.data.success || !response.data.data) {
-            console.error("[productService.updateProductImages] failed:", response.data)
-
             throw new Error(response.data.message || "Không thể cập nhật ảnh sản phẩm")
         }
-
-        console.log("[productService.updateProductImages] success data:", {
-            productId: response.data.data.productId,
-            mainImageUrl: response.data.data.mainImageUrl,
-            totalImages: response.data.data.totalImages,
-            productImages: response.data.data.productImages,
-        })
 
         return response.data.data
     },
