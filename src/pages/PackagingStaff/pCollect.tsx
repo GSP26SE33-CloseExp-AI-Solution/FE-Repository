@@ -51,6 +51,7 @@ const PackageCollect = () => {
     const [collecting, setCollecting] = useState(false)
     const [confirmNotes, setConfirmNotes] = useState("")
     const [collectNotes, setCollectNotes] = useState("")
+    const [hasStartedCollecting, setHasStartedCollecting] = useState(false)
 
     const allItemIds = useMemo(
         () => order?.items?.map((item) => item.orderItemId).filter(Boolean) || [],
@@ -118,6 +119,7 @@ const PackageCollect = () => {
                         ?.map((item) => item.orderItemId)
                         .filter(Boolean) || []
                 )
+                setHasStartedCollecting(false)
             } catch (error: any) {
                 showError(
                     getFriendlyPackagingErrorMessage(
@@ -168,6 +170,11 @@ const PackageCollect = () => {
     const handleConfirm = async () => {
         if (!orderId) return
 
+        if (!hasStartedCollecting) {
+            showError("Vui lòng ghi nhận bắt đầu gom trước khi chuyển sang đóng gói.")
+            return
+        }
+
         if (selectedItemIds.length === 0) {
             showError("Chọn ít nhất một món trước khi bắt đầu gom hàng.")
             return
@@ -187,6 +194,7 @@ const PackageCollect = () => {
             showSuccess(response.message || "Đã ghi nhận bắt đầu gom hàng.")
             setConfirmNotes("")
             await fetchDetail(true)
+            setHasStartedCollecting(true)
         } catch (error: any) {
             showError(
                 getFriendlyPackagingErrorMessage(
@@ -633,7 +641,16 @@ const PackageCollect = () => {
                                 <button
                                     type="button"
                                     onClick={handleCollect}
-                                    disabled={collecting || selectedItemIds.length === 0}
+                                    disabled={
+                                        collecting ||
+                                        selectedItemIds.length === 0 ||
+                                        !hasStartedCollecting
+                                    }
+                                    title={
+                                        !hasStartedCollecting
+                                            ? "Vui lòng ghi nhận bắt đầu gom trước"
+                                            : undefined
+                                    }
                                     className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     {collecting ? (
