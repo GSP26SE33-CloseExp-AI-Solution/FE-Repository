@@ -1,5 +1,6 @@
 import type { CartItem } from "@/types/order.type"
-import { cartService, type ApiCart, type ApiCartItem } from "@/services/cart.service"
+import type { ApiCartItem, ApiCart } from "@/types/cart.type"
+import { cartService } from "@/services/cart.service"
 import { cartStorage } from "@/utils/orderStorage"
 import { getAuthSession } from "@/utils/authStorage"
 
@@ -106,10 +107,10 @@ export const cartBridge = {
                 nextQty <= 0
                     ? items.filter((x) => cartStorage.cartLineKey(x) !== key)
                     : items.map((x) =>
-                          cartStorage.cartLineKey(x) === key
-                              ? { ...x, qty: nextQty }
-                              : x,
-                      )
+                        cartStorage.cartLineKey(x) === key
+                            ? { ...x, qty: nextQty }
+                            : x,
+                    )
             cartStorage.set(next)
             return next
         }

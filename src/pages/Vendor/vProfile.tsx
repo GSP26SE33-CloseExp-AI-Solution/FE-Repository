@@ -436,7 +436,7 @@ const VendorProfile: React.FC = () => {
                     </div>
                 </div>
             </div>
-</div>
+        </div>
     )
 }
 

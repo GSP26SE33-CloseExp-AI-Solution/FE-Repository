@@ -65,14 +65,6 @@ export type PackagingOrderDetail = PackagingOrderSummary & {
 }
 
 /** GET /api/Packaging/history query params */
-export type PackagingHistoryQuery = {
-    fromDate?: string
-    toDate?: string
-    status?: string
-    orderCode?: string
-    pageNumber?: number
-    pageSize?: number
-}
 
 export type PackagingHistoryRecord = {
     packagingId: string
@@ -86,6 +78,15 @@ export type PackagingHistoryRecord = {
     status: string
     failureReason?: string | null
     packagedAt?: string | null
+}
+
+export type PackagingHistoryQuery = {
+    fromDate?: string
+    toDate?: string
+    status?: string
+    orderCode?: string
+    pageNumber?: number
+    pageSize?: number
 }
 
 export type PackagingHistoryResponse = PaginationResult<PackagingHistoryRecord>
