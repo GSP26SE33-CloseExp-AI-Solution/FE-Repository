@@ -115,11 +115,11 @@ const buildDeliveryDateOptions = (today = new Date()) => {
 type CalendarDayCell =
   | { kind: "empty" }
   | {
-      kind: "day"
-      day: number
-      dateKey: string
-      selectable: boolean
-    }
+    kind: "day"
+    day: number
+    dateKey: string
+    selectable: boolean
+  }
 
 const getMondayFirstOffset = (date: Date) => {
   const day = date.getDay()
@@ -993,13 +993,13 @@ const CheckoutPage: React.FC = () => {
                               className={cn(
                                 "mx-auto flex aspect-square w-9 items-center justify-center rounded-full transition",
                                 disabled &&
-                                  "cursor-not-allowed text-slate-300",
+                                "cursor-not-allowed text-slate-300",
                                 !disabled &&
-                                  !active &&
-                                  "text-slate-900 hover:bg-sky-50",
+                                !active &&
+                                "text-slate-900 hover:bg-sky-50",
                                 !disabled &&
-                                  active &&
-                                  "bg-sky-600 font-semibold text-white",
+                                active &&
+                                "bg-sky-600 font-semibold text-white",
                               )}
                               aria-label={formatDeliveryDateLabel(
                                 cell.dateKey,

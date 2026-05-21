@@ -279,9 +279,9 @@ const CartPage: React.FC = () => {
                                                             /{" "}
                                                             {formatUnitDisplay(
                                                                 item.purchaseUnitName ??
-                                                                    item.unitName,
+                                                                item.unitName,
                                                                 item.purchaseUnitSymbol ??
-                                                                    item.unitSymbol,
+                                                                item.unitSymbol,
                                                                 "đơn vị",
                                                             )}
                                                         </span>

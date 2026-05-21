@@ -1,58 +1,29 @@
 import axiosClient from "@/utils/axiosClient"
 import type { ApiResponse } from "@/types/api.types"
+import type {
+    AiTokenFeature,
+    RawTokenAllFeaturesUsage,
+    RawTokenConfigInfo,
+    RawTokenUsageInfo,
+    TokenAllFeaturesUsage,
+    TokenConfigInfo,
+    TokenHistory,
+    TokenUsageInfo,
+} from "@/types/ai-token.type"
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Normalizers ─────────────────────────────────────────────────────────────
 
-export interface TokenUsageInfo {
-    feature: string
+const createEmptyFeatureUsage = (
+    feature: AiTokenFeature,
     month: string
-    budget: number
-    used: number
-    remaining: number
-    percentage_used: number
-}
-
-export interface TokenAllFeaturesUsage {
-    month: string
-    features: {
-        ocr: TokenUsageInfo
-        pricing: TokenUsageInfo
-    }
-}
-
-export interface TokenConfigInfo {
-    monthly_budgets: Record<string, number>
-    token_costs: Record<string, number>
-    description: Record<string, string>
-}
-
-export interface TokenHistoryMonth {
-    [feature: string]: {
-        used: number
-        budget: number
-        remaining: number
-    }
-}
-
-export interface TokenHistory {
-    [month: string]: TokenHistoryMonth
-}
-
-// BE serializes with camelCase; AI service uses snake_case — accept both.
-type RawTokenUsageInfo = TokenUsageInfo & { percentageUsed?: number }
-
-type RawTokenConfigInfo = {
-    monthly_budgets?: Record<string, number>
-    monthlyBudgets?: Record<string, number>
-    token_costs?: Record<string, number>
-    tokenCosts?: Record<string, number>
-    description?: Record<string, string>
-}
-
-type RawTokenAllFeaturesUsage = {
-    month: string
-    features: Record<string, RawTokenUsageInfo>
-}
+): RawTokenUsageInfo => ({
+    feature,
+    month,
+    budget: 0,
+    used: 0,
+    remaining: 0,
+    percentage_used: 0,
+})
 
 function normalizeTokenUsageInfo(raw: RawTokenUsageInfo): TokenUsageInfo {
     return {
@@ -73,13 +44,20 @@ function normalizeTokenConfigInfo(raw: RawTokenConfigInfo): TokenConfigInfo {
     }
 }
 
-function normalizeTokenAllFeaturesUsage(raw: RawTokenAllFeaturesUsage): TokenAllFeaturesUsage {
+function normalizeTokenAllFeaturesUsage(
+    raw: RawTokenAllFeaturesUsage
+): TokenAllFeaturesUsage {
     const features = raw.features ?? {}
+
     return {
         month: raw.month,
         features: {
-            ocr: normalizeTokenUsageInfo(features.ocr ?? { feature: "ocr", month: raw.month, budget: 0, used: 0, remaining: 0, percentage_used: 0 }),
-            pricing: normalizeTokenUsageInfo(features.pricing ?? { feature: "pricing", month: raw.month, budget: 0, used: 0, remaining: 0, percentage_used: 0 }),
+            ocr: normalizeTokenUsageInfo(
+                features.ocr ?? createEmptyFeatureUsage("ocr", raw.month)
+            ),
+            pricing: normalizeTokenUsageInfo(
+                features.pricing ?? createEmptyFeatureUsage("pricing", raw.month)
+            ),
         },
     }
 }
@@ -92,28 +70,40 @@ export const aiTokenService = {
      */
     async getAllTokenStatus(month?: string): Promise<TokenAllFeaturesUsage> {
         const params = month ? { month } : {}
-        const response = await axiosClient.get<ApiResponse<RawTokenAllFeaturesUsage>>(
-            "/AIToken/status",
-            { params },
-        )
+
+        const response = await axiosClient.get<
+            ApiResponse<RawTokenAllFeaturesUsage>
+        >("/AIToken/status", { params })
+
         if (!response.data?.success || !response.data.data) {
-            throw new Error(response.data?.message || "Không lấy được thông tin token")
+            throw new Error(
+                response.data?.message || "Không lấy được thông tin token"
+            )
         }
-        return normalizeTokenAllFeaturesUsage(response.data.data as RawTokenAllFeaturesUsage)
+
+        return normalizeTokenAllFeaturesUsage(response.data.data)
     },
 
     /**
-     * Get current month token usage for a specific feature (ocr | pricing).
+     * Get current month token usage for a specific feature.
      */
-    async getFeatureTokenStatus(feature: "ocr" | "pricing", month?: string): Promise<TokenUsageInfo> {
+    async getFeatureTokenStatus(
+        feature: AiTokenFeature,
+        month?: string
+    ): Promise<TokenUsageInfo> {
         const params = month ? { month } : {}
+
         const response = await axiosClient.get<ApiResponse<RawTokenUsageInfo>>(
             `/AIToken/status/${feature}`,
-            { params },
+            { params }
         )
+
         if (!response.data?.success || !response.data.data) {
-            throw new Error(response.data?.message || "Không lấy được thông tin token")
+            throw new Error(
+                response.data?.message || "Không lấy được thông tin token"
+            )
         }
+
         return normalizeTokenUsageInfo(response.data.data)
     },
 
@@ -121,10 +111,15 @@ export const aiTokenService = {
      * Get token usage history across all months.
      */
     async getTokenHistory(): Promise<TokenHistory> {
-        const response = await axiosClient.get<ApiResponse<TokenHistory>>("/AIToken/history")
+        const response =
+            await axiosClient.get<ApiResponse<TokenHistory>>("/AIToken/history")
+
         if (!response.data?.success || !response.data.data) {
-            throw new Error(response.data?.message || "Không lấy được lịch sử token")
+            throw new Error(
+                response.data?.message || "Không lấy được lịch sử token"
+            )
         }
+
         return response.data.data
     },
 
@@ -132,10 +127,17 @@ export const aiTokenService = {
      * Get token budget configuration.
      */
     async getTokenConfig(): Promise<TokenConfigInfo> {
-        const response = await axiosClient.get<ApiResponse<RawTokenConfigInfo>>("/AIToken/config")
+        const response =
+            await axiosClient.get<ApiResponse<RawTokenConfigInfo>>(
+                "/AIToken/config"
+            )
+
         if (!response.data?.success || !response.data.data) {
-            throw new Error(response.data?.message || "Không lấy được cấu hình token")
+            throw new Error(
+                response.data?.message || "Không lấy được cấu hình token"
+            )
         }
+
         return normalizeTokenConfigInfo(response.data.data)
     },
 }

@@ -8,7 +8,8 @@ import type {
     WorkflowCreateProductRequestDto,
     WorkflowCreateProductResultDto,
     WorkflowIdentifyResultDto,
-    WorkflowMarketPriceReferenceDto,    AiPricingSuggestionResult} from "@/types/product-ai-workflow.type"
+    WorkflowMarketPriceReferenceDto, AiPricingSuggestionResult
+} from "@/types/product-ai-workflow.type"
 
 type WorkflowIdentifyRequestDto = {
     barcode: string
@@ -117,4 +118,5 @@ export const productAiService = {
             payload,
         )
         return unwrap(response.data)
-    },}
+    },
+}

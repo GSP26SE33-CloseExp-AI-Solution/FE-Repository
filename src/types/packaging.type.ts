@@ -78,3 +78,14 @@ export type PackagingHistoryRecord = {
     failureReason?: string | null
     packagedAt?: string | null
 }
+
+export type PackagingHistoryQuery = {
+    fromDate?: string
+    toDate?: string
+    status?: string
+    orderCode?: string
+    pageNumber?: number
+    pageSize?: number
+}
+
+export type PackagingHistoryResponse = PaginationResult<PackagingHistoryRecord>
