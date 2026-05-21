@@ -26,6 +26,7 @@ import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard"
 import ProductsLotsPage from "@/pages/SupermarketStaff/sLotsPageTable"
 import ProductWorkflowPage from "@/pages/SupermarketStaff/sWorkflowPage"
 import SupermarketPurchaseUnitsPage from "@/pages/SupermarketStaff/sPurchaseUnitsPage"
+import SupermarketNotification from "@/pages/SupermarketStaff/sNotification"
 import ProfilePage from "@/pages/SupermarketStaff/sProfile"
 
 import AdminDashboard from "@/pages/Admin/AdminDashboard"
@@ -39,18 +40,21 @@ import AdminOperations from "@/pages/Admin/AdminOperations"
 import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets"
 import AdminProfile from "@/pages/Admin/AdminProfile"
 import AdminRefunds from "@/pages/Admin/AdminRefunds"
+import AdminNotification from "@/pages/Admin/AdminNotification"
 import AITokenDashboard from "@/pages/Admin/AITokenDashboard"
 
 import PackageOrders from "@/pages/PackagingStaff/pOrders"
 import PackageCollect from "@/pages/PackagingStaff/pCollect"
 import PackagePacking from "@/pages/PackagingStaff/pPacking"
 import PackageReports from "@/pages/PackagingStaff/pReports"
+import PackageNotification from "@/pages/PackagingStaff/pNotification"
 import PackageProfile from "@/pages/PackagingStaff/pProfile"
 
 import MarketingProfile from "@/pages/MarketingStaff/mProfile"
 import MarketingPromotions from "@/pages/MarketingStaff/mPromotions"
 import MarketingReports from "@/pages/MarketingStaff/mReports"
 import MarketingPurchaseUnits from "@/pages/MarketingStaff/mPurchaseUnits"
+import MarketingNotification from "@/pages/MarketingStaff/mNotification"
 
 import NotFound from "@/pages/Common/NotFound"
 import Forbidden from "@/pages/Common/Forbidden"
@@ -112,6 +116,10 @@ const AppRouter: React.FC = () => {
                                 element={<AdminSettings />}
                             />
                             <Route
+                                path="/admin/notification"
+                                element={<AdminNotification />}
+                            />
+                            <Route
                                 path="/admin/profile"
                                 element={<AdminProfile />}
                             />
@@ -150,6 +158,10 @@ const AppRouter: React.FC = () => {
                                 element={<SupermarketPurchaseUnitsPage />}
                             />
                             <Route
+                                path="/supermarketStaff/notification"
+                                element={<SupermarketNotification />}
+                            />
+                            <Route
                                 path="/supermarketStaff/profile"
                                 element={<ProfilePage />}
                             />
@@ -185,6 +197,10 @@ const AppRouter: React.FC = () => {
                                 element={<PackageReports />}
                             />
                             <Route
+                                path="/package/notification"
+                                element={<PackageNotification />}
+                            />
+                            <Route
                                 path="/package/profile"
                                 element={<PackageProfile />}
                             />
@@ -214,6 +230,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/marketing/purchase-units"
                                 element={<MarketingPurchaseUnits />}
+                            />
+                            <Route
+                                path="/marketing/notification"
+                                element={<MarketingNotification />}
                             />
                         </Route>
                     </Route>

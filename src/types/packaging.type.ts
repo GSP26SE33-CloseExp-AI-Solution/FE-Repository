@@ -12,13 +12,13 @@ export type PackagingActionPayload = {
 
 export type ConfirmPackagingOrderPayload = PackagingActionPayload
 
-export type CollectPackagingOrderPayload = PackagingActionPayload
+export type CollectPackagingOrderPayload = {
+    orderItemIds?: string[]
+    notes: string
+}
 
 export type PackagePackagingOrderPayload = PackagingActionPayload
 
-/**
- * POST /api/Packaging/orders/{orderId}/fail
- */
 export type FailPackagingOrderPayload = PackagingActionPayload & {
     failureReason: string
 }
@@ -64,7 +64,8 @@ export type PackagingOrderDetail = PackagingOrderSummary & {
     items: PackagingOrderItem[]
 }
 
-/** GET /api/Packaging/history */
+/** GET /api/Packaging/history query params */
+
 export type PackagingHistoryRecord = {
     packagingId: string
     orderId: string

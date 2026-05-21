@@ -194,7 +194,7 @@ export const formatPackagingItemQuantityLabel = (item: PackagingOrderItem) =>
         purchaseUnitSymbol: item.purchaseUnitSymbol,
         purchaseQuantity: item.purchaseQuantity,
         productUnitName: item.unitName,
-        productUnitSymbol: item.unitSymbol,
+        productUnitSymbol: undefined,
     })
 
 /** Line count for summaries when purchase units may differ per row. */

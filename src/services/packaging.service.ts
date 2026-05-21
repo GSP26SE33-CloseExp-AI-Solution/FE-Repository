@@ -46,10 +46,7 @@ export const packagingService = {
         return response.data
     },
 
-    async collectOrder(
-        orderId: string,
-        payload: CollectPackagingOrderPayload = {}
-    ) {
+    async collectOrder(orderId: string, payload: CollectPackagingOrderPayload) {
         const response = await axiosClient.post<ApiResponse<PackagingOrderDetail>>(
             `${BASE_ORDER_URL}/${orderId}/collect`,
             payload
