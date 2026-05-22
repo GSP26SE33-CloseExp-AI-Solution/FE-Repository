@@ -5,6 +5,7 @@ import { productService } from "@/services/product.service"
 import type { ProductResponseDto } from "@/types/product.type"
 import { PRODUCT_STATUS_OPTIONS, PRODUCT_TYPE_OPTIONS } from "@/types/product.type"
 import { formatUnitDisplay } from "@/utils/unitMeasure"
+import { resolveProductImageFromDto } from "@/utils/productImage"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")
@@ -169,9 +170,10 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ supermarketId, onViewDetail }
                                             <div className="relative h-12 w-12 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                                                 <img
                                                     src={
-                                                        product.mainImageUrl ||
-                                                        product.productImages?.[0]?.imageUrl ||
-                                                        "/placeholder.png"
+                                                        resolveProductImageFromDto(
+                                                            product.productImages?.[0],
+                                                            product.mainImageUrl,
+                                                        ) || "/placeholder.png"
                                                     }
                                                     alt={product.name || "sản phẩm"}
                                                     className="h-full w-full object-cover"

@@ -2,6 +2,7 @@ import { Eye, MapPin, Package2, Store } from "lucide-react"
 
 import type { HomeProductGroupView } from "@/types/home.type"
 import { cn, formatCurrency, imageBg } from "@/utils/home"
+import { resolveProductDisplayImageUrl } from "@/utils/productImage"
 
 type ProductCardProps = {
     product: HomeProductGroupView
@@ -61,6 +62,10 @@ const ProductCard = ({ product, onViewProduct }: ProductCardProps) => {
             : product.supermarketNames[0] || "Siêu thị gần bạn"
 
     const isOutOfStock = product.totalQuantity <= 0
+    const displayImageUrl = resolveProductDisplayImageUrl(
+        product.preSignedImageUrl,
+        product.imageUrl,
+    )
 
     return (
         <div className="group flex h-full flex-col overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-[0_8px_20px_rgba(15,23,42,0.05)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_26px_rgba(15,23,42,0.08)]">
@@ -95,9 +100,9 @@ const ProductCard = ({ product, onViewProduct }: ProductCardProps) => {
                 )}
 
                 <div className="absolute inset-0 flex items-center justify-center p-3">
-                    {product.imageUrl ? (
+                    {displayImageUrl ? (
                         <img
-                            src={product.imageUrl}
+                            src={displayImageUrl}
                             alt={product.name}
                             className="h-[84px] w-[84px] rounded-[16px] object-cover shadow-sm ring-1 ring-black/5 transition duration-200 group-hover:scale-[1.03]"
                             loading="lazy"

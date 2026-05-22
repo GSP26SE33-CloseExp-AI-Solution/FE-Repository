@@ -20,7 +20,12 @@ import { orderService } from "@/services/order.service"
 import { supermarketService } from "@/services/supermarket.service"
 import type { OrderDetails, RefundDetails } from "@/types/order.type"
 import type { PickupPoint } from "@/types/supermarket.type"
-import { googleMapsUrl, lastOrderStorage, money } from "@/utils/orderStorage"
+import {
+    googleMapsUrl,
+    lastOrderStorage,
+    money,
+    pendingPaymentOrderStorage,
+} from "@/utils/orderStorage"
 import { formatOrderItemPurchaseQuantityLine } from "@/utils/unitMeasure"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>

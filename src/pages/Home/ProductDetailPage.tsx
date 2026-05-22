@@ -27,6 +27,7 @@ import {
     normalizeHomeLotApiItem,
 } from "@/utils/home"
 import { useHomeCart, type HomeCartLineInput } from "@/hooks/useHomeCart"
+import { resolveProductDisplayImageUrl } from "@/utils/productImage"
 import type { ProductPurchaseUnit } from "@/types/purchase-unit.type"
 import {
     filterPurchaseUnitsByProductType,
@@ -159,6 +160,17 @@ const ProductDetailPage = () => {
 
     const { getCartQty, addToCart, increaseCart, decreaseCart } = useHomeCart()
 
+    const displayImageUrl = useMemo(
+        () =>
+            product
+                ? resolveProductDisplayImageUrl(
+                      product.preSignedImageUrl,
+                      product.imageUrl,
+                  )
+                : "",
+        [product],
+    )
+
     useEffect(() => {
         if (product || !productId) return
 
@@ -230,12 +242,15 @@ const ProductDetailPage = () => {
     }, [productId])
 
     const productDefaultUnitType = useMemo(() => {
-        const fromProduct = product?.unitType?.trim()
-        if (fromProduct) return fromProduct
+        const fromRawLots = product?.rawLots?.[0]?.unitType?.trim()
+        if (fromRawLots) return fromRawLots
+
+        const fromLots = product?.lots?.[0]?.unitType?.trim()
+        if (fromLots) return fromLots
 
         const defaultUnit = purchaseUnits.find((unit) => unit.isProductDefault)
         return defaultUnit?.type?.trim() ?? ""
-    }, [product?.unitType, purchaseUnits])
+    }, [product?.rawLots, product?.lots, purchaseUnits])
 
     const effectivePurchaseUnits = useMemo(() => {
         const merged = mergePurchaseUnits(purchaseUnits, product?.rawLots ?? [])
@@ -673,7 +688,7 @@ const ProductDetailPage = () => {
                             </div>
 
                             <div className="grid grid-cols-4 gap-2 border-t border-slate-100 p-3">
-                                {[product.imageUrl, product.imageUrl, product.imageUrl, product.imageUrl].map(
+                                {[displayImageUrl, displayImageUrl, displayImageUrl, displayImageUrl].map(
                                     (image, index) => (
                                         <button
                                             key={index}

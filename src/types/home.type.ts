@@ -3,6 +3,7 @@ export type HomeProductLotApiItem = {
     productId: string
     productName?: string
     productImageUrl?: string | null
+    productImagePreSignedUrl?: string | null
     barcode?: string
     brand?: string
     supermarketId: string
@@ -75,6 +76,7 @@ export type HomeProductView = {
     discountLabel: string
     timeLeft: string
     imageUrl?: string
+    preSignedImageUrl?: string
     imageVariant?: "milk" | "bread" | "beef" | "avocado"
     isFreshFood: boolean
     daysToExpiry: number | null
@@ -101,6 +103,7 @@ export type HomeProductGroupView = {
     category: string
     categoryId?: string
     imageUrl?: string
+    preSignedImageUrl?: string
     imageVariant?: "milk" | "bread" | "beef" | "avocado"
     isFreshFood: boolean
 

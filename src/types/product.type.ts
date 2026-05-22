@@ -14,6 +14,7 @@ export type ProductImageDto = {
     productImageId: string
     productId: string
     imageUrl: string
+    preSignedUrl?: string | null
     createdAt: string
 }
 
@@ -104,11 +105,11 @@ export type ProductDetailDto = {
     distributor?: string
     nutritionFacts?: ProductNutritionFacts
     category?: string
-    unitId?: string
-    unitName?: string
-    unitType?: string
-    unitSymbol?: string
-    conversionRate?: number
+    unitId?: string | null
+    unitName?: string | null
+    unitType?: string | null
+    unitSymbol?: string | null
+    conversionRate?: number | null
     quantity?: number
     originalPrice?: number
     finalPrice?: number
@@ -124,12 +125,6 @@ export type ProductDetailDto = {
     daysToExpiry?: number
     expiryStatus?: ExpiryStatusValue
     expiryStatusText?: string
-
-    // Unit-safe optional fields
-    unitId?: string | null
-    unitType?: string | null
-    unitSymbol?: string | null
-    conversionRate?: number | null
 
     // FE-safe optional fields
     supermarketId?: string

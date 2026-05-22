@@ -13,11 +13,10 @@ import {
 
 import { packagingService } from "@/services/packaging.service"
 import type {
-    PackagingHistoryItem,
     PackagingHistoryQuery,
+    PackagingHistoryRecord,
 } from "@/types/packaging.type"
 import { showError } from "@/utils/toast"
-import { formatPackagingItemQuantityLabel } from "@/pages/PackagingStaff/packagingShared"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")
@@ -103,7 +102,7 @@ const normalizeDateInputToIso = (value: string, endOfDay = false) => {
 }
 
 const PReports = () => {
-    const [items, setItems] = useState<PackagingHistoryItem[]>([])
+    const [items, setItems] = useState<PackagingHistoryRecord[]>([])
     const [loading, setLoading] = useState(false)
 
     const [orderCode, setOrderCode] = useState("")
@@ -428,7 +427,7 @@ const PReports = () => {
                                             </td>
 
                                             <td className="whitespace-nowrap px-5 py-4 text-sm font-semibold text-slate-700">
-                                                {formatPackagingItemQuantityLabel(item)}
+                                                {item.quantity}
                                             </td>
 
                                             <td className="whitespace-nowrap px-5 py-4 text-sm text-slate-600">

@@ -30,8 +30,8 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export const orderService = {
 	/* =========================
-       Orders
-    ========================= */
+	   Orders
+	========================= */
 	async getOrders(params?: { pageNumber?: number; pageSize?: number }) {
 		const response = await axiosClient.get<
 			ApiEnvelope<PaginationResult<OrderDetails>>
@@ -112,8 +112,8 @@ export const orderService = {
 	},
 
 	/* =========================
-       Order Meta
-    ========================= */
+	   Order Meta
+	========================= */
 	async getTimeSlots() {
 		const response =
 			await axiosClient.get<ApiEnvelope<OrderTimeSlot[]>>(
@@ -123,8 +123,8 @@ export const orderService = {
 	},
 
 	/* =========================
-       Payment
-    ========================= */
+	   Payment
+	========================= */
 	async createPaymentLink(
 		payload: CreatePaymentLinkPayload,
 	): Promise<PaymentLinkResponse> {
@@ -215,8 +215,8 @@ export const orderService = {
 	},
 
 	/* =========================
-       Order Status Actions
-    ========================= */
+	   Order Status Actions
+	========================= */
 	async markPending(orderId: string) {
 		await axiosClient.put(`/Orders/${orderId}/pending`);
 	},

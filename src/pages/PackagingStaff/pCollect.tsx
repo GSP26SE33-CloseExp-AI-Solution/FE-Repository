@@ -52,6 +52,7 @@ const PackageCollect = () => {
     const [confirmNotes, setConfirmNotes] = useState("")
     const [collectNotes, setCollectNotes] = useState("")
     const [hasStartedCollecting, setHasStartedCollecting] = useState(false)
+    const [startedCollectNote, setStartedCollectNote] = useState("")
 
     const allItemIds = useMemo(
         () => order?.items?.map((item) => item.orderItemId).filter(Boolean) || [],
@@ -120,6 +121,7 @@ const PackageCollect = () => {
                         .filter(Boolean) || []
                 )
                 setHasStartedCollecting(false)
+                setStartedCollectNote("")
             } catch (error: any) {
                 showError(
                     getFriendlyPackagingErrorMessage(
@@ -170,11 +172,6 @@ const PackageCollect = () => {
     const handleConfirm = async () => {
         if (!orderId) return
 
-        if (!hasStartedCollecting) {
-            showError("Vui lòng ghi nhận bắt đầu gom trước khi chuyển sang đóng gói.")
-            return
-        }
-
         if (selectedItemIds.length === 0) {
             showError("Chọn ít nhất một món trước khi bắt đầu gom hàng.")
             return
@@ -192,9 +189,14 @@ const PackageCollect = () => {
             )
 
             showSuccess(response.message || "Đã ghi nhận bắt đầu gom hàng.")
+
+            const savedNote = confirmNotes.trim()
+
             setConfirmNotes("")
             await fetchDetail(true)
+
             setHasStartedCollecting(true)
+            setStartedCollectNote(savedNote)
         } catch (error: any) {
             showError(
                 getFriendlyPackagingErrorMessage(
@@ -601,66 +603,76 @@ const PackageCollect = () => {
                         </div>
 
                         <div className="mt-5 space-y-4">
-                            <div>
-                                <label className="text-sm font-semibold text-slate-700">
-                                    Ghi chú khi bắt đầu
-                                </label>
-                                <textarea
-                                    value={confirmNotes}
-                                    onChange={(e) => setConfirmNotes(e.target.value)}
-                                    rows={3}
-                                    placeholder="Ví dụ: bắt đầu gom ở quầy thực phẩm khô..."
-                                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleConfirm}
-                                    disabled={confirming || selectedItemIds.length === 0}
-                                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {confirming ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                        <Clock3 className="h-4 w-4" />
-                                    )}
-                                    Ghi nhận bắt đầu gom
-                                </button>
-                            </div>
+                            {hasStartedCollecting ? (
+                                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
+                                    <div className="text-sm font-semibold text-emerald-800">
+                                        Đã ghi nhận bắt đầu gom
+                                    </div>
 
-                            <div>
-                                <label className="text-sm font-semibold text-slate-700">
-                                    Ghi chú khi gom xong
-                                </label>
-                                <textarea
-                                    value={collectNotes}
-                                    onChange={(e) => setCollectNotes(e.target.value)}
-                                    rows={3}
-                                    placeholder="Ví dụ: thiếu 1 món, đã bỏ chọn khỏi checklist..."
-                                    className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={handleCollect}
-                                    disabled={
-                                        collecting ||
-                                        selectedItemIds.length === 0 ||
-                                        !hasStartedCollecting
-                                    }
-                                    title={
-                                        !hasStartedCollecting
-                                            ? "Vui lòng ghi nhận bắt đầu gom trước"
-                                            : undefined
-                                    }
-                                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {collecting ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    {startedCollectNote ? (
+                                        <div className="mt-2 rounded-xl bg-white/80 px-3 py-2 text-sm leading-6 text-emerald-900">
+                                            {startedCollectNote}
+                                        </div>
                                     ) : (
-                                        <ChevronRight className="h-4 w-4" />
+                                        <div className="mt-1 text-sm text-emerald-700">
+                                            Không có ghi chú bắt đầu gom.
+                                        </div>
                                     )}
-                                    Gom xong, sang đóng gói
-                                </button>
-                            </div>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        Ghi chú khi bắt đầu gom
+                                    </label>
+                                    <textarea
+                                        value={confirmNotes}
+                                        onChange={(e) => setConfirmNotes(e.target.value)}
+                                        rows={3}
+                                        placeholder="Ví dụ: bắt đầu gom lúc 09:30, ưu tiên hàng lạnh trước..."
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+                                    />
+
+                                    <button
+                                        type="button"
+                                        onClick={handleConfirm}
+                                        disabled={confirming || selectedItemIds.length === 0}
+                                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {confirming ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : null}
+                                        Ghi nhận bắt đầu gom
+                                    </button>
+                                </div>
+                            )}
+
+                            {hasStartedCollecting ? (
+                                <div>
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        Ghi chú khi gom xong
+                                    </label>
+                                    <textarea
+                                        value={collectNotes}
+                                        onChange={(e) => setCollectNotes(e.target.value)}
+                                        rows={3}
+                                        placeholder="Ví dụ: thiếu 1 món, đã bỏ chọn khỏi checklist..."
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-sky-400"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleCollect}
+                                        disabled={collecting || selectedItemIds.length === 0}
+                                        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-sky-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-sky-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        {collecting ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <ChevronRight className="h-4 w-4" />
+                                        )}
+                                        Gom xong, sang đóng gói
+                                    </button>
+                                </div>
+                            ) : null}
 
                             <button
                                 type="button"

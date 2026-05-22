@@ -2,11 +2,8 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Bot, ChevronRight, Loader2 } from "lucide-react"
 
-import {
-    aiTokenService,
-    type TokenAllFeaturesUsage,
-    type TokenUsageInfo,
-} from "@/services/ai-token.service"
+import { aiTokenService } from "@/services/ai-token.service"
+import type { TokenAllFeaturesUsage, TokenUsageInfo } from "@/types/ai-token.type"
 
 const FEATURE_META: Record<string, { label: string; short: string; bar: string }> = {
     ocr: { label: "OCR phân tích ảnh", short: "OCR", bar: "bg-indigo-500" },

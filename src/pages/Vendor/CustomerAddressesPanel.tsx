@@ -143,7 +143,7 @@ const CustomerAddressesPanel: React.FC<Props> = ({
         let cancelled = false
 
         const timer = window.setTimeout(() => {
-            ;(async () => {
+            ; (async () => {
                 try {
                     setAddressResolving(true)
                     const forward =

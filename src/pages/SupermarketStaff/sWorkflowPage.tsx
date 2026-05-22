@@ -864,13 +864,13 @@ const ProductWorkflowPage: React.FC = () => {
             quantity:
                 lotUnitKind === "WEIGHT"
                     ? undefined
-                    : quantityOk
+                    : quantityOk && typeof form.quantity === "number"
                       ? form.quantity
                       : undefined,
             weight:
                 lotUnitKind === "COUNT"
                     ? undefined
-                    : weightOk
+                    : weightOk && typeof form.weight === "number"
                       ? form.weight
                       : undefined,
             originalUnitPrice,

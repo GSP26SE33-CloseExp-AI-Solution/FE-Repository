@@ -123,10 +123,10 @@ const mapPickupPoint = (
   const mapped: PickupPoint = {
     pickupPointId: String(
       item.pickupPointId ??
-        item.collectionPointId ??
-        item.collectionId ??
-        item.id ??
-        "",
+      item.collectionPointId ??
+      item.collectionId ??
+      item.id ??
+      "",
     ),
     name: String(item.name ?? item.collectionPointName ?? "Điểm nhận"),
     address: String(item.address ?? item.addressLine ?? item.location ?? ""),

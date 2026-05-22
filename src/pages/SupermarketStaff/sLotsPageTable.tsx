@@ -35,6 +35,7 @@ import {
     PRODUCT_TYPE_OPTIONS,
 } from "@/types/product.type"
 import type { ProductLotItem } from "@/types/product-lot.type"
+import { resolveProductImageFromDto } from "@/utils/productImage"
 import type { ProductPurchaseUnit } from "@/types/purchase-unit.type"
 import { categoryService } from "@/services/category.service"
 import { unitService } from "@/services/unit.service"
@@ -632,7 +633,6 @@ const ProductsLotsPage: React.FC = () => {
 
             setApiCategoryOptions(names)
         } catch (error) {
-            console.error("ProductsLotsPage.loadCategories -> error:", error)
             setApiCategoryOptions([])
         } finally {
             setLoadingCategories(false)
@@ -682,7 +682,6 @@ const ProductsLotsPage: React.FC = () => {
                 ),
             )
         } catch (error) {
-            console.error("ProductsLotsPage.loadLots -> error:", error)
             toast.error("Không tải được danh sách lô hàng")
             setLots([])
             setServerTotal(0)
@@ -832,12 +831,18 @@ const ProductsLotsPage: React.FC = () => {
     }, [selectedLot, selectedProduct, selectedProductDetail])
 
     const popupImageUrl =
-        selectedProduct?.mainImageUrl ||
-        selectedProduct?.productImages?.[0]?.imageUrl ||
-        selectedProductDetail?.mainImageUrl ||
-        selectedProductDetail?.productImages?.[0]?.imageUrl ||
-        selectedLot?.mainImageUrl ||
-        selectedLot?.productImages?.[0]?.imageUrl ||
+        resolveProductImageFromDto(
+            selectedProduct?.productImages?.[0],
+            selectedProduct?.mainImageUrl,
+        ) ||
+        resolveProductImageFromDto(
+            selectedProductDetail?.productImages?.[0],
+            selectedProductDetail?.mainImageUrl,
+        ) ||
+        resolveProductImageFromDto(
+            selectedLot?.productImages?.[0],
+            selectedLot?.mainImageUrl,
+        ) ||
         "/placeholder.png"
 
     useEffect(() => {
@@ -898,7 +903,6 @@ const ProductsLotsPage: React.FC = () => {
             setImageFiles([])
             setReplaceExistingImages(false)
         } catch (error) {
-            console.error("ProductsLotsPage.handleOpenDetail -> error:", error)
             toast.error("Không tải được chi tiết sản phẩm")
         } finally {
             setLoadingPopup(false)
@@ -952,7 +956,6 @@ const ProductsLotsPage: React.FC = () => {
             setImageFiles([])
             setReplaceExistingImages(false)
         } catch (error) {
-            console.error("ProductsLotsPage.handleOpenProductDetail -> error:", error)
             toast.error("Không tải được chi tiết sản phẩm")
             setOpenDetail(false)
         } finally {
@@ -1085,29 +1088,11 @@ const ProductsLotsPage: React.FC = () => {
                 nutritionFactsText: nutritionRowsToJsonString(nutritionRows),
             })
 
-            console.log(
-                "ProductsLotsPage.handleSaveProduct -> productId:",
-                targetId,
-            )
-            console.log("ProductsLotsPage.handleSaveProduct -> payload:", payload)
-
             const updateResponse = await productService.updateProduct(
                 targetId,
                 payload,
             )
             let imageUpdateResponse: ProductResponseDto | null = null
-
-            console.log("[ProductsLotsPage.handleSaveProduct] image upload state:", {
-                hasImages: imageFiles.length > 0,
-                imageCount: imageFiles.length,
-                replaceExistingImages,
-                targetId,
-                imageFiles: imageFiles.map((file) => ({
-                    name: file.name,
-                    type: file.type,
-                    size: file.size,
-                })),
-            })
 
             if (imageFiles.length > 0) {
                 imageUpdateResponse = await productService.updateProductImages(
@@ -1115,39 +1100,12 @@ const ProductsLotsPage: React.FC = () => {
                     imageFiles,
                     replaceExistingImages,
                 )
-
-                console.log("[ProductsLotsPage.handleSaveProduct] image update response:", {
-                    mainImageUrl: imageUpdateResponse.mainImageUrl,
-                    totalImages: imageUpdateResponse.totalImages,
-                    productImages: imageUpdateResponse.productImages,
-                })
             }
-
-            console.log(
-                "ProductsLotsPage.handleSaveProduct -> update response:",
-                updateResponse,
-            )
 
             const [product, detail] = await Promise.all([
                 productService.getProductById(targetId),
                 productService.getProductDetails(targetId),
             ])
-
-            console.log("[ProductsLotsPage.handleSaveProduct] refreshed image data:", {
-                product: {
-                    mainImageUrl: product.mainImageUrl,
-                    totalImages: product.totalImages,
-                    productImages: product.productImages,
-                },
-                detail: {
-                    mainImageUrl: detail.mainImageUrl,
-                    totalImages: detail.totalImages,
-                    productImages: detail.productImages,
-                },
-            })
-
-            console.log("ProductsLotsPage.handleSaveProduct -> refreshed product:", product)
-            console.log("ProductsLotsPage.handleSaveProduct -> refreshed detail:", detail)
 
             const normalizedIngredients = (payload.detail.ingredients ?? "")
                 .split(",")
@@ -1206,13 +1164,6 @@ const ProductsLotsPage: React.FC = () => {
 
             const nextProduct = imageUpdateResponse || product
 
-            console.log("[ProductsLotsPage.handleSaveProduct] selected next image data:", {
-                source: imageUpdateResponse ? "imageUpdateResponse" : "refreshedProduct",
-                mainImageUrl: nextProduct.mainImageUrl,
-                totalImages: nextProduct.totalImages,
-                productImages: nextProduct.productImages,
-            })
-
             setSelectedProduct(nextProduct)
             setSelectedProductDetail({
                 ...detail,
@@ -1262,21 +1213,6 @@ const ProductsLotsPage: React.FC = () => {
             typeof selectedLot?.hoursRemaining === "number"
             ? selectedLot.hoursRemaining
             : null
-
-    console.log("[ProductsLotsPage.render] popup image source:", {
-        popupImageUrl,
-        resolvedPopupImageUrl: getImageUrl(popupImageUrl),
-        selectedProductImage: {
-            mainImageUrl: selectedProduct?.mainImageUrl,
-            totalImages: selectedProduct?.totalImages,
-            productImages: selectedProduct?.productImages,
-        },
-        selectedProductDetailImage: {
-            mainImageUrl: selectedProductDetail?.mainImageUrl,
-            totalImages: selectedProductDetail?.totalImages,
-            productImages: selectedProductDetail?.productImages,
-        },
-    })
 
     return (
         <div className="min-h-screen bg-white">
@@ -1497,9 +1433,10 @@ const ProductsLotsPage: React.FC = () => {
                                                             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                                                                 <img
                                                                     src={getImageUrl(
-                                                                        lot.mainImageUrl ||
-                                                                        lot.productImages?.[0]?.imageUrl ||
-                                                                        "/placeholder.png",
+                                                                        resolveProductImageFromDto(
+                                                                            lot.productImages?.[0],
+                                                                            lot.mainImageUrl,
+                                                                        ) || "/placeholder.png",
                                                                     )}
                                                                     alt={lot.productName || "sản phẩm"}
                                                                     className="h-full w-full object-cover"
