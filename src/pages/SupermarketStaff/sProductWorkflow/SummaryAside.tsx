@@ -11,6 +11,7 @@ import {
     formatConversionRateValue,
 } from "@/utils/unitMeasure"
 import { InfoRow, SectionCard } from "./WorkflowShared"
+import { resolveProductDisplayImageUrl } from "@/utils/productImage"
 
 type Props = {
     workflow: ProductWorkflowState
@@ -34,10 +35,13 @@ const formatUnit = (name?: string | null, symbol?: string | null, fallback?: str
 const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions = [] }) => {
     const previewImage =
         images[0]?.preview ||
-        workflow.createdLot?.stockLot?.productImageUrl ||
-        workflow.createdProduct?.mainImageUrl ||
-        workflow.ownProduct?.mainImageUrl ||
-        workflow.referenceProduct?.mainImageUrl ||
+        resolveProductDisplayImageUrl(
+            null,
+            workflow.createdLot?.stockLot?.productImageUrl,
+        ) ||
+        resolveProductDisplayImageUrl(null, workflow.createdProduct?.mainImageUrl) ||
+        resolveProductDisplayImageUrl(null, workflow.ownProduct?.mainImageUrl) ||
+        resolveProductDisplayImageUrl(null, workflow.referenceProduct?.mainImageUrl) ||
         ""
 
     const ocrConfidence =

@@ -8,6 +8,7 @@ export type ProductLotImageItem = {
     productImageId?: string
     productId?: string
     imageUrl: string
+    preSignedUrl?: string | null
     createdAt?: string
 }
 

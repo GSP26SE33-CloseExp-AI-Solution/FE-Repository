@@ -5,6 +5,7 @@ import { cartBridge } from "@/utils/cartBridge"
 import { cartStorage } from "@/utils/orderStorage"
 import type { HomeProductView } from "@/types/home.type"
 import type { CartItem } from "@/types/order.type"
+import { resolveProductDisplayImageUrl } from "@/utils/productImage"
 
 export type HomeCartLineInput = HomeProductView & {
     expiryDate?: string
@@ -48,7 +49,10 @@ export const useHomeCart = () => {
         expiryDate: item.expiryDate || undefined,
         name: item.name,
         price: item.displayPrice ?? item.price,
-        imageUrl: item.imageUrl,
+        imageUrl: resolveProductDisplayImageUrl(
+            item.preSignedImageUrl,
+            item.imageUrl,
+        ) || undefined,
         unitId: item.unitId,
         unitName: item.unitName,
         unitSymbol: item.unitSymbol,

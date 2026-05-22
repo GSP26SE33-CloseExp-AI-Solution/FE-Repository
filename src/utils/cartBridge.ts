@@ -3,6 +3,7 @@ import type { ApiCartItem, ApiCart } from "@/types/cart.type"
 import { cartService } from "@/services/cart.service"
 import { cartStorage } from "@/utils/orderStorage"
 import { getAuthSession } from "@/utils/authStorage"
+import { resolveProductDisplayImageUrl } from "@/utils/productImage"
 
 const CART_ITEM_ID_KEY = "cartItemIdByLine"
 
@@ -36,7 +37,11 @@ const mapApiItemToCartItem = (item: ApiCartItem): CartItem => ({
     expiryDate: item.expiryDate || undefined,
     name: item.productName,
     price: item.unitPrice,
-    imageUrl: item.productImageUrl ?? undefined,
+    imageUrl:
+        resolveProductDisplayImageUrl(
+            item.productImagePreSignedUrl,
+            item.productImageUrl,
+        ) || undefined,
     unitId: item.unitId,
     unitName: item.unitName ?? undefined,
     unitSymbol: item.unitSymbol ?? undefined,

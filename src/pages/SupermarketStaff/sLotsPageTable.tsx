@@ -35,6 +35,7 @@ import {
     PRODUCT_TYPE_OPTIONS,
 } from "@/types/product.type"
 import type { ProductLotItem } from "@/types/product-lot.type"
+import { resolveProductImageFromDto } from "@/utils/productImage"
 import type { ProductPurchaseUnit } from "@/types/purchase-unit.type"
 import { categoryService } from "@/services/category.service"
 import { unitService } from "@/services/unit.service"
@@ -830,12 +831,18 @@ const ProductsLotsPage: React.FC = () => {
     }, [selectedLot, selectedProduct, selectedProductDetail])
 
     const popupImageUrl =
-        selectedProduct?.mainImageUrl ||
-        selectedProduct?.productImages?.[0]?.imageUrl ||
-        selectedProductDetail?.mainImageUrl ||
-        selectedProductDetail?.productImages?.[0]?.imageUrl ||
-        selectedLot?.mainImageUrl ||
-        selectedLot?.productImages?.[0]?.imageUrl ||
+        resolveProductImageFromDto(
+            selectedProduct?.productImages?.[0],
+            selectedProduct?.mainImageUrl,
+        ) ||
+        resolveProductImageFromDto(
+            selectedProductDetail?.productImages?.[0],
+            selectedProductDetail?.mainImageUrl,
+        ) ||
+        resolveProductImageFromDto(
+            selectedLot?.productImages?.[0],
+            selectedLot?.mainImageUrl,
+        ) ||
         "/placeholder.png"
 
     useEffect(() => {
@@ -1426,9 +1433,10 @@ const ProductsLotsPage: React.FC = () => {
                                                             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
                                                                 <img
                                                                     src={getImageUrl(
-                                                                        lot.mainImageUrl ||
-                                                                        lot.productImages?.[0]?.imageUrl ||
-                                                                        "/placeholder.png",
+                                                                        resolveProductImageFromDto(
+                                                                            lot.productImages?.[0],
+                                                                            lot.mainImageUrl,
+                                                                        ) || "/placeholder.png",
                                                                     )}
                                                                     alt={lot.productName || "sản phẩm"}
                                                                     className="h-full w-full object-cover"

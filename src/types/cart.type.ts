@@ -7,6 +7,7 @@ export type ApiCartItem = {
     productId: string
     productName: string
     productImageUrl?: string | null
+    productImagePreSignedUrl?: string | null
     supermarketId: string
     supermarketName?: string | null
     unitId: string

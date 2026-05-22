@@ -11,13 +11,13 @@ import {
     Sparkles,
 } from "lucide-react"
 
-import {
-    aiTokenService,
-    type TokenAllFeaturesUsage,
-    type TokenConfigInfo,
-    type TokenHistory,
-    type TokenUsageInfo,
-} from "@/services/ai-token.service"
+import { aiTokenService } from "@/services/ai-token.service"
+import type {
+    TokenAllFeaturesUsage,
+    TokenConfigInfo,
+    TokenHistory,
+    TokenUsageInfo,
+} from "@/types/ai-token.type"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")

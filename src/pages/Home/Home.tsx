@@ -12,6 +12,7 @@ import { CART_ROUTE, LOGIN_ROUTE, ALL_CATEGORY_KEY, ALL_MARKET_KEY } from "@/con
 import { useHomeBootstrap } from "@/hooks/useHomeBootstrap"
 import { useHomeDerived } from "@/hooks/useHomeDerived"
 import { useHomeCart } from "@/hooks/useHomeCart"
+import { resolveProductDisplayImageUrl } from "@/utils/productImage"
 
 import HomeLocationSection from "./HomeLocationSection"
 import HomeStatsSection from "./HomeStatsSection"
@@ -197,7 +198,10 @@ const Home = () => {
         name: item.name,
         category: item.category || "Thực phẩm",
         supermarketNames: item.supermarketNames,
-        imageUrl: item.imageUrl,
+        imageUrl: resolveProductDisplayImageUrl(
+          item.preSignedImageUrl,
+          item.imageUrl,
+        ),
         price: item.minPrice,
       })),
       categories: visibleCategories.displayedCategories.map((item) => ({

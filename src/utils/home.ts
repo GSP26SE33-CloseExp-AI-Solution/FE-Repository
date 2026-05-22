@@ -3,6 +3,7 @@ import type {
     HomeProductLotApiItem,
     HomeProductView,
 } from "@/types/home.type"
+import { resolveProductDisplayImageUrl } from "@/utils/productImage"
 
 export const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -157,8 +158,10 @@ export const mapProductLotFromApi = (
     const fallbackImage = item.productImages?.find((img) => img.imageUrl)?.imageUrl || ""
     const rawImageUrl =
         item.productImageUrl || item.mainImageUrl || fallbackImage || undefined
-    const displayImageUrl =
-        item.productImagePreSignedUrl?.trim() || rawImageUrl
+    const displayImageUrl = resolveProductDisplayImageUrl(
+        item.productImagePreSignedUrl,
+        rawImageUrl,
+    )
 
     const resolvedCategory = resolveCategoryFromApi(item)
 
