@@ -228,6 +228,7 @@ export type AdminRegisterInternalPayload = {
     phone?: string
     password?: string
     roleId: number
+    supermarketId?: string
 }
 
 export type UpdateUserPayload = {

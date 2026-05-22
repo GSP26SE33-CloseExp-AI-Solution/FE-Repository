@@ -44,6 +44,7 @@ type CreateInternalUserForm = {
     email: string
     phone: string
     roleId: number
+    supermarketId: string
 }
 
 type EditInternalUserForm = {
@@ -146,11 +147,15 @@ const AdminInternalStaff = () => {
         tone: "default",
     })
 
+    const [supermarkets, setSupermarkets] = useState<{ supermarketId: string; name: string }[]>([])
+    const [supermarketsLoading, setSupermarketsLoading] = useState(false)
+
     const [createForm, setCreateForm] = useState<CreateInternalUserForm>({
         fullName: "",
         email: "",
         phone: "",
         roleId: DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? ROLE_USER.PACKAGING_STAFF,
+        supermarketId: "",
     })
 
     const [editForm, setEditForm] = useState<EditInternalUserForm>({
@@ -260,6 +265,30 @@ const AdminInternalStaff = () => {
         void loadInternalStaff()
     }, [loadInternalStaff])
 
+    const loadSupermarkets = useCallback(async () => {
+        try {
+            setSupermarketsLoading(true)
+            const result = await adminService.getSupermarkets({
+                pageNumber: 1,
+                pageSize: 200,
+            })
+            setSupermarkets(
+                (result.items ?? []).map((item) => ({
+                    supermarketId: item.supermarketId,
+                    name: item.name,
+                })),
+            )
+        } catch {
+            setSupermarkets([])
+        } finally {
+            setSupermarketsLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        void loadSupermarkets()
+    }, [loadSupermarkets])
+
     useEffect(() => {
         if (page > totalPages) {
             setPage(totalPages)
@@ -301,6 +330,7 @@ const AdminInternalStaff = () => {
                 detectedRoleOptions[0]?.roleId ??
                 DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ??
                 ROLE_USER.PACKAGING_STAFF,
+            supermarketId: "",
         })
     }
 
@@ -336,6 +366,14 @@ const AdminInternalStaff = () => {
             return
         }
 
+        if (
+            createForm.roleId === ROLE_USER.PACKAGING_STAFF &&
+            !createForm.supermarketId.trim()
+        ) {
+            showError("Vui lòng chọn siêu thị cho nhân viên đóng gói.")
+            return
+        }
+
         try {
             setSubmitting(true)
 
@@ -344,6 +382,10 @@ const AdminInternalStaff = () => {
                 email: trimmedEmail,
                 phone: trimmedPhone || undefined,
                 roleId: createForm.roleId,
+                supermarketId:
+                    createForm.roleId === ROLE_USER.PACKAGING_STAFF
+                        ? createForm.supermarketId
+                        : undefined,
             })
 
             showSuccess("Đã tạo tài khoản nội bộ.")
@@ -720,6 +762,8 @@ const AdminInternalStaff = () => {
                 open={openCreateModal}
                 form={createForm}
                 roleOptions={detectedRoleOptions}
+                supermarkets={supermarkets}
+                supermarketsLoading={supermarketsLoading}
                 submitting={submitting}
                 onClose={handleCloseCreateModal}
                 onChange={handleCreateFormChange}

@@ -1,6 +1,8 @@
 import type { FormEvent, ReactNode } from "react"
 import { Loader2, Plus, X } from "lucide-react"
 
+import { ROLE_USER } from "@/types/admin.type"
+
 type InternalRoleOption = {
     roleId: number
     roleName: string
@@ -8,11 +10,17 @@ type InternalRoleOption = {
     hint: string
 }
 
+type SupermarketOption = {
+    supermarketId: string
+    name: string
+}
+
 type CreateInternalUserForm = {
     fullName: string
     email: string
     phone: string
     roleId: number
+    supermarketId: string
 }
 
 type EditInternalUserForm = {
@@ -78,6 +86,8 @@ type CreateInternalStaffModalProps = {
     open: boolean
     form: CreateInternalUserForm
     roleOptions: InternalRoleOption[]
+    supermarkets: SupermarketOption[]
+    supermarketsLoading: boolean
     submitting: boolean
     onClose: () => void
     onChange: <K extends keyof CreateInternalUserForm>(
@@ -91,6 +101,8 @@ export const CreateInternalStaffModal = ({
     open,
     form,
     roleOptions,
+    supermarkets,
+    supermarketsLoading,
     submitting,
     onClose,
     onChange,
@@ -99,6 +111,7 @@ export const CreateInternalStaffModal = ({
     if (!open) return null
 
     const selectedRole = roleOptions.find((item) => item.roleId === form.roleId)
+    const isPackagingStaff = form.roleId === ROLE_USER.PACKAGING_STAFF
 
     return (
         <BaseModal
@@ -165,6 +178,34 @@ export const CreateInternalStaffModal = ({
                                     ))}
                                 </select>
                             </div>
+
+                            {isPackagingStaff ? (
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-900">
+                                        Siêu thị trực thuộc
+                                    </label>
+                                    <select
+                                        value={form.supermarketId}
+                                        onChange={(e) => onChange("supermarketId", e.target.value)}
+                                        disabled={supermarketsLoading}
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400 disabled:cursor-not-allowed disabled:bg-slate-50"
+                                    >
+                                        <option value="">
+                                            {supermarketsLoading
+                                                ? "Đang tải danh sách siêu thị..."
+                                                : "Chọn siêu thị"}
+                                        </option>
+                                        {supermarkets.map((market) => (
+                                            <option
+                                                key={market.supermarketId}
+                                                value={market.supermarketId}
+                                            >
+                                                {market.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
 
