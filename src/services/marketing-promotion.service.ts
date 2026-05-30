@@ -95,11 +95,10 @@ export const marketingPromotionService: PromotionClient & {
 
 	async createPromotion(payload: UpsertPromotionPayload) {
 		try {
-			const response = await axiosClient.post<
-				ApiEnvelope<PromotionItem>,
-				unknown,
-				UpsertPromotionPayload
-			>("/marketing/promotions", payload);
+			const response = await axiosClient.post<ApiEnvelope<PromotionItem>>(
+				"/marketing/promotions",
+				payload,
+			);
 			return unwrap(response);
 		} catch (error) {
 			throw new Error(
@@ -113,11 +112,10 @@ export const marketingPromotionService: PromotionClient & {
 		payload: UpdatePromotionBasicPayload,
 	) {
 		try {
-			const response = await axiosClient.put<
-				ApiEnvelope<PromotionItem>,
-				unknown,
-				UpdatePromotionBasicPayload
-			>(`/marketing/promotions/${promotionId}`, payload);
+			const response = await axiosClient.put<ApiEnvelope<PromotionItem>>(
+				`/marketing/promotions/${promotionId}`,
+				payload,
+			);
 			return unwrap(response);
 		} catch (error) {
 			throw new Error(
@@ -128,11 +126,10 @@ export const marketingPromotionService: PromotionClient & {
 
 	async updatePromotionStatus(promotionId: string, status: string) {
 		try {
-			const response = await axiosClient.patch<
-				ApiEnvelope<PromotionItem>,
-				unknown,
-				{ status: string }
-			>(`/marketing/promotions/${promotionId}/status`, { status });
+			const response = await axiosClient.patch<ApiEnvelope<PromotionItem>>(
+				`/marketing/promotions/${promotionId}/status`,
+				{ status },
+			);
 			return unwrap(response);
 		} catch (error) {
 			throw new Error(
@@ -232,9 +229,7 @@ export const marketingPromotionService: PromotionClient & {
 	async validatePromotion(payload: ValidatePromotionPayload) {
 		try {
 			const response = await axiosClient.post<
-				ApiEnvelope<PromotionValidationResult>,
-				unknown,
-				ValidatePromotionPayload
+				ApiEnvelope<PromotionValidationResult>
 			>("/marketing/promotions/validate", payload);
 			return unwrap(response);
 		} catch (error) {

@@ -19,6 +19,7 @@ import {
     notificationService,
 } from "@/services/notification.service"
 import type { NotificationItem, NotificationType } from "@/types/notification.type"
+import { normalizeApiNotificationType } from "@/utils/notificationDisplay"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -103,7 +104,9 @@ const NotificationsPage: React.FC = () => {
 
     const filteredNotifications = useMemo(() => {
         return notifications.filter((notif) => {
-            const matchesType = filterType === "all" || notif.type === filterType
+            const matchesType =
+                filterType === "all" ||
+                normalizeApiNotificationType(notif.type) === filterType
             const matchesRead = !showUnreadOnly || !notif.isRead
             return matchesType && matchesRead
         })
@@ -347,7 +350,12 @@ const NotificationsPage: React.FC = () => {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {filteredNotifications.map((item) => (
+                        {filteredNotifications.map((item) => {
+                            const notificationType = normalizeApiNotificationType(
+                                item.type,
+                            )
+
+                            return (
                             <button
                                 key={item.notificationId}
                                 type="button"
@@ -364,12 +372,12 @@ const NotificationsPage: React.FC = () => {
                                         className={cn(
                                             "grid h-11 w-11 shrink-0 place-items-center rounded-2xl border",
                                             getNotificationColor(
-                                                item.type,
+                                                notificationType,
                                                 item.isRead,
                                             ),
                                         )}
                                     >
-                                        {getNotificationIcon(item.type)}
+                                        {getNotificationIcon(notificationType)}
                                     </div>
 
                                     <div className="min-w-0 flex-1">
@@ -398,7 +406,11 @@ const NotificationsPage: React.FC = () => {
 
                                         <div className="mt-3 flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
                                             <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 font-medium text-slate-600">
-                                                {NOTIFICATION_TYPE_LABELS[item.type]}
+                                                {
+                                                    NOTIFICATION_TYPE_LABELS[
+                                                        notificationType
+                                                    ]
+                                                }
                                             </span>
                                             {item.orderCode && (
                                                 <span className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 font-medium text-sky-700">
@@ -415,7 +427,8 @@ const NotificationsPage: React.FC = () => {
                                     </div>
                                 </div>
                             </button>
-                        ))}
+                            )
+                        })}
                     </div>
                 )}
             </main>

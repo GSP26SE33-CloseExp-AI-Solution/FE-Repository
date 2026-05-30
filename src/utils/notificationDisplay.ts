@@ -2,6 +2,7 @@ import type {
     ApiNotification,
     ApiNotificationType,
     NotificationListItem,
+    NotificationType,
     NotificationTypeKey,
 } from "@/types/notification.type"
 
@@ -16,6 +17,19 @@ const TYPE_KEY_BY_API: Record<string, NotificationTypeKey> = {
     "2": "systemAlert",
     "3": "deliveryUpdate",
     "4": "priceAlert",
+}
+
+const NOTIFICATION_TYPE_BY_API: Record<string, NotificationType> = {
+    OrderUpdate: "OrderUpdate",
+    Promotion: "Promotion",
+    SystemAlert: "SystemAlert",
+    DeliveryUpdate: "DeliveryUpdate",
+    PriceAlert: "PriceAlert",
+    "0": "OrderUpdate",
+    "1": "Promotion",
+    "2": "SystemAlert",
+    "3": "DeliveryUpdate",
+    "4": "PriceAlert",
 }
 
 export const NOTIFICATION_TYPE_FILTERS: Array<{
@@ -35,6 +49,12 @@ export const normalizeNotificationTypeKey = (
 ): NotificationTypeKey => {
     const key = TYPE_KEY_BY_API[String(type)]
     return key ?? "systemAlert"
+}
+
+export const normalizeApiNotificationType = (
+    type: ApiNotificationType,
+): NotificationType => {
+    return NOTIFICATION_TYPE_BY_API[String(type)] ?? "SystemAlert"
 }
 
 export const mapApiNotificationToListItem = (

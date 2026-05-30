@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import {
     Bell,
@@ -297,7 +297,7 @@ const CustomerHeader = () => {
         setMobileNavOpen(false)
     }
 
-    const syncUnreadNotifications = async () => {
+    const syncUnreadNotifications = useCallback(async () => {
         if (!user) {
             setUnreadNotificationCount(0)
             return
@@ -309,7 +309,7 @@ const CustomerHeader = () => {
         } catch {
             // Ignore badge errors; full list page shows toast on failure.
         }
-    }
+    }, [user])
 
     const handleLogoutAll = async () => {
         const confirmed = window.confirm(
@@ -376,7 +376,7 @@ const CustomerHeader = () => {
         setCartCount(getCartTotalQty())
         loadSearchIndex()
         void syncUnreadNotifications()
-    }, [user?.userId])
+    }, [user?.userId, syncUnreadNotifications])
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -427,7 +427,7 @@ const CustomerHeader = () => {
                 handleSearchIndexUpdated as EventListener
             )
         }
-    }, [user?.userId])
+    }, [user?.userId, syncUnreadNotifications])
 
     useEffect(() => {
         setOpen(false)

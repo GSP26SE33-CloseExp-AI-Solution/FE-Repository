@@ -19,7 +19,6 @@ import {
     getPromotionStatusLabel,
     logApiError,
     logApiSuccess,
-    normalizePromotionPayload,
     normalizeCreatePromotionPayload,
     buildPromotionUpdatePayload,
     validatePromotionPayload,
