@@ -674,9 +674,9 @@ const ProductDetailPage = () => {
                                     {product.lots.length} lựa chọn
                                 </div>
 
-                                {product.imageUrl ? (
+                                {displayImageUrl ? (
                                     <img
-                                        src={product.imageUrl}
+                                        src={displayImageUrl}
                                         alt={product.name}
                                         className="h-full w-full object-contain p-7 transition duration-300 hover:scale-[1.02]"
                                     />
