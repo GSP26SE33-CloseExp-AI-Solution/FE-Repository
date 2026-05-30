@@ -53,6 +53,7 @@ type EditInternalUserForm = {
     phone: string
     roleId: number
     status: number
+    supermarketId: string
 }
 
 type ConfirmActionState = {
@@ -164,6 +165,7 @@ const AdminInternalStaff = () => {
         phone: "",
         roleId: DEFAULT_INTERNAL_ROLE_OPTIONS[0]?.roleId ?? ROLE_USER.PACKAGING_STAFF,
         status: USER_STATUS.PENDING_APPROVAL,
+        supermarketId: "",
     })
 
     const detectedRoleOptions = useMemo<InternalRoleOption[]>(() => {
@@ -452,6 +454,14 @@ const AdminInternalStaff = () => {
             return
         }
 
+        if (
+            editForm.roleId === ROLE_USER.PACKAGING_STAFF &&
+            !editForm.supermarketId.trim()
+        ) {
+            showError("Vui lòng chọn siêu thị cho nhân viên đóng gói.")
+            return
+        }
+
         try {
             setSubmitting(true)
 
@@ -461,6 +471,10 @@ const AdminInternalStaff = () => {
                 phone: trimmedPhone || undefined,
                 roleId: editForm.roleId,
                 status: editForm.status,
+                supermarketId:
+                    editForm.roleId === ROLE_USER.PACKAGING_STAFF
+                        ? editForm.supermarketId
+                        : undefined,
             }
 
             await adminService.updateUser(selectedStaff.userId, payload)
@@ -774,6 +788,8 @@ const AdminInternalStaff = () => {
                 open={openEditModal}
                 form={editForm}
                 roleOptions={detectedRoleOptions}
+                supermarkets={supermarkets}
+                supermarketsLoading={supermarketsLoading}
                 submitting={submitting}
                 onClose={handleCloseEditModal}
                 onChange={handleEditFormChange}
@@ -799,6 +815,9 @@ const AdminInternalStaff = () => {
                             ROLE_USER.PACKAGING_STAFF,
                         status:
                             selectedUserDetail.status ?? USER_STATUS.PENDING_APPROVAL,
+                        supermarketId:
+                            selectedUserDetail.packagingStaffInfo?.supermarket
+                                ?.supermarketId ?? "",
                     })
                     setOpenDetailModal(false)
                     setOpenEditModal(true)

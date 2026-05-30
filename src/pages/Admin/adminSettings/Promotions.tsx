@@ -5,6 +5,7 @@ import type {
     PromotionItem,
     UpsertPromotionPayload,
 } from "@/types/admin.type"
+import type { PromotionClient } from "@/types/promotion.type"
 import { adminService } from "@/services/admin.service"
 import { showError, showSuccess } from "@/utils/toast"
 
@@ -19,6 +20,8 @@ import {
     logApiError,
     logApiSuccess,
     normalizePromotionPayload,
+    normalizeCreatePromotionPayload,
+    buildPromotionUpdatePayload,
     validatePromotionPayload,
 } from "./Shared"
 
@@ -27,6 +30,9 @@ type Props = {
     promotions: PromotionItem[]
     categories: CategoryItem[]
     onRefresh: () => Promise<void>
+    client?: PromotionClient
+    title?: string
+    description?: string
 }
 
 type PromotionStatusFilter = "ALL" | "Draft" | "Active" | "Expired" | "Disabled"
@@ -60,6 +66,11 @@ const compareText = (left?: string | null, right?: string | null) =>
         sensitivity: "base",
         numeric: true,
     })
+
+const createStatusOptions = [
+    { value: "Draft", label: "Bản nháp" },
+    { value: "Active", label: "Áp dụng" },
+]
 
 const statusOptions = [
     { value: "Draft", label: "Bản nháp" },
@@ -157,17 +168,27 @@ const PromotionFormGrid = ({
     value,
     onChange,
     categories,
+    mode = "create",
 }: {
     value: UpsertPromotionPayload
     onChange: React.Dispatch<React.SetStateAction<UpsertPromotionPayload>>
     categories: CategoryItem[]
+    mode?: "create" | "edit"
 }) => {
     const selectedCategory = categories.find(
         (item) => item.categoryId === value.categoryId
     )
+    const isCreate = mode === "create"
 
     return (
         <div className="space-y-4">
+            {!isCreate ? (
+                <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                    Chỉ được sửa mã, tên và danh mục. Mức giảm, thời gian và trạng thái
+                    không thể thay đổi sau khi tạo.
+                </p>
+            ) : null}
+
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <div>
                     <FieldLabel>Mã ưu đãi</FieldLabel>
@@ -223,6 +244,8 @@ const PromotionFormGrid = ({
                     </select>
                 </div>
 
+                {isCreate ? (
+                    <>
                 <div>
                     <FieldLabel>Kiểu giảm giá</FieldLabel>
                     <select
@@ -364,15 +387,18 @@ const PromotionFormGrid = ({
                         }
                         className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
                     >
-                        {statusOptions.map((option) => (
+                        {createStatusOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                                 {option.label}
                             </option>
                         ))}
                     </select>
                 </div>
+                    </>
+                ) : null}
             </div>
 
+            {isCreate ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <PromotionSummaryChip
                     label="Danh mục"
@@ -415,6 +441,7 @@ const PromotionFormGrid = ({
                     value={value.endDate ? formatDateTime(value.endDate) : "Chưa chọn"}
                 />
             </div>
+            ) : null}
         </div>
     )
 }
@@ -424,7 +451,17 @@ const AdminSettingsPromotions = ({
     promotions,
     categories,
     onRefresh,
+    client,
+    title = "Chương trình khuyến mãi",
+    description = "Tạo, chỉnh sửa và theo dõi trạng thái các chương trình ưu đãi.",
 }: Props) => {
+    const api: PromotionClient = client ?? {
+        getPromotions: () => adminService.getPromotions(),
+        createPromotion: (payload) => adminService.createPromotion(payload),
+        updatePromotion: (promotionId, payload) =>
+            adminService.updatePromotion(promotionId, payload),
+        deletePromotion: (promotionId) => adminService.deletePromotion(promotionId),
+    }
     const [newPromotion, setNewPromotion] =
         useState<UpsertPromotionPayload>(EMPTY_PROMOTION)
 
@@ -494,7 +531,7 @@ const AdminSettingsPromotions = ({
     }
 
     const handleCreatePromotion = async () => {
-        const payload = normalizePromotionPayload(newPromotion)
+        const payload = normalizeCreatePromotionPayload(newPromotion)
         const validationError = validatePromotionPayload(payload)
 
         if (validationError) {
@@ -504,7 +541,7 @@ const AdminSettingsPromotions = ({
 
         try {
             logApiSuccess("handleCreatePromotion - request", payload)
-            const res = await adminService.createPromotion(payload)
+            const res = await api.createPromotion(payload)
             logApiSuccess("handleCreatePromotion - response", payload, res)
 
             showSuccess("Đã tạo chương trình khuyến mãi")
@@ -522,11 +559,18 @@ const AdminSettingsPromotions = ({
     }
 
     const handleUpdatePromotion = async (promotionId: string) => {
-        const payload = normalizePromotionPayload(editPromotion)
-        const validationError = validatePromotionPayload(payload)
+        const payload = buildPromotionUpdatePayload(editPromotion)
 
-        if (validationError) {
-            showError(validationError)
+        if (!payload.code) {
+            showError("Vui lòng nhập mã khuyến mãi")
+            return
+        }
+        if (!payload.categoryId) {
+            showError("Vui lòng chọn danh mục áp dụng")
+            return
+        }
+        if (!payload.name) {
+            showError("Vui lòng nhập tên chương trình")
             return
         }
 
@@ -535,7 +579,7 @@ const AdminSettingsPromotions = ({
                 promotionId,
                 payload,
             })
-            const res = await adminService.updatePromotion(promotionId, payload)
+            const res = await api.updatePromotion(promotionId, payload)
             logApiSuccess(
                 "handleUpdatePromotion - response",
                 { promotionId, payload },
@@ -554,30 +598,28 @@ const AdminSettingsPromotions = ({
         }
     }
 
-    const handleUpdatePromotionStatus = async (
-        promotionId: string,
-        status: string
-    ) => {
-        try {
-            logApiSuccess("handleUpdatePromotionStatus - request", {
-                promotionId,
-                status,
-            })
-            const res = await adminService.updatePromotionStatus(promotionId, status)
-            logApiSuccess(
-                "handleUpdatePromotionStatus - response",
-                { promotionId, status },
-                res
-            )
+    const handleDeletePromotion = async (item: PromotionItem) => {
+        const confirmed = window.confirm(
+            `Bạn có chắc muốn xóa khuyến mãi "${item.name}" (${item.code})?`,
+        )
+        if (!confirmed) return
 
-            showSuccess("Đã cập nhật trạng thái")
+        try {
+            await api.deletePromotion(item.promotionId)
+            showSuccess("Đã xóa khuyến mãi")
+            if (editingPromotionId === item.promotionId) {
+                resetEditing()
+            }
             await onRefresh()
         } catch (error) {
-            logApiError("handleUpdatePromotionStatus", error, {
-                promotionId,
-                status,
+            logApiError("handleDeletePromotion", error, {
+                promotionId: item.promotionId,
             })
-            showError("Không thể cập nhật trạng thái khuyến mãi")
+            showError(
+                error instanceof Error
+                    ? error.message
+                    : "Không thể xóa khuyến mãi",
+            )
         }
     }
 
@@ -585,7 +627,9 @@ const AdminSettingsPromotions = ({
         discountType?: string
         discountValue?: number
     }) => {
-        if (payload.discountType === "FixedAmount") {
+        if (
+            payload.discountType === "FixedAmount"
+        ) {
             return formatMoney(payload.discountValue)
         }
 
@@ -595,10 +639,8 @@ const AdminSettingsPromotions = ({
     return (
         <div className="space-y-5">
             <div>
-                <h2 className="text-lg font-bold text-slate-900">Khuyến mãi</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                    Tạo mới và quản lý các chương trình ưu đãi theo từng danh mục sản phẩm.
-                </p>
+                <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+                <p className="mt-1 text-sm text-slate-500">{description}</p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-3">
@@ -638,6 +680,7 @@ const AdminSettingsPromotions = ({
                     value={newPromotion}
                     onChange={setNewPromotion}
                     categories={categoryOptions}
+                    mode="create"
                 />
 
                 <div className="mt-4 flex justify-end">
@@ -698,6 +741,7 @@ const AdminSettingsPromotions = ({
                                         value={editPromotion}
                                         onChange={setEditPromotion}
                                         categories={categoryOptions}
+                                        mode="edit"
                                     />
 
                                     <div className="flex justify-end gap-2">
@@ -808,25 +852,15 @@ const AdminSettingsPromotions = ({
                                             Sửa
                                         </button>
 
-                                        <select
-                                            value={item.status}
-                                            onChange={(e) =>
-                                                void handleUpdatePromotionStatus(
-                                                    item.promotionId,
-                                                    e.target.value
-                                                )
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                void handleDeletePromotion(item)
                                             }
-                                            className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900"
+                                            className="rounded-xl border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
                                         >
-                                            {statusOptions.map((option) => (
-                                                <option
-                                                    key={option.value}
-                                                    value={option.value}
-                                                >
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            Xóa
+                                        </button>
                                     </div>
                                 </div>
                             )}

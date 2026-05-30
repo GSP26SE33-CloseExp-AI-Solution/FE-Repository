@@ -1,4 +1,5 @@
 import axios, { AxiosHeaders, type InternalAxiosRequestConfig } from "axios"
+import { getApiBaseUrl } from "@/utils/apiConfig"
 import { authStorage } from "@/utils/authStorage"
 import { refreshTokenApi } from "@/services/auth.service"
 
@@ -6,11 +7,8 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
     _retry?: boolean
 }
 
-const rawApiUrl = (process.env.REACT_APP_API_URL ?? "").trim()
-const apiOrigin = rawApiUrl.replace(/\/api\/?$/i, "").replace(/\/+$/, "")
-
 const axiosClient = axios.create({
-    baseURL: apiOrigin ? `${apiOrigin}/api` : "/api",
+    baseURL: getApiBaseUrl(),
 })
 
 let isRedirectingToLogin = false

@@ -201,6 +201,17 @@ export type MarketStaffInfo = {
     }
 }
 
+export type PackagingStaffInfo = {
+    packagingStaffId: string
+    joinedAt?: string
+    supermarket?: {
+        supermarketId: string
+        name: string
+        address?: string
+        contactPhone?: string
+    }
+}
+
 export type AdminUser = {
     userId: string
     fullName: string
@@ -212,6 +223,7 @@ export type AdminUser = {
     createdAt: string
     updatedAt: string
     marketStaffInfo?: MarketStaffInfo | null
+    packagingStaffInfo?: PackagingStaffInfo | null
 }
 
 export type CreateUserPayload = {
@@ -237,6 +249,7 @@ export type UpdateUserPayload = {
     phone?: string
     status?: number
     roleId?: number
+    supermarketId?: string
 }
 
 export type UpdateCurrentUserProfilePayload = {

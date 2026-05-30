@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import {
+    Bell,
     LogOut,
     Menu,
     ReceiptText,
@@ -15,6 +16,7 @@ import {
 
 import { useAuthContext } from "@/contexts/AuthContext"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
+import { notificationService } from "@/services/notification.service"
 import Logo from "@/assets/logo.png"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
@@ -54,6 +56,7 @@ const IMPACT_ROUTE = "/impact"
 const PARTNER_ROUTE = "/partner/register"
 const CART_ROUTE = "/cart"
 const ORDERS_ROUTE = "/orders"
+const NOTIFICATIONS_ROUTE = "/notifications"
 const LOGIN_ROUTE = "/login"
 const PROFILE_ROUTE = "/vendor/profile"
 const CART_KEY = "customer_cart_v1"
@@ -90,6 +93,7 @@ const CustomerHeader = () => {
         categories: [],
     })
     const [cartCount, setCartCount] = useState<number>(0)
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
 
     const ref = useRef<HTMLDivElement>(null)
     const searchRef = useRef<HTMLDivElement>(null)
@@ -280,6 +284,33 @@ const CustomerHeader = () => {
         setMobileNavOpen(false)
     }
 
+    const handleViewNotifications = () => {
+        if (!user) {
+            navigate(LOGIN_ROUTE, {
+                state: { redirectTo: NOTIFICATIONS_ROUTE },
+            })
+            return
+        }
+
+        navigate(NOTIFICATIONS_ROUTE)
+        setOpen(false)
+        setMobileNavOpen(false)
+    }
+
+    const syncUnreadNotifications = async () => {
+        if (!user) {
+            setUnreadNotificationCount(0)
+            return
+        }
+
+        try {
+            const count = await notificationService.countUnread()
+            setUnreadNotificationCount(count)
+        } catch {
+            // Ignore badge errors; full list page shows toast on failure.
+        }
+    }
+
     const handleLogoutAll = async () => {
         const confirmed = window.confirm(
             "Bạn có chắc muốn đăng xuất khỏi tất cả thiết bị không? Bạn sẽ cần đăng nhập lại sau khi tiếp tục."
@@ -344,7 +375,8 @@ const CustomerHeader = () => {
     useEffect(() => {
         setCartCount(getCartTotalQty())
         loadSearchIndex()
-    }, [])
+        void syncUnreadNotifications()
+    }, [user?.userId])
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -363,6 +395,9 @@ const CustomerHeader = () => {
 
     useEffect(() => {
         const syncCart = () => setCartCount(getCartTotalQty())
+        const syncNotifications = () => {
+            void syncUnreadNotifications()
+        }
 
         const handleStorage = (e: StorageEvent) => {
             if (e.key === CART_KEY) syncCart()
@@ -372,8 +407,10 @@ const CustomerHeader = () => {
         const handleSearchIndexUpdated = () => loadSearchIndex()
 
         window.addEventListener("focus", syncCart)
+        window.addEventListener("focus", syncNotifications)
         window.addEventListener("storage", handleStorage)
         window.addEventListener("cart:updated", syncCart as EventListener)
+        window.addEventListener("notifications:updated", syncNotifications)
         window.addEventListener(
             "customer:search-index-updated",
             handleSearchIndexUpdated as EventListener
@@ -381,14 +418,16 @@ const CustomerHeader = () => {
 
         return () => {
             window.removeEventListener("focus", syncCart)
+            window.removeEventListener("focus", syncNotifications)
             window.removeEventListener("storage", handleStorage)
             window.removeEventListener("cart:updated", syncCart as EventListener)
+            window.removeEventListener("notifications:updated", syncNotifications)
             window.removeEventListener(
                 "customer:search-index-updated",
                 handleSearchIndexUpdated as EventListener
             )
         }
-    }, [])
+    }, [user?.userId])
 
     useEffect(() => {
         setOpen(false)
@@ -633,6 +672,27 @@ const CustomerHeader = () => {
                             )}
                         </button>
 
+                        {user ? (
+                            <button
+                                type="button"
+                                onClick={handleViewNotifications}
+                                className="relative grid h-[47px] w-[44px] place-items-center rounded-xl border border-gray-100 bg-white shadow-md transition hover:bg-gray-50"
+                                aria-label="Thông báo"
+                            >
+                                <Bell className="text-gray-800" size={22} />
+
+                                {unreadNotificationCount > 0 && (
+                                    <span className="absolute -right-2 -top-2 rounded-full bg-emerald-500 px-2 py-0.5 shadow-sm">
+                                        <span className="text-[10px] font-bold text-white">
+                                            {unreadNotificationCount > 99
+                                                ? "99+"
+                                                : unreadNotificationCount}
+                                        </span>
+                                    </span>
+                                )}
+                            </button>
+                        ) : null}
+
                         {!user ? (
                             <div className="hidden items-center gap-2 sm:flex">
                                 <button
@@ -710,6 +770,22 @@ const CustomerHeader = () => {
                                         >
                                             <ReceiptText size={16} className="text-emerald-600" />
                                             <span>Đơn hàng của tôi</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleViewNotifications}
+                                            className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-gray-50"
+                                        >
+                                            <Bell size={16} className="text-emerald-600" />
+                                            <span className="flex-1">Thông báo</span>
+                                            {unreadNotificationCount > 0 && (
+                                                <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                                                    {unreadNotificationCount > 99
+                                                        ? "99+"
+                                                        : unreadNotificationCount}
+                                                </span>
+                                            )}
                                         </button>
 
                                         {roleName === "Vendor" && (
@@ -926,6 +1002,22 @@ const CustomerHeader = () => {
                                     >
                                         <ReceiptText size={16} className="text-emerald-600" />
                                         <span>Đơn hàng của tôi</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleViewNotifications}
+                                        className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm text-slate-700 transition hover:bg-gray-50"
+                                    >
+                                        <Bell size={16} className="text-emerald-600" />
+                                        <span className="flex-1">Thông báo</span>
+                                        {unreadNotificationCount > 0 && (
+                                            <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                                                {unreadNotificationCount > 99
+                                                    ? "99+"
+                                                    : unreadNotificationCount}
+                                            </span>
+                                        )}
                                     </button>
 
                                     {roleName === "Vendor" && (

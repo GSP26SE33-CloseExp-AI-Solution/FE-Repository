@@ -6,6 +6,9 @@ export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/admin/refunds": ["Quản trị", "Hoàn tiền"],
     "/admin/reports": ["Quản trị", "Báo cáo"],
     "/admin/settings": ["Quản trị", "Cấu hình hệ thống"],
+    "/admin/promotion-analytics": ["Quản trị", "Phân tích khuyến mãi"],
+    "/marketing/promotions": ["Marketing", "Khuyến mãi"],
+    "/marketing/reports": ["Marketing", "Hiệu quả"],
     "/admin/users": ["Quản trị", "Tài khoản"],
     "/admin/profile": ["Quản trị", "Hồ sơ"],
     "/admin": ["Quản trị", "Tổng quan"],
@@ -47,6 +50,7 @@ export const BREAD_CRUMB_MAP: Record<string, string[]> = {
     "/impact": ["Mua sắm", "Tác động"],
     "/payment-return": ["Mua sắm", "Kết quả thanh toán"],
     "/orders": ["Mua sắm", "Đơn hàng của tôi"],
+    "/notifications": ["Mua sắm", "Thông báo"],
 }
 
 type BreadcrumbOptions = {

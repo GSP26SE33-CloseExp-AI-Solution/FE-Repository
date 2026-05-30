@@ -525,9 +525,12 @@ export const adminService = {
         )
     },
 
-    updatePromotion(promotionId: string, payload: UpsertPromotionPayload) {
+    updatePromotion(
+        promotionId: string,
+        payload: { code?: string; categoryId?: string; name?: string },
+    ) {
         console.log("adminService.updatePromotion payload:", { promotionId, payload })
-        return put<PromotionItem, UpsertPromotionPayload>(
+        return put<PromotionItem, { code?: string; categoryId?: string; name?: string }>(
             `/admin/catalog/promotions/${promotionId}`,
             payload,
             "Không thể cập nhật khuyến mãi"
@@ -543,6 +546,13 @@ export const adminService = {
             `/admin/catalog/promotions/${promotionId}/status`,
             { status },
             "Không thể cập nhật trạng thái khuyến mãi"
+        )
+    },
+
+    deletePromotion(promotionId: string) {
+        return remove<boolean>(
+            `/admin/catalog/promotions/${promotionId}`,
+            "Không thể xóa khuyến mãi",
         )
     },
 
@@ -583,6 +593,7 @@ export const adminService = {
                     item.phone,
                     item.roleName,
                     item.marketStaffInfo?.supermarket?.name,
+                    item.packagingStaffInfo?.supermarket?.name,
                 ]
                     .filter(Boolean)
                     .some((value) =>

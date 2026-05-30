@@ -29,6 +29,7 @@ type EditInternalUserForm = {
     phone: string
     roleId: number
     status: number
+    supermarketId: string
 }
 
 type BaseModalProps = {
@@ -256,6 +257,8 @@ type EditInternalStaffModalProps = {
     open: boolean
     form: EditInternalUserForm
     roleOptions: InternalRoleOption[]
+    supermarkets: SupermarketOption[]
+    supermarketsLoading: boolean
     submitting: boolean
     onClose: () => void
     onChange: <K extends keyof EditInternalUserForm>(
@@ -271,6 +274,8 @@ export const EditInternalStaffModal = ({
     open,
     form,
     roleOptions,
+    supermarkets,
+    supermarketsLoading,
     submitting,
     onClose,
     onChange,
@@ -370,6 +375,36 @@ export const EditInternalStaffModal = ({
                                     ))}
                                 </select>
                             </div>
+
+                            {form.roleId === ROLE_USER.PACKAGING_STAFF ? (
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-900">
+                                        Siêu thị phụ trách
+                                    </label>
+                                    <select
+                                        value={form.supermarketId}
+                                        onChange={(e) =>
+                                            onChange("supermarketId", e.target.value)
+                                        }
+                                        disabled={supermarketsLoading}
+                                        className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-slate-400"
+                                    >
+                                        <option value="">
+                                            {supermarketsLoading
+                                                ? "Đang tải siêu thị..."
+                                                : "Chọn siêu thị"}
+                                        </option>
+                                        {supermarkets.map((market) => (
+                                            <option
+                                                key={market.supermarketId}
+                                                value={market.supermarketId}
+                                            >
+                                                {market.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
 

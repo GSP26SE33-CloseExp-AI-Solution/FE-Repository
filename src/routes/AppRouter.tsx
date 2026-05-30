@@ -21,6 +21,7 @@ import PaymentReturnPage from "@/pages/Vendor/PaymentReturnPage"
 import VendorProfile from "@/pages/Vendor/vProfile"
 import MyOrdersPage from "@/pages/Vendor/MyOrdersPage"
 import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage"
+import NotificationsPage from "@/pages/Vendor/NotificationsPage"
 
 import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard"
 import ProductsLotsPage from "@/pages/SupermarketStaff/sLotsPageTable"
@@ -41,6 +42,7 @@ import AdminSupermarkets from "@/pages/Admin/AdminSupermarkets"
 import AdminProfile from "@/pages/Admin/AdminProfile"
 import AdminRefunds from "@/pages/Admin/AdminRefunds"
 import AdminNotification from "@/pages/Admin/AdminNotification"
+import AdminPromotionAnalytics from "@/pages/Admin/AdminPromotionAnalytics"
 import AITokenDashboard from "@/pages/Admin/AITokenDashboard"
 
 import PackageOrders from "@/pages/PackagingStaff/pOrders"
@@ -118,6 +120,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/admin/notification"
                                 element={<AdminNotification />}
+                            />
+                            <Route
+                                path="/admin/promotion-analytics"
+                                element={<AdminPromotionAnalytics />}
                             />
                             <Route
                                 path="/admin/profile"
@@ -253,6 +259,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/orders/:orderId"
                                 element={<MyOrderDetailPage />}
+                            />
+                            <Route
+                                path="/notifications"
+                                element={<NotificationsPage />}
                             />
                             <Route path="/vendor" element={<Home />} />
                             <Route

@@ -18,6 +18,7 @@ import {
 import toast from "react-hot-toast"
 
 import { authStorage } from "@/utils/authStorage"
+import { getApiOrigin } from "@/utils/apiConfig"
 import { productService } from "@/services/product.service"
 import { productLotService } from "@/services/product-lot.service"
 import ProductsTab from "./components/ProductsTab"
@@ -90,7 +91,7 @@ const compareBooleanLabel = (a: boolean, b: boolean) => {
     return left.localeCompare(right, "vi")
 }
 
-const API_ORIGIN = (process.env.REACT_APP_API_URL || "").replace(/\/$/, "")
+const API_ORIGIN = getApiOrigin()
 
 const getImageUrl = (url?: string | null) => {
     if (!url?.trim() || url === "/placeholder.png") {

@@ -1,12 +1,7 @@
-import React from 'react';
+import PromotionInsights from "@/components/promotions/PromotionInsights"
 
-const MarketingReports: React.FC = () => {
-    return (
-        <div>
-            <h1>MarketingReports</h1>
-            <p>Welcome to Close Expired Products Platform</p>
-        </div>
-    );
-};
+const MarketingReports = () => {
+    return <PromotionInsights mode="marketing" />
+}
 
-export default MarketingReports;
+export default MarketingReports

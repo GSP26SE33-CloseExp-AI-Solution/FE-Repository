@@ -171,7 +171,9 @@ export const matchesKeyword = (item: InternalStaffRow, keyword: string) => {
 export const mapAdminUserToInternalStaffRow = (
     user: AdminUser
 ): InternalStaffRow => ({
-    id: user.marketStaffInfo?.marketStaffId || user.userId,
+    id: user.packagingStaffInfo?.packagingStaffId ||
+        user.marketStaffInfo?.marketStaffId ||
+        user.userId,
     userId: user.userId,
     fullName: user.fullName,
     email: user.email,
@@ -190,5 +192,7 @@ export const mapAdminUserToInternalStaffRow = (
                     ? "Giao hàng"
                     : undefined,
     position: user.marketStaffInfo?.position,
-    organizationName: user.marketStaffInfo?.supermarket?.name,
+    organizationName:
+        user.packagingStaffInfo?.supermarket?.name ??
+        user.marketStaffInfo?.supermarket?.name,
 })

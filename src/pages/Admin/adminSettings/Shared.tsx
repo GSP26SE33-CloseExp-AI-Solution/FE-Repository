@@ -189,6 +189,7 @@ export const getPromotionStatusClass = (status?: string) => {
 export const getDiscountTypeLabel = (discountType?: string) => {
     switch ((discountType ?? "").toLowerCase()) {
         case "percentage":
+        case "percent":
             return "Giảm theo phần trăm"
         case "fixedamount":
             return "Giảm số tiền cố định"
@@ -240,7 +241,8 @@ export const buildPromotionForm = (
     code: item.code ?? "",
     categoryId: item.categoryId ?? "",
     name: item.name ?? "",
-    discountType: item.discountType ?? "Percentage",
+    discountType:
+        item.discountType === "Percent" ? "Percentage" : item.discountType ?? "Percentage",
     discountValue: Number(item.discountValue ?? 0),
     minOrderAmount: Number(item.minOrderAmount ?? 0),
     maxDiscountAmount: Number(item.maxDiscountAmount ?? 0),
@@ -249,6 +251,28 @@ export const buildPromotionForm = (
     startDate: item.startDate ? item.startDate.slice(0, 16) : "",
     endDate: item.endDate ? item.endDate.slice(0, 16) : "",
     status: item.status ?? "Draft",
+})
+
+const toApiDateTime = (value: string) => {
+    if (!value) return value
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return value
+    return date.toISOString()
+}
+
+export const normalizeCreatePromotionPayload = (
+    source: UpsertPromotionPayload
+): UpsertPromotionPayload => ({
+    ...normalizePromotionPayload(source),
+    startDate: toApiDateTime(source.startDate),
+    endDate: toApiDateTime(source.endDate),
+    status: source.status === "Active" ? "Active" : "Draft",
+})
+
+export const buildPromotionUpdatePayload = (source: UpsertPromotionPayload) => ({
+    code: source.code.trim(),
+    categoryId: source.categoryId.trim(),
+    name: source.name.trim(),
 })
 
 export const validatePromotionPayload = (payload: UpsertPromotionPayload) => {

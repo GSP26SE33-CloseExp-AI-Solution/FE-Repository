@@ -2,10 +2,8 @@ import {
     LayoutDashboard,
     Box,
     Scale,
-    BarChart3,
     User,
     Bell,
-    Settings,
     Bot,
 } from "lucide-react"
 
@@ -20,10 +18,8 @@ const supermarketStaffMenuItems: SidebarMenuItem[] = [
         icon: Scale,
     },
     { label: "AI Token", path: "/supermarketStaff/ai-tokens", icon: Bot },
-    { label: "Thống kê", path: "/supermarketStaff/statistic", icon: BarChart3, end: true },
-    { label: "Hồ sơ", path: "/supermarketStaff/profile", icon: User, end: true },
+    { label: "Hồ sơ", path: "/supermarketStaff/profile", icon: User },
     { label: "Thông báo", path: "/supermarketStaff/notification", icon: Bell, end: true },
-    { label: "Cài đặt", path: "/supermarketStaff/setting", icon: Settings, end: true },
 ]
 
 const SupermarketStaffSidebar = () => {
