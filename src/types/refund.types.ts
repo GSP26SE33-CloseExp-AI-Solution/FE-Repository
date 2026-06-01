@@ -1,9 +1,9 @@
 /**
- * Admin/Marketing refund response shape
+ * Admin refund response shape
  * Matches BE RefundResponseDto (camelCase JSON)
  *
  * Endpoint:
- * - GET /api/Refunds (Admin/MarketingStaff)
+ * - GET /api/Refunds (Admin)
  * - GET /api/Refunds/{id}
  */
 export type RefundListItem = {

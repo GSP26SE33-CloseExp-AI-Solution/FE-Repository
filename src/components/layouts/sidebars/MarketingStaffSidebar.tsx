@@ -1,6 +1,6 @@
 import {
     TicketPercent,
-    Package2,
+    FolderTree,
     BarChart3,
     Bell,
     User,
@@ -10,7 +10,11 @@ import BaseSidebar, { type SidebarMenuItem } from "@/components/layouts/shared/B
 
 const marketingMenuItems: SidebarMenuItem[] = [
     { label: "Khuyến mãi", path: "/marketing/promotions", icon: TicketPercent, end: true },
-    { label: "Đơn vị bán", path: "/marketing/purchase-units", icon: Package2 },
+    {
+        label: "Sản phẩm theo danh mục",
+        path: "/marketing/category-products",
+        icon: FolderTree,
+    },
     { label: "Hiệu quả", path: "/marketing/reports", icon: BarChart3 },
     { label: "Thông báo", path: "/marketing/notification", icon: Bell },
     { label: "Hồ sơ", path: "/marketing/profile", icon: User, end: true },

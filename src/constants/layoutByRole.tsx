@@ -1,5 +1,12 @@
 import { Activity, Megaphone, PackageCheck, Store } from "lucide-react"
 
+export const STAFF_NOTIFICATION_ROUTES = {
+    Admin: "/admin/notification",
+    MarketingStaff: "/marketing/notification",
+    PackagingStaff: "/package/notification",
+    SupermarketStaff: "/supermarketStaff/notification",
+} as const
+
 export const STAFF_HEADER_CONFIG = {
     Admin: {
         portalSubtitle: "Trung tâm quản trị hệ thống",
@@ -24,7 +31,7 @@ export const STAFF_HEADER_CONFIG = {
         meta: (
             <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">
                 <Megaphone size={12} />
-                Campaign workspace
+                Không gian marketing
             </span>
         ),
     },

@@ -16,6 +16,10 @@ import type {
     PromotionTrendPoint,
     PromotionUsageItem,
 } from "@/types/promotion.type"
+import {
+    getPromotionStatusClass,
+    getPromotionStatusLabel,
+} from "@/utils/promotionDisplay"
 import { showError } from "@/utils/toast"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
@@ -87,7 +91,7 @@ const PromotionInsights = ({ mode = "marketing" }: Props) => {
         ]
 
         if (mode === "marketing") {
-            base.push({ key: "my-usages", label: "Lượt dùng của tôi" })
+            base.push({ key: "my-usages", label: "Lượt dùng tài khoản" })
         }
 
         return base
@@ -374,8 +378,12 @@ const PromotionInsights = ({ mode = "marketing" }: Props) => {
                                             {item.maxUsage}
                                         </p>
                                     </div>
-                                    <span className="text-sm font-semibold text-emerald-700">
-                                        {item.status}
+                                    <span
+                                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getPromotionStatusClass(
+                                            item.status,
+                                        )}`}
+                                    >
+                                        {getPromotionStatusLabel(item.status)}
                                     </span>
                                 </div>
                             ))}
@@ -454,7 +462,14 @@ const PromotionInsights = ({ mode = "marketing" }: Props) => {
                 </div>
             ) : null}
 
-            {!loading && activeTab === "my-usages" ? renderUsageTable(myUsages) : null}
+            {!loading && activeTab === "my-usages" ? (
+                <div className="space-y-3">
+                    <p className="text-sm text-slate-500">
+                        Các lần bạn đã dùng mã khuyến mãi khi đặt hàng.
+                    </p>
+                    {renderUsageTable(myUsages)}
+                </div>
+            ) : null}
 
             {!loading && activeTab === "validate" ? (
                 <div className="rounded-2xl border border-slate-200 bg-white p-4">

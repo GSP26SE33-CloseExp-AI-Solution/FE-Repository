@@ -71,9 +71,5 @@ export type PromotionClient = {
 		promotionId: string,
 		payload: UpdatePromotionBasicPayload,
 	) => Promise<PromotionItem>;
-	updatePromotionStatus?: (
-		promotionId: string,
-		status: string,
-	) => Promise<PromotionItem>;
 	deletePromotion: (promotionId: string) => Promise<boolean>;
 };

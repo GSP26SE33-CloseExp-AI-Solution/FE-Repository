@@ -124,23 +124,6 @@ export const marketingPromotionService: PromotionClient & {
 		}
 	},
 
-	async updatePromotionStatus(promotionId: string, status: string) {
-		try {
-			const response = await axiosClient.patch<ApiEnvelope<PromotionItem>>(
-				`/marketing/promotions/${promotionId}/status`,
-				{ status },
-			);
-			return unwrap(response);
-		} catch (error) {
-			throw new Error(
-				getAxiosErrorMessage(
-					error,
-					"Không thể cập nhật trạng thái khuyến mãi",
-				),
-			);
-		}
-	},
-
 	async getUsages(filter?: PromotionUsageFilter) {
 		try {
 			const response = await axiosClient.get<

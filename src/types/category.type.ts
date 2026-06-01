@@ -30,3 +30,34 @@ export type UpdateCategoryPayload = {
 }
 
 export type CategoryMutationMessage = string
+
+export type CategoryProductImpact = {
+    categoryId: string
+    categoryName: string
+    subcategoryCount: number
+    totalProducts: number
+    publishedProducts: number
+}
+
+export type CategoryProductListItem = {
+    productId: string
+    name: string
+    brand: string
+    categoryName: string
+    status: string
+    finalPrice: number
+}
+
+export type CategoryProductsQuery = {
+    pageNumber?: number
+    pageSize?: number
+    search?: string
+    publishedOnly?: boolean
+}
+
+export type CategoryProductsResult = {
+    items: CategoryProductListItem[]
+    totalResult: number
+    page: number
+    pageSize: number
+}

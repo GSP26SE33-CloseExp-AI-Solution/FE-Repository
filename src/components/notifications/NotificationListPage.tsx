@@ -23,10 +23,47 @@ import { showError } from "@/utils/toast"
 const cn = (...classes: Array<string | false | null | undefined>) =>
     classes.filter(Boolean).join(" ")
 
+type NotificationAccent = "blue" | "rose"
+
+const ACCENT_STYLES: Record<
+    NotificationAccent,
+    {
+        icon: string
+        spinner: string
+        markAll: string
+        filterActive: string
+        unreadOnlyActive: string
+        cardUnread: string
+        dot: string
+    }
+> = {
+    blue: {
+        icon: "text-blue-600",
+        spinner: "text-blue-600",
+        markAll:
+            "border-blue-200 text-blue-700 hover:bg-blue-50",
+        filterActive: "bg-blue-600 text-white",
+        unreadOnlyActive: "bg-blue-600 text-white",
+        cardUnread: "border-blue-200 bg-blue-50",
+        dot: "bg-blue-600",
+    },
+    rose: {
+        icon: "text-rose-600",
+        spinner: "text-rose-600",
+        markAll:
+            "border-rose-200 text-rose-700 hover:bg-rose-50",
+        filterActive: "bg-rose-600 text-white",
+        unreadOnlyActive: "bg-rose-600 text-white",
+        cardUnread: "border-rose-200 bg-rose-50",
+        dot: "bg-rose-600",
+    },
+}
+
 type NotificationListPageProps = {
     title?: string
     scope: "mine" | "admin"
     maxWidthClass?: string
+    accent?: NotificationAccent
 }
 
 const getNotificationIcon = (typeKey: NotificationTypeKey) => {
@@ -82,7 +119,9 @@ const NotificationListPage = ({
     title = "Thông báo",
     scope,
     maxWidthClass = "max-w-5xl",
+    accent = "blue",
 }: NotificationListPageProps) => {
+    const accentStyles = ACCENT_STYLES[accent]
     const [notifications, setNotifications] = useState<NotificationListItem[]>([])
     const [loading, setLoading] = useState(true)
     const [refreshing, setRefreshing] = useState(false)
@@ -185,7 +224,9 @@ const NotificationListPage = ({
     if (loading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2
+                    className={cn("h-8 w-8 animate-spin", accentStyles.spinner)}
+                />
             </div>
         )
     }
@@ -200,7 +241,7 @@ const NotificationListPage = ({
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
-                        <Bell className="h-7 w-7 text-blue-600" />
+                        <Bell className={cn("h-7 w-7", accentStyles.icon)} />
                         {title}
                     </h1>
                     {unreadCount > 0 && (
@@ -214,7 +255,10 @@ const NotificationListPage = ({
                         <button
                             type="button"
                             onClick={() => void handleMarkAllAsRead()}
-                            className="rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 transition-colors hover:bg-blue-50"
+                            className={cn(
+                                "rounded-lg border bg-white px-3 py-2 text-sm font-medium transition-colors",
+                                accentStyles.markAll,
+                            )}
                         >
                             Đánh dấu tất cả đã đọc
                         </button>
@@ -223,7 +267,7 @@ const NotificationListPage = ({
                         type="button"
                         onClick={handleRefresh}
                         disabled={refreshing}
-                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
                     >
                         <RefreshCcw
                             className={cn(
@@ -231,6 +275,7 @@ const NotificationListPage = ({
                                 refreshing && "animate-spin",
                             )}
                         />
+                        Làm mới
                     </button>
                 </div>
             </div>
@@ -244,7 +289,7 @@ const NotificationListPage = ({
                         className={cn(
                             "rounded-full px-4 py-2 text-sm font-medium transition-colors",
                             filterType === filter.value
-                                ? "bg-blue-600 text-white"
+                                ? accentStyles.filterActive
                                 : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
                         )}
                     >
@@ -257,7 +302,7 @@ const NotificationListPage = ({
                     className={cn(
                         "ml-auto rounded-full px-4 py-2 text-sm font-medium transition-colors",
                         showUnreadOnly
-                            ? "bg-blue-600 text-white"
+                            ? accentStyles.unreadOnlyActive
                             : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
                     )}
                 >
@@ -285,7 +330,7 @@ const NotificationListPage = ({
                                 "group cursor-pointer rounded-xl border p-4 transition-all hover:shadow-md",
                                 notif.isRead
                                     ? "border-slate-200 bg-white"
-                                    : "border-blue-200 bg-blue-50",
+                                    : accentStyles.cardUnread,
                             )}
                         >
                             <div className="flex items-start gap-3">
@@ -313,7 +358,12 @@ const NotificationListPage = ({
                                             {notif.title}
                                         </h3>
                                         {!notif.isRead && (
-                                            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-600" />
+                                            <span
+                                                className={cn(
+                                                    "h-2 w-2 shrink-0 rounded-full",
+                                                    accentStyles.dot,
+                                                )}
+                                            />
                                         )}
                                     </div>
                                     <p

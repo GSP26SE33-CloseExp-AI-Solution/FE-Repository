@@ -5,9 +5,12 @@ const MarketingFooter = () => {
         <BaseStaffFooter
             description="Trung tâm marketing và tăng trưởng"
             actions={[
-                { label: "Chiến dịch" },
-                { label: "Khuyến mãi" },
-                { label: "Hiệu quả" },
+                { label: "Khuyến mãi", href: "/marketing/promotions" },
+                { label: "Hiệu quả", href: "/marketing/reports" },
+                {
+                    label: "Sản phẩm theo DM",
+                    href: "/marketing/category-products",
+                },
             ]}
         />
     )

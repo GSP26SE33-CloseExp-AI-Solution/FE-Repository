@@ -45,7 +45,7 @@ const MarketingPromotions = () => {
                         Quản lý khuyến mãi
                     </h1>
                     <p className="mt-1 text-sm text-slate-500">
-                        Tạo, cập nhật, bật/tắt và theo dõi chi tiết chương trình ưu đãi.
+                        Tạo, chỉnh sửa mã/tên/danh mục và theo dõi chương trình ưu đãi.
                     </p>
                 </div>
 
@@ -73,8 +73,7 @@ const MarketingPromotions = () => {
                 categories={categories}
                 onRefresh={loadData}
                 client={marketingPromotionService}
-                title="Danh sách khuyến mãi"
-                description="Quản lý mã ưu đãi, giới hạn sử dụng và thời gian áp dụng."
+                showHeader={false}
             />
         </div>
     )

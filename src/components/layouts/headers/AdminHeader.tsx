@@ -1,5 +1,8 @@
 import BaseStaffHeader from "@/components/layouts/shared/BaseStaffHeader"
-import { STAFF_HEADER_CONFIG } from "@/constants/layoutByRole"
+import {
+    STAFF_HEADER_CONFIG,
+    STAFF_NOTIFICATION_ROUTES,
+} from "@/constants/layoutByRole"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
 
 const AdminHeader = () => {
@@ -14,6 +17,7 @@ const AdminHeader = () => {
             accentClass={config.accentClass}
             centerHint={config.centerHint}
             extraMeta={config.meta}
+            notificationRoute={STAFF_NOTIFICATION_ROUTES.Admin}
             onLogoutAll={logoutAll}
             loggingOutAll={loggingOutAll}
             headerActions={
