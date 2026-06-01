@@ -1,4 +1,6 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useLocation } from "react-router-dom"
+import { Loader2, Plus, X } from "lucide-react"
 
 import type {
     CategoryItem,
@@ -7,6 +9,8 @@ import type {
 } from "@/types/admin.type"
 import type { PromotionClient } from "@/types/promotion.type"
 import { adminService } from "@/services/admin.service"
+import { categoryService } from "@/services/category.service"
+import type { CategoryProductImpact } from "@/types/category.type"
 import { showError, showSuccess } from "@/utils/toast"
 
 import {
@@ -15,14 +19,16 @@ import {
     formatMoney,
     formatNumber,
     getDiscountTypeLabel,
-    getPromotionStatusClass,
-    getPromotionStatusLabel,
     logApiError,
     logApiSuccess,
     normalizeCreatePromotionPayload,
     buildPromotionUpdatePayload,
     validatePromotionPayload,
 } from "./Shared"
+import {
+    getPromotionStatusClass,
+    getPromotionStatusLabel,
+} from "@/utils/promotionDisplay"
 
 type Props = {
     loading: boolean
@@ -32,6 +38,7 @@ type Props = {
     client?: PromotionClient
     title?: string
     description?: string
+    showHeader?: boolean
 }
 
 type PromotionStatusFilter = "ALL" | "Draft" | "Active" | "Expired" | "Disabled"
@@ -148,6 +155,121 @@ const NumericInput = ({
     )
 }
 
+const PromotionCategoryImpact = ({ categoryId }: { categoryId: string }) => {
+    const [impact, setImpact] = useState<CategoryProductImpact | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (!categoryId) {
+            setImpact(null)
+            setError(null)
+            return
+        }
+
+        let cancelled = false
+        const timer = window.setTimeout(() => {
+            setLoading(true)
+            setError(null)
+            void categoryService
+                .getProductImpact(categoryId)
+                .then((data) => {
+                    if (!cancelled) setImpact(data)
+                })
+                .catch((err) => {
+                    if (!cancelled) {
+                        setImpact(null)
+                        setError(
+                            err instanceof Error
+                                ? err.message
+                                : "Không thể tải số sản phẩm ảnh hưởng",
+                        )
+                    }
+                })
+                .finally(() => {
+                    if (!cancelled) setLoading(false)
+                })
+        }, 300)
+
+        return () => {
+            cancelled = true
+            window.clearTimeout(timer)
+        }
+    }, [categoryId])
+
+    if (!categoryId) return null
+
+    if (loading) {
+        return (
+            <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Đang tính số sản phẩm trong danh mục...
+            </div>
+        )
+    }
+
+    if (error) {
+        return (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+                {error}
+            </div>
+        )
+    }
+
+    if (!impact) return null
+
+    if (impact.totalProducts === 0) {
+        return (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <p className="font-semibold">Chưa có sản phẩm trong phạm vi danh mục</p>
+                <p className="mt-1 text-amber-800">
+                    Danh mục &quot;{impact.categoryName}&quot;
+                    {impact.subcategoryCount > 0
+                        ? ` (gồm ${impact.subcategoryCount} danh mục con)`
+                        : ""}{" "}
+                    hiện không có sản phẩm. Cân nhắc chọn danh mục khác hoặc phối hợp
+                    siêu thị bổ sung hàng trước khi tạo khuyến mãi.
+                </p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+            <p className="font-semibold">Phạm vi ảnh hưởng ước tính</p>
+            <p className="mt-1">
+                Danh mục <span className="font-medium">{impact.categoryName}</span>
+                {impact.subcategoryCount > 0 ? (
+                    <>
+                        {" "}
+                        — gồm <span className="font-medium">{impact.subcategoryCount}</span>{" "}
+                        danh mục con
+                    </>
+                ) : null}
+                :{" "}
+                <span className="font-semibold">{formatNumber(impact.totalProducts)}</span>{" "}
+                sản phẩm liên quan
+                {impact.publishedProducts < impact.totalProducts ? (
+                    <>
+                        , trong đó{" "}
+                        <span className="font-semibold">
+                            {formatNumber(impact.publishedProducts)}
+                        </span>{" "}
+                        đang đăng bán
+                    </>
+                ) : (
+                    <> (đều đang đăng bán)</>
+                )}
+                .
+            </p>
+            <p className="mt-2 text-xs text-sky-800/90">
+                Đếm theo danh mục sản phẩm trong hệ thống (bao gồm danh mục con), không
+                bao gồm sản phẩm đã ẩn hoặc đã xóa.
+            </p>
+        </div>
+    )
+}
+
 const PromotionSummaryChip = ({
     label,
     value,
@@ -242,6 +364,12 @@ const PromotionFormGrid = ({
                         ))}
                     </select>
                 </div>
+
+                {value.categoryId ? (
+                    <div className="md:col-span-2 xl:col-span-4">
+                        <PromotionCategoryImpact categoryId={value.categoryId} />
+                    </div>
+                ) : null}
 
                 {isCreate ? (
                     <>
@@ -453,7 +581,10 @@ const AdminSettingsPromotions = ({
     client,
     title = "Chương trình khuyến mãi",
     description = "Tạo, chỉnh sửa và theo dõi trạng thái các chương trình ưu đãi.",
+    showHeader = true,
 }: Props) => {
+    const location = useLocation()
+
     const api: PromotionClient = client ?? {
         getPromotions: () => adminService.getPromotions(),
         createPromotion: (payload) => adminService.createPromotion(payload),
@@ -463,6 +594,8 @@ const AdminSettingsPromotions = ({
     }
     const [newPromotion, setNewPromotion] =
         useState<UpsertPromotionPayload>(EMPTY_PROMOTION)
+    const [createModalOpen, setCreateModalOpen] = useState(false)
+    const [creating, setCreating] = useState(false)
 
     const [editingPromotionId, setEditingPromotionId] = useState<string | null>(null)
     const [editPromotion, setEditPromotion] =
@@ -471,6 +604,28 @@ const AdminSettingsPromotions = ({
     const [searchKeyword, setSearchKeyword] = useState("")
     const [statusFilter, setStatusFilter] =
         useState<PromotionStatusFilter>("ALL")
+
+    useEffect(() => {
+        const shouldOpen =
+            (location.state as { focusCreate?: boolean } | null)?.focusCreate ===
+                true || location.hash === "#create"
+
+        if (shouldOpen) {
+            setNewPromotion(EMPTY_PROMOTION)
+            setCreateModalOpen(true)
+        }
+    }, [location.hash, location.state])
+
+    const openCreateModal = () => {
+        setNewPromotion(EMPTY_PROMOTION)
+        setCreateModalOpen(true)
+    }
+
+    const closeCreateModal = () => {
+        if (creating) return
+        setCreateModalOpen(false)
+        setNewPromotion(EMPTY_PROMOTION)
+    }
 
     const totalPromotions = promotions.length
     const activePromotions = promotions.filter(
@@ -539,16 +694,20 @@ const AdminSettingsPromotions = ({
         }
 
         try {
+            setCreating(true)
             logApiSuccess("handleCreatePromotion - request", payload)
             const res = await api.createPromotion(payload)
             logApiSuccess("handleCreatePromotion - response", payload, res)
 
             showSuccess("Đã tạo chương trình khuyến mãi")
             setNewPromotion(EMPTY_PROMOTION)
+            setCreateModalOpen(false)
             await onRefresh()
         } catch (error) {
             logApiError("handleCreatePromotion", error, payload)
             showError("Không thể tạo chương trình khuyến mãi")
+        } finally {
+            setCreating(false)
         }
     }
 
@@ -637,10 +796,16 @@ const AdminSettingsPromotions = ({
 
     return (
         <div className="space-y-5">
-            <div>
-                <h2 className="text-lg font-bold text-slate-900">{title}</h2>
-                <p className="mt-1 text-sm text-slate-500">{description}</p>
-            </div>
+            {showHeader && (title || description) ? (
+                <div>
+                    {title ? (
+                        <h2 className="text-lg font-bold text-slate-900">{title}</h2>
+                    ) : null}
+                    {description ? (
+                        <p className="mt-1 text-sm text-slate-500">{description}</p>
+                    ) : null}
+                </div>
+            ) : null}
 
             <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
@@ -665,56 +830,115 @@ const AdminSettingsPromotions = ({
                 </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="mb-4">
-                    <h3 className="text-base font-semibold text-slate-900">
-                        Tạo chương trình mới
-                    </h3>
-                    <p className="mt-1 text-sm text-slate-500">
-                        Chọn danh mục áp dụng rồi điền mức giảm, điều kiện và thời gian hiệu lực.
-                    </p>
+            {createModalOpen ? (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 px-4 py-6"
+                    onClick={closeCreateModal}
+                    role="presentation"
+                >
+                    <div
+                        className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="create-promotion-title"
+                    >
+                        <div className="border-b border-slate-200 bg-gradient-to-r from-slate-50 via-white to-white px-6 py-5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <h2
+                                        id="create-promotion-title"
+                                        className="text-xl font-bold text-slate-900"
+                                    >
+                                        Tạo chương trình khuyến mãi
+                                    </h2>
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Chọn danh mục áp dụng rồi điền mức giảm, điều kiện
+                                        và thời gian hiệu lực.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={closeCreateModal}
+                                    disabled={creating}
+                                    className="rounded-2xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50"
+                                    aria-label="Đóng"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="max-h-[calc(90vh-140px)] overflow-y-auto p-6">
+                            <PromotionFormGrid
+                                value={newPromotion}
+                                onChange={setNewPromotion}
+                                categories={categoryOptions}
+                                mode="create"
+                            />
+                        </div>
+
+                        <div className="flex justify-end gap-2 border-t border-slate-200 bg-slate-50 px-6 py-4">
+                            <button
+                                type="button"
+                                onClick={closeCreateModal}
+                                disabled={creating}
+                                className="rounded-2xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => void handleCreatePromotion()}
+                                disabled={creating}
+                                className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800 disabled:opacity-60"
+                            >
+                                {creating ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : null}
+                                Tạo chương trình
+                            </button>
+                        </div>
+                    </div>
                 </div>
+            ) : null}
 
-                <PromotionFormGrid
-                    value={newPromotion}
-                    onChange={setNewPromotion}
-                    categories={categoryOptions}
-                    mode="create"
-                />
+            <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+                    <div className="grid min-w-0 flex-1 grid-cols-1 gap-3 md:grid-cols-[1.4fr_1fr]">
+                        <input
+                            value={searchKeyword}
+                            onChange={(e) => setSearchKeyword(e.target.value)}
+                            placeholder="Tìm theo tên, mã ưu đãi, tên danh mục"
+                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                        />
 
-                <div className="mt-4 flex justify-end">
+                        <select
+                            value={statusFilter}
+                            onChange={(e) =>
+                                setStatusFilter(
+                                    e.target.value as PromotionStatusFilter,
+                                )
+                            }
+                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
+                        >
+                            <option value="ALL">Tất cả trạng thái</option>
+                            {statusOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     <button
-                        onClick={() => void handleCreatePromotion()}
-                        className="rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+                        type="button"
+                        onClick={openCreateModal}
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                     >
-                        Tạo chương trình
+                        <Plus className="h-4 w-4" />
+                        Thêm khuyến mãi
                     </button>
-                </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_1fr]">
-                    <input
-                        value={searchKeyword}
-                        onChange={(e) => setSearchKeyword(e.target.value)}
-                        placeholder="Tìm theo tên, mã ưu đãi, tên danh mục"
-                        className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
-                    />
-
-                    <select
-                        value={statusFilter}
-                        onChange={(e) =>
-                            setStatusFilter(e.target.value as PromotionStatusFilter)
-                        }
-                        className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-2.5 outline-none focus:border-slate-900"
-                    >
-                        <option value="ALL">Tất cả trạng thái</option>
-                        {statusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">

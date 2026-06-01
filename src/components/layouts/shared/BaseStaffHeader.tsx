@@ -23,6 +23,7 @@ type BaseStaffHeaderProps = {
     profileDropdownExtra?: React.ReactNode
     onLogoutAll?: () => Promise<void> | void
     loggingOutAll?: boolean
+    notificationRoute?: string
 }
 
 const BaseStaffHeader = ({
@@ -37,6 +38,7 @@ const BaseStaffHeader = ({
     profileDropdownExtra,
     onLogoutAll,
     loggingOutAll = false,
+    notificationRoute,
 }: BaseStaffHeaderProps) => {
     const { user, logout, primaryAvatarUrl } = useAuthContext()
     const navigate = useNavigate()
@@ -112,12 +114,16 @@ const BaseStaffHeader = ({
                 <div className="flex shrink-0 items-center gap-3">
                     {headerActions}
 
-                    <button
-                        type="button"
-                        className="grid h-10 w-10 place-items-center rounded-xl text-gray-500 transition hover:bg-white/70 hover:text-green-600"
-                    >
-                        <Bell size={20} />
-                    </button>
+                    {notificationRoute ? (
+                        <button
+                            type="button"
+                            onClick={() => navigate(notificationRoute)}
+                            className="grid h-10 w-10 place-items-center rounded-xl text-gray-500 transition hover:bg-white/70 hover:text-green-600"
+                            title="Thông báo"
+                        >
+                            <Bell size={20} />
+                        </button>
+                    ) : null}
 
                     <div className="relative" ref={ref}>
                         <button

@@ -3,6 +3,9 @@ import type {
     ApiResponse,
     CategoryItem,
     CategoryMutationMessage,
+    CategoryProductImpact,
+    CategoryProductsQuery,
+    CategoryProductsResult,
     CreateCategoryPayload,
     UpdateCategoryPayload,
 } from "@/types/category.type"
@@ -64,6 +67,33 @@ export const categoryService = {
     async getCategoryById(categoryId: string): Promise<CategoryItem | undefined> {
         const response = await axiosClient.get<ApiResponse<CategoryItem>>(
             `/Categories/${categoryId}`,
+        )
+
+        return unwrap(response.data)
+    },
+
+    async getProductImpact(categoryId: string): Promise<CategoryProductImpact> {
+        const response = await axiosClient.get<ApiResponse<CategoryProductImpact>>(
+            `/Categories/${categoryId}/product-impact`,
+        )
+
+        return unwrap(response.data)
+    },
+
+    async getProductsByCategory(
+        categoryId: string,
+        query?: CategoryProductsQuery,
+    ): Promise<CategoryProductsResult> {
+        const response = await axiosClient.get<ApiResponse<CategoryProductsResult>>(
+            `/Categories/${categoryId}/products`,
+            {
+                params: {
+                    pageNumber: query?.pageNumber ?? 1,
+                    pageSize: query?.pageSize ?? 20,
+                    search: query?.search?.trim() || undefined,
+                    publishedOnly: query?.publishedOnly ?? false,
+                },
+            },
         )
 
         return unwrap(response.data)

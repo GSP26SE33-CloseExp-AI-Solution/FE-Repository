@@ -1,6 +1,9 @@
 import AiTokenDropdownPanel from "@/components/ai/AiTokenDropdownPanel"
 import BaseStaffHeader from "@/components/layouts/shared/BaseStaffHeader"
-import { STAFF_HEADER_CONFIG } from "@/constants/layoutByRole"
+import {
+    STAFF_HEADER_CONFIG,
+    STAFF_NOTIFICATION_ROUTES,
+} from "@/constants/layoutByRole"
 import { useAuthContext } from "@/contexts/AuthContext"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
 import { Bot } from "lucide-react"
@@ -30,6 +33,7 @@ const SupermarketStaffHeader = () => {
                     description: "Lịch sử và cấu hình token đầy đủ",
                 },
             ]}
+            notificationRoute={STAFF_NOTIFICATION_ROUTES.SupermarketStaff}
             extraMeta={
                 <div className="flex flex-wrap items-center gap-2">
                     {config.meta}

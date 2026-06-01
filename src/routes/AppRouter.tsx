@@ -55,7 +55,7 @@ import PackageProfile from "@/pages/PackagingStaff/pProfile"
 import MarketingProfile from "@/pages/MarketingStaff/mProfile"
 import MarketingPromotions from "@/pages/MarketingStaff/mPromotions"
 import MarketingReports from "@/pages/MarketingStaff/mReports"
-import MarketingPurchaseUnits from "@/pages/MarketingStaff/mPurchaseUnits"
+import MarketingCategoryProducts from "@/pages/MarketingStaff/mCategoryProducts"
 import MarketingNotification from "@/pages/MarketingStaff/mNotification"
 
 import NotFound from "@/pages/Common/NotFound"
@@ -218,7 +218,7 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/marketing"
                                 element={
-                                    <Navigate to="/marketing/profile" replace />
+                                    <Navigate to="/marketing/promotions" replace />
                                 }
                             />
                             <Route
@@ -234,8 +234,17 @@ const AppRouter: React.FC = () => {
                                 element={<MarketingReports />}
                             />
                             <Route
+                                path="/marketing/category-products"
+                                element={<MarketingCategoryProducts />}
+                            />
+                            <Route
                                 path="/marketing/purchase-units"
-                                element={<MarketingPurchaseUnits />}
+                                element={
+                                    <Navigate
+                                        to="/marketing/category-products"
+                                        replace
+                                    />
+                                }
                             />
                             <Route
                                 path="/marketing/notification"

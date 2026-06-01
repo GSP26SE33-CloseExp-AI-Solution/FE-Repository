@@ -3,7 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom"
 import { Loader2, PackageOpen, RefreshCcw } from "lucide-react"
 
 import BaseStaffHeader from "@/components/layouts/shared/BaseStaffHeader"
-import { STAFF_HEADER_CONFIG } from "@/constants/layoutByRole"
+import {
+    STAFF_HEADER_CONFIG,
+    STAFF_NOTIFICATION_ROUTES,
+} from "@/constants/layoutByRole"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
 import { packagingService } from "@/services/packaging.service"
 
@@ -57,6 +60,7 @@ const PackageHeader = () => {
             accentClass={config.accentClass}
             centerHint={config.centerHint}
             extraMeta={config.meta}
+            notificationRoute={STAFF_NOTIFICATION_ROUTES.PackagingStaff}
             onLogoutAll={logoutAll}
             loggingOutAll={loggingOutAll}
             headerActions={

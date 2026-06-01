@@ -22,7 +22,7 @@ const getAxiosErrorMessage = (error: unknown, fallback: string): string => {
 
 export const refundService = {
 	/**
-	 * GET /api/Refunds — danh sách refund cho Admin/MarketingStaff
+	 * GET /api/Refunds — danh sách refund cho Admin
 	 */
 	async listRefunds(params?: RefundListParams) {
 		const response = await axiosClient.get<
