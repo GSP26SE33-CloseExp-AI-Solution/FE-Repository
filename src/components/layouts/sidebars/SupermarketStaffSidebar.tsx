@@ -27,6 +27,7 @@ const SupermarketStaffSidebar = () => {
         <BaseSidebar
             title="Danh mục siêu thị"
             items={supermarketStaffMenuItems}
+            notificationBadgePath="/supermarketStaff/notification"
         />
     )
 }

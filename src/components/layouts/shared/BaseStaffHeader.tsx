@@ -1,10 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { Bell, LogOut, ShieldCheck, type LucideIcon } from "lucide-react"
 
 import Logo from "@/assets/logo.png"
+import NotificationUnreadBadge from "@/components/notifications/NotificationUnreadBadge"
 import { BREAD_CRUMB_MAP } from "@/constants/breadcrumbs"
 import { useAuthContext } from "@/contexts/AuthContext"
+import { notificationService } from "@/services/notification.service"
+import {
+    countUnreadNotifications,
+    type NotificationListScope,
+} from "@/utils/notificationDisplay"
 
 type BaseStaffHeaderProps = {
     portalSubtitle: string
@@ -24,6 +30,7 @@ type BaseStaffHeaderProps = {
     onLogoutAll?: () => Promise<void> | void
     loggingOutAll?: boolean
     notificationRoute?: string
+    notificationScope?: NotificationListScope
 }
 
 const BaseStaffHeader = ({
@@ -39,12 +46,31 @@ const BaseStaffHeader = ({
     onLogoutAll,
     loggingOutAll = false,
     notificationRoute,
+    notificationScope = "mine",
 }: BaseStaffHeaderProps) => {
     const { user, logout, primaryAvatarUrl } = useAuthContext()
     const navigate = useNavigate()
     const location = useLocation()
 
+    const [unreadNotificationCount, setUnreadNotificationCount] = useState(0)
     const [open, setOpen] = useState(false)
+
+    const syncUnreadNotifications = useCallback(async () => {
+        if (!notificationRoute || !user?.userId) {
+            setUnreadNotificationCount(0)
+            return
+        }
+
+        try {
+            const items =
+                notificationScope === "admin"
+                    ? await notificationService.getAll()
+                    : await notificationService.getMine()
+            setUnreadNotificationCount(countUnreadNotifications(items))
+        } catch {
+            // Badge is best-effort; notification page shows errors on load.
+        }
+    }, [notificationRoute, notificationScope, user?.userId])
     const ref = useRef<HTMLDivElement>(null)
 
     const breadcrumbs = useMemo(() => {
@@ -54,6 +80,26 @@ const BaseStaffHeader = ({
 
         return match ? BREAD_CRUMB_MAP[match] : []
     }, [location.pathname])
+
+    useEffect(() => {
+        void syncUnreadNotifications()
+    }, [syncUnreadNotifications])
+
+    useEffect(() => {
+        if (!notificationRoute || !user?.userId) return
+
+        const handleSync = () => {
+            void syncUnreadNotifications()
+        }
+
+        window.addEventListener("focus", handleSync)
+        window.addEventListener("notifications:updated", handleSync)
+
+        return () => {
+            window.removeEventListener("focus", handleSync)
+            window.removeEventListener("notifications:updated", handleSync)
+        }
+    }, [notificationRoute, syncUnreadNotifications, user?.userId])
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -118,10 +164,14 @@ const BaseStaffHeader = ({
                         <button
                             type="button"
                             onClick={() => navigate(notificationRoute)}
-                            className="grid h-10 w-10 place-items-center rounded-xl text-gray-500 transition hover:bg-white/70 hover:text-green-600"
+                            className="relative grid h-10 w-10 place-items-center rounded-xl text-gray-500 transition hover:bg-white/70 hover:text-green-600"
                             title="Thông báo"
+                            aria-label="Thông báo"
                         >
                             <Bell size={20} />
+                            <NotificationUnreadBadge
+                                count={unreadNotificationCount}
+                            />
                         </button>
                     ) : null}
 

@@ -11,6 +11,7 @@ import {
     Truck,
 } from "lucide-react"
 
+import NotificationUnreadBadge from "@/components/notifications/NotificationUnreadBadge"
 import { notificationService } from "@/services/notification.service"
 import type { NotificationListItem, NotificationTypeKey } from "@/types/notification.type"
 import {
@@ -240,9 +241,10 @@ const NotificationListPage = ({
         >
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="flex items-center gap-2 text-2xl font-bold text-slate-800">
+                    <h1 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-slate-800">
                         <Bell className={cn("h-7 w-7", accentStyles.icon)} />
                         {title}
+                        <NotificationUnreadBadge count={unreadCount} inline />
                     </h1>
                     {unreadCount > 0 && (
                         <p className="mt-1 text-sm text-slate-600">
@@ -300,13 +302,14 @@ const NotificationListPage = ({
                     type="button"
                     onClick={() => setShowUnreadOnly(!showUnreadOnly)}
                     className={cn(
-                        "ml-auto rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                        "ml-auto inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
                         showUnreadOnly
                             ? accentStyles.unreadOnlyActive
                             : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
                     )}
                 >
                     Chỉ chưa đọc
+                    <NotificationUnreadBadge count={unreadCount} inline />
                 </button>
             </div>
 
