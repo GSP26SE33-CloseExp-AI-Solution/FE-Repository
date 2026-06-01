@@ -61,6 +61,119 @@ export const normalizeStatus = (value?: string | number) =>
         .toLowerCase()
         .replace(/[\s_-]+/g, "")
 
+/** BE order-level packagingStatus is often a Vietnamese progress summary, not an enum. */
+const normalizeSummaryText = (value?: string) =>
+    String(value ?? "")
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+
+export const isPackagingProgressSummaryCompleted = (status?: string) => {
+    const key = normalizeStatus(status)
+    if (key === "completed") return true
+
+    const raw = normalizeSummaryText(status)
+    return raw.includes("tat ca dong da dong goi xong")
+}
+
+export const isPackagingProgressSummaryHasFailures = (status?: string) => {
+    const key = normalizeStatus(status)
+    if (key === "failed") return true
+
+    const raw = normalizeSummaryText(status)
+    return raw.includes("that bai") && raw.includes("thanh cong")
+}
+
+export const isPackagingProgressSummaryInProgress = (status?: string) => {
+    const key = normalizeStatus(status)
+    if (key === "pending" || key === "packaging") return true
+
+    const raw = normalizeSummaryText(status)
+    return raw.includes("dang xu ly")
+}
+
+export const isPackagingOrderItemsCompleted = (
+    items?: PackagingOrderItem[],
+) => {
+    if (!items?.length) return false
+
+    return items.every(
+        (item) => normalizeStatus(item.packagingStatus) === "completed",
+    )
+}
+
+export const isPackagingOrderItemsHasActionable = (
+    items?: PackagingOrderItem[],
+) => {
+    if (!items?.length) return false
+
+    return items.some((item) => {
+        const value = normalizeStatus(item.packagingStatus)
+        return (
+            value === "pending" ||
+            value === "packaging" ||
+            value === "failed"
+        )
+    })
+}
+
+export const isPackagingOrderCompleted = (
+    packagingStatus?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    if (items?.length && isPackagingOrderItemsCompleted(items)) {
+        return true
+    }
+
+    if (isPackagingProgressSummaryCompleted(packagingStatus)) {
+        return true
+    }
+
+    return normalizeStatus(orderStatus) === "readytoship"
+}
+
+export const isPackagingOrderActionableFromSummary = (
+    packagingStatus?: string,
+    orderStatus?: string,
+) => {
+    if (isPackagingOrderCompleted(packagingStatus, orderStatus)) {
+        return false
+    }
+
+    const key = normalizeStatus(packagingStatus)
+    if (key === "pending" || key === "packaging" || key === "failed") {
+        return true
+    }
+
+    if (isPackagingProgressSummaryInProgress(packagingStatus)) {
+        return true
+    }
+
+    if (isPackagingProgressSummaryHasFailures(packagingStatus)) {
+        return true
+    }
+
+    return false
+}
+
+export const isPackagingOrderActionable = (
+    packagingStatus?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    if (isPackagingOrderCompleted(packagingStatus, orderStatus, items)) {
+        return false
+    }
+
+    if (items?.length) {
+        return isPackagingOrderItemsHasActionable(items)
+    }
+
+    return isPackagingOrderActionableFromSummary(packagingStatus, orderStatus)
+}
+
 const ORDER_STATUS_LABEL: Record<string, string> = {
     pending: "Chờ thanh toán",
     paid: "Đã thanh toán",
@@ -107,15 +220,15 @@ export const getPackagingStatusClass = (status?: string) => {
         return "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
     }
 
-    if (value === "packaging") {
+    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
         return "bg-sky-50 text-sky-700 ring-1 ring-sky-200"
     }
 
-    if (value === "completed") {
+    if (value === "completed" || isPackagingProgressSummaryCompleted(status)) {
         return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
     }
 
-    if (value === "failed") {
+    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
         return "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
     }
 
@@ -137,51 +250,93 @@ export const getPackagingStepText = (status?: string) => {
     const value = normalizeStatus(status)
 
     if (value === "pending") return "Cần bắt đầu gom hàng"
-    if (value === "packaging") return "Đang kiểm tra / đóng gói"
-    if (value === "completed") return "Sẵn sàng bàn giao"
-    if (value === "failed") return "Cần kiểm tra lỗi"
+    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
+        return "Đang kiểm tra / đóng gói"
+    }
+    if (value === "completed" || isPackagingProgressSummaryCompleted(status)) {
+        return "Sẵn sàng bàn giao"
+    }
+    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
+        return "Cần kiểm tra lỗi"
+    }
 
     return "Cần xử lý"
 }
 
-export const getPackagingActionLabel = (status?: string) => {
+export const getPackagingActionLabel = (status?: string, orderStatus?: string) => {
+    if (isPackagingOrderCompleted(status, orderStatus)) {
+        return "Xem đơn đã đóng gói"
+    }
+
     const value = normalizeStatus(status)
 
     if (value === "pending") return "Bắt đầu gom hàng"
-    if (value === "packaging") return "Tiếp tục đóng gói"
-    if (value === "completed") return "Xem đơn đã đóng gói"
-    if (value === "failed") return "Xem lỗi đóng gói"
+    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
+        return "Tiếp tục đóng gói"
+    }
+    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
+        return "Xem lỗi đóng gói"
+    }
 
     return "Xử lý đơn"
 }
 
-export const getPackagingActionRoute = (orderId: string, status?: string) => {
+export const getPackagingActionRoute = (
+    orderId: string,
+    status?: string,
+    orderStatus?: string,
+) => {
+    if (isPackagingOrderCompleted(status, orderStatus)) {
+        return `/package/packing?orderId=${orderId}&view=1`
+    }
+
     const value = normalizeStatus(status)
 
-    if (value === "packaging" || value === "completed" || value === "failed") {
+    if (
+        value === "packaging" ||
+        value === "failed" ||
+        isPackagingProgressSummaryInProgress(status) ||
+        isPackagingProgressSummaryHasFailures(status)
+    ) {
         return `/package/packing?orderId=${orderId}`
     }
 
     return `/package/collect?orderId=${orderId}`
 }
 
-export const getPackagingProgress = (status?: string) => {
+export const getPackagingProgress = (status?: string, orderStatus?: string) => {
+    if (isPackagingOrderCompleted(status, orderStatus)) return 100
+
     const value = normalizeStatus(status)
 
     if (value === "pending") return 25
-    if (value === "packaging") return 65
-    if (value === "completed") return 100
-    if (value === "failed") return 100
+    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
+        return 65
+    }
+    if (value === "completed" || isPackagingProgressSummaryCompleted(status)) {
+        return 100
+    }
+    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
+        return 100
+    }
 
     return 10
 }
 
-export const getPackagingProgressClass = (status?: string) => {
+export const getPackagingProgressClass = (status?: string, orderStatus?: string) => {
+    if (isPackagingOrderCompleted(status, orderStatus)) return "bg-emerald-500"
+
     const value = normalizeStatus(status)
 
-    if (value === "failed") return "bg-rose-500"
-    if (value === "completed") return "bg-emerald-500"
-    if (value === "packaging") return "bg-sky-500"
+    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
+        return "bg-rose-500"
+    }
+    if (value === "completed" || isPackagingProgressSummaryCompleted(status)) {
+        return "bg-emerald-500"
+    }
+    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
+        return "bg-sky-500"
+    }
 
     return "bg-amber-500"
 }

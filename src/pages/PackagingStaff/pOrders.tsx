@@ -33,6 +33,8 @@ import {
     getPackagingProgressClass,
     getPackagingStatusClass,
     getPackagingStepText,
+    isPackagingOrderActionableFromSummary,
+    isPackagingOrderCompleted,
     normalizeStatus,
     sortOrdersByDeliverySlot,
 } from "./packagingShared";
@@ -357,10 +359,23 @@ const PackageOrders = () => {
                     <div className="divide-y divide-slate-100">
                         {filteredOrders.map((order, index) => {
                             const isFirst = index === 0;
-                            const progress = getPackagingProgress(order.packagingStatus);
+                            const orderCompleted = isPackagingOrderCompleted(
+                                order.packagingStatus,
+                                order.orderStatus,
+                            );
+                            const showActionButton =
+                                isPackagingOrderActionableFromSummary(
+                                    order.packagingStatus,
+                                    order.orderStatus,
+                                );
+                            const progress = getPackagingProgress(
+                                order.packagingStatus,
+                                order.orderStatus,
+                            );
                             const actionRoute = getPackagingActionRoute(
                                 order.orderId,
                                 order.packagingStatus,
+                                order.orderStatus,
                             );
 
                             return (
@@ -461,7 +476,10 @@ const PackageOrders = () => {
                                                 <div
                                                     className={cn(
                                                         "h-full rounded-full",
-                                                        getPackagingProgressClass(order.packagingStatus),
+                                                        getPackagingProgressClass(
+                                                            order.packagingStatus,
+                                                            order.orderStatus,
+                                                        ),
                                                     )}
                                                     style={{ width: `${progress}%` }}
                                                 />
@@ -469,14 +487,32 @@ const PackageOrders = () => {
                                         </div>
 
                                         <div className="flex justify-end">
-                                            <button
-                                                type="button"
-                                                onClick={() => navigate(actionRoute)}
-                                                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-sky-700"
-                                            >
-                                                {getPackagingActionLabel(order.packagingStatus)}
-                                                <ChevronRight className="h-4 w-4" />
-                                            </button>
+                                            {orderCompleted ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(actionRoute)}
+                                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                                >
+                                                    Xem chi tiết
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </button>
+                                            ) : showActionButton ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => navigate(actionRoute)}
+                                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-sky-700"
+                                                >
+                                                    {getPackagingActionLabel(
+                                                        order.packagingStatus,
+                                                        order.orderStatus,
+                                                    )}
+                                                    <ChevronRight className="h-4 w-4" />
+                                                </button>
+                                            ) : (
+                                                <span className="inline-flex h-10 items-center rounded-xl bg-emerald-50 px-4 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">
+                                                    Đã hoàn tất
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
 
@@ -566,20 +602,41 @@ const PackageOrders = () => {
                                             <div
                                                 className={cn(
                                                     "h-full rounded-full",
-                                                    getPackagingProgressClass(order.packagingStatus),
+                                                    getPackagingProgressClass(
+                                                        order.packagingStatus,
+                                                        order.orderStatus,
+                                                    ),
                                                 )}
                                                 style={{ width: `${progress}%` }}
                                             />
                                         </div>
 
-                                        <button
-                                            type="button"
-                                            onClick={() => navigate(actionRoute)}
-                                            className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-sky-700"
-                                        >
-                                            {getPackagingActionLabel(order.packagingStatus)}
-                                            <ChevronRight className="h-4 w-4" />
-                                        </button>
+                                        {orderCompleted ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(actionRoute)}
+                                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                                            >
+                                                Xem chi tiết
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
+                                        ) : showActionButton ? (
+                                            <button
+                                                type="button"
+                                                onClick={() => navigate(actionRoute)}
+                                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-sky-700"
+                                            >
+                                                {getPackagingActionLabel(
+                                                    order.packagingStatus,
+                                                    order.orderStatus,
+                                                )}
+                                                <ChevronRight className="h-4 w-4" />
+                                            </button>
+                                        ) : (
+                                            <div className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">
+                                                Đã hoàn tất
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             );
