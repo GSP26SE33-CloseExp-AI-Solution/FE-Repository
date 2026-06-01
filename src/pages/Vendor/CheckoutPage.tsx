@@ -20,6 +20,7 @@ import type {
   CustomerOrderContext,
   OrderTimeSlot,
 } from "@/types/order.type"
+import { cartBridge } from "@/utils/cartBridge"
 import {
   cartStorage,
   money,
@@ -407,6 +408,7 @@ const CheckoutPage: React.FC = () => {
 
     syncCart()
     syncCtx()
+    void cartBridge.refresh().then(syncCart)
 
     window.addEventListener("cart:updated", syncCart as EventListener)
     window.addEventListener("order-context:updated", syncCtx as EventListener)
