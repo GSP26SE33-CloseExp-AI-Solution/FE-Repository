@@ -19,6 +19,8 @@ import { packagingService } from "@/services/packaging.service"
 import type { PackagingOrderDetail } from "@/types/packaging.type"
 import { showError, showSuccess } from "@/utils/toast"
 
+import PackagingLabelPrintModal from "./PackagingLabelPrintModal"
+import PackagingLabelPrintSection from "./PackagingLabelPrintSection"
 import {
     cn,
     currency,
@@ -137,6 +139,7 @@ const PackagePacking = () => {
     const [notes, setNotes] = useState("")
     const [failureReason, setFailureReason] = useState("")
     const [failNotes, setFailNotes] = useState("")
+    const [printModalOpen, setPrintModalOpen] = useState(false)
 
     const allItemIds = useMemo(
         () => order?.items?.map((item) => item.orderItemId).filter(Boolean) || [],
@@ -266,10 +269,23 @@ const PackagePacking = () => {
                 }),
             })
 
-            setOrder(response.data)
+            const nextOrder = response.data || null
+            setOrder(nextOrder)
             showSuccess(response.message || "Hoàn tất đóng gói thành công.")
             setNotes("")
+
             await fetchDetail(true)
+
+            if (
+                nextOrder &&
+                isPackagingOrderCompleted(
+                    nextOrder.packagingStatus,
+                    nextOrder.orderStatus,
+                    nextOrder.items,
+                )
+            ) {
+                setPrintModalOpen(true)
+            }
         } catch (error: any) {
             showError(
                 getFriendlyPackagingErrorMessage(
@@ -465,19 +481,23 @@ const PackagePacking = () => {
             </div>
 
             {!canPerformActions && orderCompleted ? (
-                <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
-                    <div className="flex gap-3">
-                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
-                        <div>
-                            <h2 className="font-semibold text-emerald-800">
-                                Đã hoàn tất đóng gói
-                            </h2>
-                            <p className="mt-1 text-sm leading-6 text-emerald-700">
-                                {order.packagingStatus ||
-                                    "Đơn đã sẵn sàng bàn giao. Chỉ xem lại checklist, không thể thao tác thêm."}
-                            </p>
+                <div className="space-y-4">
+                    <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                        <div className="flex gap-3">
+                            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                            <div>
+                                <h2 className="font-semibold text-emerald-800">
+                                    Đã hoàn tất đóng gói
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-emerald-700">
+                                    {order.packagingStatus ||
+                                        "Đơn đã sẵn sàng bàn giao. In tem đơn rồi dán lên túi/kiện trước khi bàn giao."}
+                                </p>
+                            </div>
                         </div>
                     </div>
+
+                    <PackagingLabelPrintSection order={order} />
                 </div>
             ) : null}
 
@@ -539,7 +559,7 @@ const PackagePacking = () => {
                                     className={cn(
                                         "flex gap-4 px-5 py-4 transition",
                                         canPerformActions &&
-                                            "cursor-pointer hover:bg-slate-50",
+                                        "cursor-pointer hover:bg-slate-50",
                                         checked && "bg-emerald-50/50",
                                         hasFailedReason && "bg-rose-50/60"
                                     )}
@@ -786,6 +806,12 @@ const PackagePacking = () => {
                     </button>
                 </aside>
             </div>
+
+            <PackagingLabelPrintModal
+                open={printModalOpen}
+                order={order}
+                onClose={() => setPrintModalOpen(false)}
+            />
         </div>
     )
 }

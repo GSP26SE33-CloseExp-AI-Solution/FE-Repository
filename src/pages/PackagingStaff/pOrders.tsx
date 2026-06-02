@@ -17,7 +17,10 @@ import {
 } from "lucide-react";
 
 import { packagingService } from "@/services/packaging.service";
-import type { PackagingOrderSummary } from "@/types/packaging.type";
+import type {
+    PackagingOrderItem,
+    PackagingOrderSummary,
+} from "@/types/packaging.type";
 import { showError } from "@/utils/toast";
 
 import {
@@ -33,9 +36,7 @@ import {
     getPackagingProgressClass,
     getPackagingStatusClass,
     getPackagingStepText,
-    isPackagingOrderActionableFromSummary,
-    isPackagingOrderCompleted,
-    normalizeStatus,
+    resolvePackagingOrderActionPhase,
     sortOrdersByDeliverySlot,
 } from "./packagingShared";
 
@@ -52,6 +53,9 @@ const PackageOrders = () => {
     const [supermarketFilter, setSupermarketFilter] = useState("");
     const [orderSupermarketNames, setOrderSupermarketNames] = useState<
         Record<string, string>
+    >({});
+    const [orderItemsById, setOrderItemsById] = useState<
+        Record<string, PackagingOrderItem[]>
     >({});
 
     const totalPages = useMemo(() => {
@@ -111,13 +115,26 @@ const PackageOrders = () => {
     const stats = useMemo(() => {
         return filteredOrders.reduce(
             (result, order) => {
-                const status = normalizeStatus(order.packagingStatus);
+                const items = orderItemsById[order.orderId];
+                const phase = resolvePackagingOrderActionPhase(
+                    order.packagingStatus,
+                    order.orderStatus,
+                    items,
+                );
 
-                if (status === "pending") result.pending += 1;
-                else if (status === "packaging") result.packaging += 1;
-                else if (status === "completed") result.completed += 1;
-                else if (status === "failed") result.failed += 1;
-                else result.pending += 1;
+                if (phase === "collect") result.pending += 1;
+                else if (phase === "packing") result.packaging += 1;
+                else if (phase === "view") result.completed += 1;
+
+                const hasFailedLine =
+                    items?.some(
+                        (item) =>
+                            String(item.packagingStatus ?? "")
+                                .toLowerCase()
+                                .trim() === "failed",
+                    ) ?? false;
+
+                if (hasFailedLine) result.failed += 1;
 
                 return result;
             },
@@ -128,7 +145,7 @@ const PackageOrders = () => {
                 failed: 0,
             },
         );
-    }, [filteredOrders]);
+    }, [filteredOrders, orderItemsById]);
 
     const fetchOrders = useCallback(
         async (isRefresh = false) => {
@@ -147,6 +164,7 @@ const PackageOrders = () => {
 
                 if (nextOrders.length === 0) {
                     setOrderSupermarketNames({});
+                    setOrderItemsById({});
                     return;
                 }
 
@@ -155,40 +173,45 @@ const PackageOrders = () => {
                         const detailResponse = await packagingService.getOrderDetail(
                             order.orderId,
                         );
+                        const items = detailResponse.data?.items || [];
                         const supermarketNames = Array.from(
                             new Set(
-                                (detailResponse.data?.items || [])
+                                items
                                     .map((item) => item.supermarketName?.trim())
                                     .filter(Boolean),
                             ),
                         );
 
-                        return [
-                            order.orderId,
-                            supermarketNames.length > 0
-                                ? supermarketNames.join(", ")
-                                : "Chưa có siêu thị",
-                        ] as const;
+                        return {
+                            orderId: order.orderId,
+                            supermarketName:
+                                supermarketNames.length > 0
+                                    ? supermarketNames.join(", ")
+                                    : "Chưa có siêu thị",
+                            items,
+                        };
                     }),
                 );
 
-                const nextSupermarketNames = detailResults.reduce<
-                    Record<string, string>
-                >((result, detailResult, index) => {
+                const nextSupermarketNames: Record<string, string> = {};
+                const nextItemsById: Record<string, PackagingOrderItem[]> = {};
+
+                detailResults.forEach((detailResult, index) => {
                     const orderId = nextOrders[index]?.orderId;
-                    if (!orderId) return result;
+                    if (!orderId) return;
 
                     if (detailResult.status === "fulfilled") {
-                        const [, supermarketName] = detailResult.value;
-                        result[orderId] = supermarketName;
+                        const { supermarketName, items } = detailResult.value;
+                        nextSupermarketNames[orderId] = supermarketName;
+                        nextItemsById[orderId] = items;
                     } else {
-                        result[orderId] = "Không tải được siêu thị";
+                        nextSupermarketNames[orderId] = "Không tải được siêu thị";
+                        nextItemsById[orderId] = [];
                     }
-
-                    return result;
-                }, {});
+                });
 
                 setOrderSupermarketNames(nextSupermarketNames);
+                setOrderItemsById(nextItemsById);
             } catch (error: any) {
                 console.error("PackageOrders.fetchOrders error:", {
                     error,
@@ -359,23 +382,27 @@ const PackageOrders = () => {
                     <div className="divide-y divide-slate-100">
                         {filteredOrders.map((order, index) => {
                             const isFirst = index === 0;
-                            const orderCompleted = isPackagingOrderCompleted(
+                            const orderItems = orderItemsById[order.orderId];
+                            const actionPhase = resolvePackagingOrderActionPhase(
                                 order.packagingStatus,
                                 order.orderStatus,
+                                orderItems,
                             );
-                            const showActionButton =
-                                isPackagingOrderActionableFromSummary(
-                                    order.packagingStatus,
-                                    order.orderStatus,
-                                );
                             const progress = getPackagingProgress(
                                 order.packagingStatus,
                                 order.orderStatus,
+                                orderItems,
                             );
                             const actionRoute = getPackagingActionRoute(
                                 order.orderId,
                                 order.packagingStatus,
                                 order.orderStatus,
+                                orderItems,
+                            );
+                            const actionLabel = getPackagingActionLabel(
+                                order.packagingStatus,
+                                order.orderStatus,
+                                orderItems,
                             );
 
                             return (
@@ -461,10 +488,18 @@ const PackageOrders = () => {
                                                 <span
                                                     className={cn(
                                                         "rounded-full px-2.5 py-1 text-xs font-semibold",
-                                                        getPackagingStatusClass(order.packagingStatus),
+                                                        getPackagingStatusClass(
+                                                            order.packagingStatus,
+                                                            order.orderStatus,
+                                                            orderItems,
+                                                        ),
                                                     )}
                                                 >
-                                                    {getPackagingStepText(order.packagingStatus)}
+                                                    {getPackagingStepText(
+                                                        order.packagingStatus,
+                                                        order.orderStatus,
+                                                        orderItems,
+                                                    )}
                                                 </span>
 
                                                 <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
@@ -479,6 +514,7 @@ const PackageOrders = () => {
                                                         getPackagingProgressClass(
                                                             order.packagingStatus,
                                                             order.orderStatus,
+                                                            orderItems,
                                                         ),
                                                     )}
                                                     style={{ width: `${progress}%` }}
@@ -487,31 +523,24 @@ const PackageOrders = () => {
                                         </div>
 
                                         <div className="flex justify-end">
-                                            {orderCompleted ? (
+                                            {actionPhase === "view" ? (
                                                 <button
                                                     type="button"
                                                     onClick={() => navigate(actionRoute)}
                                                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
                                                 >
-                                                    Xem chi tiết
+                                                    {actionLabel}
                                                     <ChevronRight className="h-4 w-4" />
                                                 </button>
-                                            ) : showActionButton ? (
+                                            ) : (
                                                 <button
                                                     type="button"
                                                     onClick={() => navigate(actionRoute)}
                                                     className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 text-sm font-medium text-white transition hover:bg-sky-700"
                                                 >
-                                                    {getPackagingActionLabel(
-                                                        order.packagingStatus,
-                                                        order.orderStatus,
-                                                    )}
+                                                    {actionLabel}
                                                     <ChevronRight className="h-4 w-4" />
                                                 </button>
-                                            ) : (
-                                                <span className="inline-flex h-10 items-center rounded-xl bg-emerald-50 px-4 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">
-                                                    Đã hoàn tất
-                                                </span>
                                             )}
                                         </div>
                                     </div>
@@ -550,10 +579,18 @@ const PackageOrders = () => {
                                             <span
                                                 className={cn(
                                                     "shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold",
-                                                    getPackagingStatusClass(order.packagingStatus),
+                                                    getPackagingStatusClass(
+                                                        order.packagingStatus,
+                                                        order.orderStatus,
+                                                        orderItems,
+                                                    ),
                                                 )}
                                             >
-                                                {getPackagingStepText(order.packagingStatus)}
+                                                {getPackagingStepText(
+                                                    order.packagingStatus,
+                                                    order.orderStatus,
+                                                    orderItems,
+                                                )}
                                             </span>
                                         </div>
 
@@ -605,38 +642,26 @@ const PackageOrders = () => {
                                                     getPackagingProgressClass(
                                                         order.packagingStatus,
                                                         order.orderStatus,
+                                                        orderItems,
                                                     ),
                                                 )}
                                                 style={{ width: `${progress}%` }}
                                             />
                                         </div>
 
-                                        {orderCompleted ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => navigate(actionRoute)}
-                                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                                            >
-                                                Xem chi tiết
-                                                <ChevronRight className="h-4 w-4" />
-                                            </button>
-                                        ) : showActionButton ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => navigate(actionRoute)}
-                                                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-sky-700"
-                                            >
-                                                {getPackagingActionLabel(
-                                                    order.packagingStatus,
-                                                    order.orderStatus,
-                                                )}
-                                                <ChevronRight className="h-4 w-4" />
-                                            </button>
-                                        ) : (
-                                            <div className="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 ring-1 ring-emerald-100">
-                                                Đã hoàn tất
-                                            </div>
-                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => navigate(actionRoute)}
+                                            className={cn(
+                                                "mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium transition",
+                                                actionPhase === "view"
+                                                    ? "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                                    : "bg-slate-900 text-white hover:bg-sky-700",
+                                            )}
+                                        >
+                                            {actionLabel}
+                                            <ChevronRight className="h-4 w-4" />
+                                        </button>
                                     </div>
                                 </div>
                             );

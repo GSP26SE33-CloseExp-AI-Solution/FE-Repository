@@ -93,6 +93,84 @@ export const isPackagingProgressSummaryInProgress = (status?: string) => {
     return raw.includes("dang xu ly")
 }
 
+/** Parsed from BE summary e.g. "0/1 dòng đã đóng gói xong, 1 dòng đang xử lý" */
+export const parsePackagingProgressSummary = (status?: string) => {
+    if (!status) return null
+
+    const match = status.match(/(\d+)\s*\/\s*(\d+)/)
+    if (!match) return null
+
+    const done = Number.parseInt(match[1], 10)
+    const total = Number.parseInt(match[2], 10)
+
+    if (Number.isNaN(done) || Number.isNaN(total) || total <= 0) {
+        return null
+    }
+
+    return {
+        done,
+        total,
+        open: Math.max(0, total - done),
+    }
+}
+
+export type PackagingOrderActionPhase = "collect" | "packing" | "view"
+
+/** Next staff step: gom hàng → đóng gói → chỉ xem */
+export const resolvePackagingOrderActionPhase = (
+    packagingStatus?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+): PackagingOrderActionPhase => {
+    if (isPackagingOrderCompleted(packagingStatus, orderStatus, items)) {
+        return "view"
+    }
+
+    if (items?.length) {
+        const statuses = items.map((item) =>
+            normalizeStatus(item.packagingStatus),
+        )
+
+        if (statuses.every((value) => value === "pending")) {
+            return "collect"
+        }
+
+        if (
+            statuses.some(
+                (value) =>
+                    value === "packaging" ||
+                    value === "completed" ||
+                    value === "failed",
+            )
+        ) {
+            return "packing"
+        }
+
+        return "collect"
+    }
+
+    if (isPackagingProgressSummaryHasFailures(packagingStatus)) {
+        return "packing"
+    }
+
+    const parsed = parsePackagingProgressSummary(packagingStatus)
+    if (parsed) {
+        if (parsed.done === 0 && parsed.open > 0) return "collect"
+        if (parsed.open > 0) return "packing"
+    }
+
+    const key = normalizeStatus(packagingStatus)
+    if (key === "pending") return "collect"
+    if (key === "packaging" || key === "failed") return "packing"
+    if (isPackagingProgressSummaryInProgress(packagingStatus)) {
+        const progress = parsePackagingProgressSummary(packagingStatus)
+        if (progress?.done === 0) return "collect"
+        return "packing"
+    }
+
+    return "collect"
+}
+
 export const isPackagingOrderItemsCompleted = (
     items?: PackagingOrderItem[],
 ) => {
@@ -213,7 +291,36 @@ export const getDeliveryTypeLabel = (type?: string) => {
     return DELIVERY_TYPE_LABEL[key] || type || "--"
 }
 
-export const getPackagingStatusClass = (status?: string) => {
+export const getPackagingStatusClass = (
+    status?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    const phase = resolvePackagingOrderActionPhase(
+        status,
+        orderStatus,
+        items,
+    )
+
+    if (phase === "view") {
+        return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+    }
+
+    if (
+        isPackagingProgressSummaryHasFailures(status) ||
+        items?.some((item) => normalizeStatus(item.packagingStatus) === "failed")
+    ) {
+        return "bg-rose-50 text-rose-700 ring-1 ring-rose-200"
+    }
+
+    if (phase === "packing") {
+        return "bg-sky-50 text-sky-700 ring-1 ring-sky-200"
+    }
+
+    if (phase === "collect") {
+        return "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+    }
+
     const value = normalizeStatus(status)
 
     if (value === "pending") {
@@ -246,36 +353,59 @@ export const getPackagingStatusDotClass = (status?: string) => {
     return "bg-slate-400"
 }
 
-export const getPackagingStepText = (status?: string) => {
-    const value = normalizeStatus(status)
+export const getPackagingStepText = (
+    status?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    const phase = resolvePackagingOrderActionPhase(
+        status,
+        orderStatus,
+        items,
+    )
 
-    if (value === "pending") return "Cần bắt đầu gom hàng"
-    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
+    if (phase === "view") return "Sẵn sàng bàn giao"
+    if (phase === "collect") return "Cần bắt đầu gom hàng"
+    if (phase === "packing") {
+        if (
+            items?.some(
+                (item) => normalizeStatus(item.packagingStatus) === "failed",
+            ) ||
+            isPackagingProgressSummaryHasFailures(status)
+        ) {
+            return "Cần kiểm tra lỗi"
+        }
+
         return "Đang kiểm tra / đóng gói"
     }
-    if (value === "completed" || isPackagingProgressSummaryCompleted(status)) {
-        return "Sẵn sàng bàn giao"
-    }
-    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
-        return "Cần kiểm tra lỗi"
-    }
 
-    return "Cần xử lý"
+    return status || "Cần xử lý"
 }
 
-export const getPackagingActionLabel = (status?: string, orderStatus?: string) => {
-    if (isPackagingOrderCompleted(status, orderStatus)) {
-        return "Xem đơn đã đóng gói"
-    }
+export const getPackagingActionLabel = (
+    status?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    const phase = resolvePackagingOrderActionPhase(
+        status,
+        orderStatus,
+        items,
+    )
 
-    const value = normalizeStatus(status)
+    if (phase === "view") return "Xem đơn đã đóng gói"
+    if (phase === "collect") return "Bắt đầu gom hàng"
+    if (phase === "packing") {
+        if (
+            items?.some(
+                (item) => normalizeStatus(item.packagingStatus) === "failed",
+            ) ||
+            isPackagingProgressSummaryHasFailures(status)
+        ) {
+            return "Xem lỗi đóng gói"
+        }
 
-    if (value === "pending") return "Bắt đầu gom hàng"
-    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
         return "Tiếp tục đóng gói"
-    }
-    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
-        return "Xem lỗi đóng gói"
     }
 
     return "Xử lý đơn"
@@ -285,58 +415,87 @@ export const getPackagingActionRoute = (
     orderId: string,
     status?: string,
     orderStatus?: string,
+    items?: PackagingOrderItem[],
 ) => {
-    if (isPackagingOrderCompleted(status, orderStatus)) {
+    const phase = resolvePackagingOrderActionPhase(
+        status,
+        orderStatus,
+        items,
+    )
+
+    if (phase === "view") {
         return `/package/packing?orderId=${orderId}&view=1`
     }
 
-    const value = normalizeStatus(status)
-
-    if (
-        value === "packaging" ||
-        value === "failed" ||
-        isPackagingProgressSummaryInProgress(status) ||
-        isPackagingProgressSummaryHasFailures(status)
-    ) {
+    if (phase === "packing") {
         return `/package/packing?orderId=${orderId}`
     }
 
     return `/package/collect?orderId=${orderId}`
 }
 
-export const getPackagingProgress = (status?: string, orderStatus?: string) => {
-    if (isPackagingOrderCompleted(status, orderStatus)) return 100
+export const getPackagingProgress = (
+    status?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    if (isPackagingOrderCompleted(status, orderStatus, items)) return 100
+
+    const parsed = parsePackagingProgressSummary(status)
+    if (parsed && parsed.total > 0) {
+        return Math.min(
+            100,
+            Math.max(8, Math.round((parsed.done / parsed.total) * 100)),
+        )
+    }
+
+    const phase = resolvePackagingOrderActionPhase(
+        status,
+        orderStatus,
+        items,
+    )
+
+    if (phase === "collect") return 25
+    if (phase === "packing") return 65
 
     const value = normalizeStatus(status)
-
     if (value === "pending") return 25
-    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
-        return 65
-    }
-    if (value === "completed" || isPackagingProgressSummaryCompleted(status)) {
-        return 100
-    }
-    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
-        return 100
-    }
+    if (value === "packaging") return 65
+    if (value === "completed") return 100
+    if (value === "failed") return 100
 
     return 10
 }
 
-export const getPackagingProgressClass = (status?: string, orderStatus?: string) => {
-    if (isPackagingOrderCompleted(status, orderStatus)) return "bg-emerald-500"
-
-    const value = normalizeStatus(status)
-
-    if (value === "failed" || isPackagingProgressSummaryHasFailures(status)) {
-        return "bg-rose-500"
-    }
-    if (value === "completed" || isPackagingProgressSummaryCompleted(status)) {
+export const getPackagingProgressClass = (
+    status?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    if (isPackagingOrderCompleted(status, orderStatus, items)) {
         return "bg-emerald-500"
     }
-    if (value === "packaging" || isPackagingProgressSummaryInProgress(status)) {
-        return "bg-sky-500"
+
+    if (
+        isPackagingProgressSummaryHasFailures(status) ||
+        items?.some((item) => normalizeStatus(item.packagingStatus) === "failed")
+    ) {
+        return "bg-rose-500"
     }
+
+    const phase = resolvePackagingOrderActionPhase(
+        status,
+        orderStatus,
+        items,
+    )
+
+    if (phase === "packing") return "bg-sky-500"
+    if (phase === "collect") return "bg-amber-500"
+
+    const value = normalizeStatus(status)
+    if (value === "failed") return "bg-rose-500"
+    if (value === "completed") return "bg-emerald-500"
+    if (value === "packaging") return "bg-sky-500"
 
     return "bg-amber-500"
 }

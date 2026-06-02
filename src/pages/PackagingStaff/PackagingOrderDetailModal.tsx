@@ -90,10 +90,10 @@ const PackagingOrderDetailModal = ({
 
     const orderCompleted = order
         ? isPackagingOrderCompleted(
-              order.packagingStatus,
-              order.orderStatus,
-              order.items,
-          )
+            order.packagingStatus,
+            order.orderStatus,
+            order.items,
+        )
         : false
 
     const packingViewUrl = orderId
@@ -128,8 +128,8 @@ const PackagingOrderDetailModal = ({
                                 {loading
                                     ? "Đang tải đơn..."
                                     : order?.orderCode
-                                      ? `Đơn ${order.orderCode}`
-                                      : "Chi tiết đơn đóng gói"}
+                                        ? `Đơn ${order.orderCode}`
+                                        : "Chi tiết đơn đóng gói"}
                             </h2>
 
                             <p className="mt-1 text-sm text-slate-500">
@@ -270,7 +270,7 @@ const PackagingOrderDetailModal = ({
                                                 className={cn(
                                                     "px-4 py-4",
                                                     highlighted &&
-                                                        "bg-sky-50/80 ring-1 ring-inset ring-sky-200",
+                                                    "bg-sky-50/80 ring-1 ring-inset ring-sky-200",
                                                 )}
                                             >
                                                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

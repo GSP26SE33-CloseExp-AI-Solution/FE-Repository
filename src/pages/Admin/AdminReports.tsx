@@ -712,13 +712,13 @@ const AdminReports = () => {
   ])
   const [sheetColumnMap, setSheetColumnMap] = useState<Record<SheetKey, string[]>>(
     () => {
-      return sheetDefinitions.reduce(
-        (acc, sheet) => {
-          acc[sheet.key] = [...sheet.columns]
-          return acc
-        },
-        {} as Record<SheetKey, string[]>
-      )
+    return sheetDefinitions.reduce(
+      (acc, sheet) => {
+        acc[sheet.key] = [...sheet.columns]
+        return acc
+      },
+      {} as Record<SheetKey, string[]>
+    )
     }
   )
 
@@ -1261,13 +1261,13 @@ const AdminReports = () => {
                         ].join(" ")}
                       >
                         <Icon className="h-4 w-4" />
-                      </div>
+                    </div>
 
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-slate-900">{sheet.title}</p>
                         <p className="truncate text-xs text-slate-500">{sheet.description}</p>
                       </div>
-                    </button>
+                  </button>
 
                     {isActive ? (
                       <span className="rounded-full bg-cyan-900 px-2.5 py-1 text-[11px] font-semibold text-white">
@@ -1346,7 +1346,7 @@ const AdminReports = () => {
               </div>
             </div>
           </SectionCard>
-        </div>
+              </div>
 
         <div className="space-y-6 xl:col-span-4">
           <SectionCard
@@ -1452,7 +1452,7 @@ const AdminReports = () => {
               ))}
             </div>
           </SectionCard>
-        </div>
+                    </div>
       </div>
     </div>
   )

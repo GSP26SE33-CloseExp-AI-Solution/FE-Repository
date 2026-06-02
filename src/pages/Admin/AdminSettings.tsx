@@ -322,8 +322,8 @@ const AdminSettings = () => {
                 const res = await adminService.getSystemParameters()
                 logApiSuccess("fetchTabData - getSystemParameters", undefined, res)
                 setParameters(res ?? [])
-                return
-            }
+            return
+        }
 
             if (targetTab === "categories") {
                 await fetchCategoriesData()
@@ -452,11 +452,11 @@ const AdminSettings = () => {
 
                     {tab === "parameters" && (
                         <div className="space-y-6">
-                            <div>
+                                                    <div>
                                 <h2 className="text-lg font-bold text-slate-900">
                                     Tham số hệ thống
                                 </h2>
-                            </div>
+                                                    </div>
 
                             <div className="grid gap-3 md:grid-cols-3">
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
@@ -464,7 +464,7 @@ const AdminSettings = () => {
                                     <p className="mt-1 text-2xl font-bold text-slate-900">
                                         {parameters.length}
                                     </p>
-                                </div>
+                                                </div>
 
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
                                     <p className="text-sm text-slate-500">Đã cấu hình</p>
@@ -474,8 +474,8 @@ const AdminSettings = () => {
                                                 String(item.configValue ?? "").trim()
                                             ).length
                                         }
-                                    </p>
-                                </div>
+                                            </p>
+                                        </div>
 
                                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-4">
                                     <p className="text-sm text-slate-500">Cập nhật gần đây</p>
@@ -491,7 +491,7 @@ const AdminSettings = () => {
                                             )
                                             : "--"}
                                     </p>
-                                </div>
+                                                            </div>
                             </div>
 
                             <div className="space-y-3">
