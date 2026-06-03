@@ -21,6 +21,7 @@ import PaymentReturnPage from "@/pages/Vendor/PaymentReturnPage"
 import VendorProfile from "@/pages/Vendor/vProfile"
 import MyOrdersPage from "@/pages/Vendor/MyOrdersPage"
 import MyOrderDetailPage from "@/pages/Vendor/MyOrderDetailPage"
+import OrderFeedbackPage from "@/pages/Vendor/OrderFeedbackPage"
 import NotificationsPage from "@/pages/Vendor/NotificationsPage"
 
 import SupermarketDashboard from "@/pages/SupermarketStaff/sDashboard"
@@ -268,6 +269,10 @@ const AppRouter: React.FC = () => {
                             <Route
                                 path="/orders/:orderId"
                                 element={<MyOrderDetailPage />}
+                            />
+                            <Route
+                                path="/orders/:orderId/feedback"
+                                element={<OrderFeedbackPage />}
                             />
                             <Route
                                 path="/notifications"

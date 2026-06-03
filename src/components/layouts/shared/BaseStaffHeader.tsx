@@ -31,6 +31,8 @@ type BaseStaffHeaderProps = {
     loggingOutAll?: boolean
     notificationRoute?: string
     notificationScope?: NotificationListScope
+    /** Кастомный колокольчик (например, live-меню админа). */
+    notificationBellSlot?: React.ReactNode
 }
 
 const BaseStaffHeader = ({
@@ -47,6 +49,7 @@ const BaseStaffHeader = ({
     loggingOutAll = false,
     notificationRoute,
     notificationScope = "mine",
+    notificationBellSlot,
 }: BaseStaffHeaderProps) => {
     const { user, logout, primaryAvatarUrl } = useAuthContext()
     const navigate = useNavigate()
@@ -160,20 +163,21 @@ const BaseStaffHeader = ({
                 <div className="flex shrink-0 items-center gap-3">
                     {headerActions}
 
-                    {notificationRoute ? (
-                        <button
-                            type="button"
-                            onClick={() => navigate(notificationRoute)}
-                            className="relative grid h-10 w-10 place-items-center rounded-xl text-gray-500 transition hover:bg-white/70 hover:text-green-600"
-                            title="Thông báo"
-                            aria-label="Thông báo"
-                        >
-                            <Bell size={20} />
-                            <NotificationUnreadBadge
-                                count={unreadNotificationCount}
-                            />
-                        </button>
-                    ) : null}
+                    {notificationBellSlot ??
+                        (notificationRoute ? (
+                            <button
+                                type="button"
+                                onClick={() => navigate(notificationRoute)}
+                                className="relative grid h-10 w-10 place-items-center rounded-xl text-gray-500 transition hover:bg-white/70 hover:text-green-600"
+                                title="Thông báo"
+                                aria-label="Thông báo"
+                            >
+                                <Bell size={20} />
+                                <NotificationUnreadBadge
+                                    count={unreadNotificationCount}
+                                />
+                            </button>
+                        ) : null)}
 
                     <div className="relative" ref={ref}>
                         <button

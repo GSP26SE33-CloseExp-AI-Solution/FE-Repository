@@ -19,6 +19,7 @@ import {
     mapApiNotificationToListItem,
     NOTIFICATION_TYPE_FILTERS,
 } from "@/utils/notificationDisplay"
+import { subscribeNotificationRealtime } from "@/utils/notificationRealtimeEvents"
 import { showError } from "@/utils/toast"
 
 const cn = (...classes: Array<string | false | null | undefined>) =>
@@ -222,6 +223,14 @@ const NotificationListPage = ({
         void fetchNotifications()
     }, [fetchNotifications])
 
+    useEffect(() => {
+        return subscribeNotificationRealtime((detail) => {
+            setNotifications(detail.notifications.map(mapApiNotificationToListItem))
+            setLoading(false)
+            setRefreshing(false)
+        })
+    }, [])
+
     if (loading) {
         return (
             <div className="flex h-[60vh] items-center justify-center">
@@ -246,11 +255,14 @@ const NotificationListPage = ({
                         {title}
                         <NotificationUnreadBadge count={unreadCount} inline />
                     </h1>
-                    {unreadCount > 0 && (
-                        <p className="mt-1 text-sm text-slate-600">
-                            Bạn có {unreadCount} thông báo chưa đọc
-                        </p>
-                    )}
+                    <p className="mt-1 text-sm text-slate-600">
+                        {unreadCount > 0
+                            ? `Bạn có ${unreadCount} thông báo chưa đọc`
+                            : "Danh sách được cập nhật tự động"}
+                        <span className="ml-2 inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                            SignalR
+                        </span>
+                    </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                     {unreadCount > 0 && (

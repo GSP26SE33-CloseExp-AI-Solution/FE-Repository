@@ -1,8 +1,6 @@
+import AdminNotificationBellMenu from "@/components/notifications/AdminNotificationBellMenu"
 import BaseStaffHeader from "@/components/layouts/shared/BaseStaffHeader"
-import {
-    STAFF_HEADER_CONFIG,
-    STAFF_NOTIFICATION_ROUTES,
-} from "@/constants/layoutByRole"
+import { STAFF_HEADER_CONFIG } from "@/constants/layoutByRole"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
 
 const AdminHeader = () => {
@@ -17,8 +15,7 @@ const AdminHeader = () => {
             accentClass={config.accentClass}
             centerHint={config.centerHint}
             extraMeta={config.meta}
-            notificationRoute={STAFF_NOTIFICATION_ROUTES.Admin}
-            notificationScope="admin"
+            notificationBellSlot={<AdminNotificationBellMenu />}
             onLogoutAll={logoutAll}
             loggingOutAll={loggingOutAll}
             headerActions={

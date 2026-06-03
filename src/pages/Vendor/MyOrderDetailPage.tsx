@@ -11,6 +11,7 @@ import {
     ReceiptText,
     ShieldCheck,
     ShoppingBag,
+    Star,
     Truck,
 } from "lucide-react"
 import toast from "react-hot-toast"
@@ -273,6 +274,11 @@ const MyOrderDetailPage: React.FC = () => {
 
     const isPending = useMemo(
         () => (order?.status || "").toLowerCase() === "pending",
+        [order?.status],
+    )
+
+    const isCompleted = useMemo(
+        () => (order?.status || "").toLowerCase() === "completed",
         [order?.status],
     )
 
@@ -621,6 +627,24 @@ const MyOrderDetailPage: React.FC = () => {
                                         />
                                     ) : null}
                                     Hủy đơn
+                                </button>
+                            ) : null}
+
+                            {isCompleted ? (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        navigate(
+                                            `/orders/${order.orderId}/feedback`,
+                                        )
+                                    }
+                                    className={cn(
+                                        secondaryBtn,
+                                        "!border-amber-200 !text-amber-800 hover:!bg-amber-50",
+                                    )}
+                                >
+                                    <Star size={14} className="fill-amber-400 text-amber-400" />
+                                    Đánh giá dịch vụ
                                 </button>
                             ) : null}
 

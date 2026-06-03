@@ -8,6 +8,7 @@ import {
     ReceiptText,
     Search,
     ShoppingBag,
+    Star,
     Truck,
 } from "lucide-react"
 
@@ -640,21 +641,41 @@ const MyOrdersPage: React.FC = () => {
                                                     : "Mở chi tiết để xem sản phẩm"}
                                             </div>
 
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    lastOrderStorage.set(order)
-                                                    navigate(
-                                                        `/orders/${order.orderId}`,
-                                                    )
-                                                }}
-                                                className={cn(
-                                                    primaryBtn,
-                                                    "mt-4 w-full",
-                                                )}
-                                            >
-                                                Xem chi tiết đơn
-                                            </button>
+                                            <div className="mt-4 flex flex-col gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        lastOrderStorage.set(order)
+                                                        navigate(
+                                                            `/orders/${order.orderId}`,
+                                                        )
+                                                    }}
+                                                    className={cn(primaryBtn, "w-full")}
+                                                >
+                                                    Xem chi tiết đơn
+                                                </button>
+
+                                                {order.status === "Completed" ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            navigate(
+                                                                `/orders/${order.orderId}/feedback`,
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            secondaryBtn,
+                                                            "w-full !border-amber-200 !text-amber-800 hover:!bg-amber-50",
+                                                        )}
+                                                    >
+                                                        <Star
+                                                            size={14}
+                                                            className="fill-amber-400 text-amber-400"
+                                                        />
+                                                        Đánh giá dịch vụ
+                                                    </button>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </div>
                                 </article>

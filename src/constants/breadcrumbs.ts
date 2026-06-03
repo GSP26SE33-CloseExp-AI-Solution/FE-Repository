@@ -57,6 +57,14 @@ export const getBreadcrumbsByPath = (
     pathname: string,
     options?: BreadcrumbOptions
 ): string[] => {
+    if (pathname.includes("/feedback")) {
+        return [
+            "Mua sắm",
+            "Đơn hàng của tôi",
+            options?.dynamicLabel || "Đánh giá dịch vụ",
+        ]
+    }
+
     if (pathname.startsWith("/orders/")) {
         return [
             "Mua sắm",
