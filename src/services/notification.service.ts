@@ -8,6 +8,10 @@ import type {
     NotificationType,
     UpdateNotificationPayload,
 } from "@/types/notification.type"
+import {
+    countUnreadNotifications,
+    type NotificationListScope,
+} from "@/utils/notificationDisplay"
 
 const unwrap = <T>(response: { data: ApiEnvelope<T> }) => response.data.data
 
@@ -73,9 +77,10 @@ export const notificationService = {
         }
     },
 
-    async countUnread(): Promise<number> {
-        const items = await this.getMine()
-        return items.filter((item) => !item.isRead).length
+    async countUnread(scope: NotificationListScope = "mine"): Promise<number> {
+        const items =
+            scope === "admin" ? await this.getAll() : await this.getMine()
+        return countUnreadNotifications(items)
     },
 
     async markAsRead(notificationId: string): Promise<ApiNotification> {

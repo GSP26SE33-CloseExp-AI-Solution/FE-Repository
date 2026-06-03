@@ -19,6 +19,8 @@ import { packagingService } from "@/services/packaging.service"
 import type { PackagingOrderDetail } from "@/types/packaging.type"
 import { showError, showSuccess } from "@/utils/toast"
 
+import PackagingLabelPrintModal from "./PackagingLabelPrintModal"
+import PackagingLabelPrintSection from "./PackagingLabelPrintSection"
 import {
     cn,
     currency,
@@ -30,6 +32,8 @@ import {
     getOrderStatusLabel,
     getPackagingStatusClass,
     getPackagingStatusLabel,
+    isPackagingOrderActionable,
+    isPackagingOrderCompleted,
 } from "./packagingShared"
 
 const formatActionDateTime = (date = new Date()) => {
@@ -124,6 +128,7 @@ const PackagePacking = () => {
     const navigate = useNavigate()
     const [searchParams] = useSearchParams()
     const orderId = searchParams.get("orderId") || ""
+    const isViewOnly = searchParams.get("view") === "1"
 
     const [order, setOrder] = useState<PackagingOrderDetail | null>(null)
     const [selectedItemIds, setSelectedItemIds] = useState<string[]>([])
@@ -134,6 +139,7 @@ const PackagePacking = () => {
     const [notes, setNotes] = useState("")
     const [failureReason, setFailureReason] = useState("")
     const [failNotes, setFailNotes] = useState("")
+    const [printModalOpen, setPrintModalOpen] = useState(false)
 
     const allItemIds = useMemo(
         () => order?.items?.map((item) => item.orderItemId).filter(Boolean) || [],
@@ -167,6 +173,26 @@ const PackagePacking = () => {
             order?.items?.filter((item) => item.packagingFailedReason?.trim()) || []
         )
     }, [order])
+
+    const orderCompleted = useMemo(
+        () =>
+            isPackagingOrderCompleted(
+                order?.packagingStatus,
+                order?.orderStatus,
+                order?.items,
+            ),
+        [order],
+    )
+
+    const canPerformActions = useMemo(() => {
+        if (!order || isViewOnly) return false
+
+        return isPackagingOrderActionable(
+            order.packagingStatus,
+            order.orderStatus,
+            order.items,
+        )
+    }, [order, isViewOnly])
 
     const isAllSelected =
         allItemIds.length > 0 && selectedItemIds.length === allItemIds.length
@@ -243,10 +269,23 @@ const PackagePacking = () => {
                 }),
             })
 
-            setOrder(response.data)
+            const nextOrder = response.data || null
+            setOrder(nextOrder)
             showSuccess(response.message || "Hoàn tất đóng gói thành công.")
             setNotes("")
+
             await fetchDetail(true)
+
+            if (
+                nextOrder &&
+                isPackagingOrderCompleted(
+                    nextOrder.packagingStatus,
+                    nextOrder.orderStatus,
+                    nextOrder.items,
+                )
+            ) {
+                setPrintModalOpen(true)
+            }
         } catch (error: any) {
             showError(
                 getFriendlyPackagingErrorMessage(
@@ -441,7 +480,28 @@ const PackagePacking = () => {
                 </div>
             </div>
 
-            {failedItems.length > 0 ? (
+            {!canPerformActions && orderCompleted ? (
+                <div className="space-y-4">
+                    <div className="rounded-3xl border border-emerald-200 bg-emerald-50 p-5">
+                        <div className="flex gap-3">
+                            <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
+                            <div>
+                                <h2 className="font-semibold text-emerald-800">
+                                    Đã hoàn tất đóng gói
+                                </h2>
+                                <p className="mt-1 text-sm leading-6 text-emerald-700">
+                                    {order.packagingStatus ||
+                                        "Đơn đã sẵn sàng bàn giao. In tem đơn rồi dán lên túi/kiện trước khi bàn giao."}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <PackagingLabelPrintSection order={order} />
+                </div>
+            ) : null}
+
+            {failedItems.length > 0 && canPerformActions ? (
                 <div className="rounded-3xl border border-rose-200 bg-rose-50 p-5">
                     <div className="flex gap-3">
                         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-rose-600" />
@@ -471,14 +531,16 @@ const PackagePacking = () => {
                             </p>
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={toggleAllItems}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                        >
-                            <CheckCircle2 className="h-4 w-4" />
-                            {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-                        </button>
+                        {canPerformActions ? (
+                            <button
+                                type="button"
+                                onClick={toggleAllItems}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                            >
+                                <CheckCircle2 className="h-4 w-4" />
+                                {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                            </button>
+                        ) : null}
                     </div>
 
                     <div className="divide-y divide-slate-100">
@@ -489,11 +551,15 @@ const PackagePacking = () => {
                             )
                             const expiryDate = getItemExpiryDate(item)
 
+                            const RowTag = canPerformActions ? "label" : "div"
+
                             return (
-                                <label
+                                <RowTag
                                     key={item.orderItemId}
                                     className={cn(
-                                        "flex cursor-pointer gap-4 px-5 py-4 transition hover:bg-slate-50",
+                                        "flex gap-4 px-5 py-4 transition",
+                                        canPerformActions &&
+                                        "cursor-pointer hover:bg-slate-50",
                                         checked && "bg-emerald-50/50",
                                         hasFailedReason && "bg-rose-50/60"
                                     )}
@@ -501,8 +567,9 @@ const PackagePacking = () => {
                                     <input
                                         type="checkbox"
                                         checked={checked}
+                                        disabled={!canPerformActions}
                                         onChange={() => toggleItem(item.orderItemId)}
-                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-default disabled:opacity-70"
                                     />
 
                                     <div className="min-w-0 flex-1">
@@ -586,7 +653,7 @@ const PackagePacking = () => {
                                             </div>
                                         </div>
                                     </div>
-                                </label>
+                                </RowTag>
                             )
                         })}
                     </div>
@@ -633,90 +700,98 @@ const PackagePacking = () => {
                         </div>
                     </div>
 
-                    <div className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
-                                <PackageCheck className="h-5 w-5" />
-                            </div>
+                    {canPerformActions ? (
+                        <>
+                            <div className="rounded-3xl border border-emerald-200 bg-white p-5 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100">
+                                        <PackageCheck className="h-5 w-5" />
+                                    </div>
 
-                            <div>
-                                <h2 className="font-semibold text-slate-900">
+                                    <div>
+                                        <h2 className="font-semibold text-slate-900">
+                                            Hoàn tất đóng gói
+                                        </h2>
+                                        <p className="text-sm text-slate-500">
+                                            Dùng khi các món đã đúng và sẵn sàng bàn giao.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <textarea
+                                    value={notes}
+                                    onChange={(e) => setNotes(e.target.value)}
+                                    rows={3}
+                                    placeholder="Ví dụ: đã kiểm đủ món, đóng 2 túi..."
+                                    className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={handlePackage}
+                                    disabled={
+                                        submitting || selectedItemIds.length === 0
+                                    }
+                                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {submitting ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <CheckCircle2 className="h-4 w-4" />
+                                    )}
                                     Hoàn tất đóng gói
-                                </h2>
-                                <p className="text-sm text-slate-500">
-                                    Dùng khi các món đã đúng và sẵn sàng bàn giao.
-                                </p>
-                            </div>
-                        </div>
-
-                        <textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            rows={3}
-                            placeholder="Ví dụ: đã kiểm đủ món, đóng 2 túi..."
-                            className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
-                        />
-
-                        <button
-                            type="button"
-                            onClick={handlePackage}
-                            disabled={submitting || selectedItemIds.length === 0}
-                            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {submitting ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <CheckCircle2 className="h-4 w-4" />
-                            )}
-                            Hoàn tất đóng gói
-                        </button>
-                    </div>
-
-                    <div className="rounded-3xl border border-rose-200 bg-white p-5 shadow-sm">
-                        <div className="flex items-center gap-3">
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-700 ring-1 ring-rose-100">
-                                <XCircle className="h-5 w-5" />
+                                </button>
                             </div>
 
-                            <div>
-                                <h2 className="font-semibold text-slate-900">
-                                    Báo lỗi món đã chọn
-                                </h2>
-                                <p className="text-sm text-slate-500">
-                                    Dùng khi thiếu hàng, sai hàng hoặc hàng hư hỏng.
-                                </p>
+                            <div className="rounded-3xl border border-rose-200 bg-white p-5 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-50 text-rose-700 ring-1 ring-rose-100">
+                                        <XCircle className="h-5 w-5" />
+                                    </div>
+
+                                    <div>
+                                        <h2 className="font-semibold text-slate-900">
+                                            Báo lỗi món đã chọn
+                                        </h2>
+                                        <p className="text-sm text-slate-500">
+                                            Dùng khi thiếu hàng, sai hàng hoặc hàng hư hỏng.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <input
+                                    value={failureReason}
+                                    onChange={(e) => setFailureReason(e.target.value)}
+                                    placeholder="Lý do lỗi, ví dụ: thiếu hàng / hàng hỏng"
+                                    className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
+                                />
+
+                                <textarea
+                                    value={failNotes}
+                                    onChange={(e) => setFailNotes(e.target.value)}
+                                    rows={3}
+                                    placeholder="Ghi chú thêm nếu cần..."
+                                    className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
+                                />
+
+                                <button
+                                    type="button"
+                                    onClick={handleFailPackaging}
+                                    disabled={
+                                        failing || selectedItemIds.length === 0
+                                    }
+                                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    {failing ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <AlertTriangle className="h-4 w-4" />
+                                    )}
+                                    Báo lỗi các món đã chọn
+                                </button>
                             </div>
-                        </div>
-
-                        <input
-                            value={failureReason}
-                            onChange={(e) => setFailureReason(e.target.value)}
-                            placeholder="Lý do lỗi, ví dụ: thiếu hàng / hàng hỏng"
-                            className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
-                        />
-
-                        <textarea
-                            value={failNotes}
-                            onChange={(e) => setFailNotes(e.target.value)}
-                            rows={3}
-                            placeholder="Ghi chú thêm nếu cần..."
-                            className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
-                        />
-
-                        <button
-                            type="button"
-                            onClick={handleFailPackaging}
-                            disabled={failing || selectedItemIds.length === 0}
-                            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                            {failing ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <AlertTriangle className="h-4 w-4" />
-                            )}
-                            Báo lỗi các món đã chọn
-                        </button>
-                    </div>
+                        </>
+                    ) : null}
 
                     <button
                         type="button"
@@ -731,6 +806,12 @@ const PackagePacking = () => {
                     </button>
                 </aside>
             </div>
+
+            <PackagingLabelPrintModal
+                open={printModalOpen}
+                order={order}
+                onClose={() => setPrintModalOpen(false)}
+            />
         </div>
     )
 }

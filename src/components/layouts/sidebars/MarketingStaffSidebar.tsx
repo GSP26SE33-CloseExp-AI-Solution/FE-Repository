@@ -25,6 +25,7 @@ const MarketingSidebar = () => {
         <BaseSidebar
             title="Danh mục marketing"
             items={marketingMenuItems}
+            notificationBadgePath="/marketing/notification"
         />
     )
 }

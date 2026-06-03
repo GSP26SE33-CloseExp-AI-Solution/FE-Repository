@@ -37,6 +37,8 @@ const AdminSidebar = () => {
         <BaseSidebar
             title="Danh mục quản trị"
             items={adminMenuItems}
+            notificationBadgePath="/admin/notification"
+            notificationScope="admin"
         />
     )
 }

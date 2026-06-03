@@ -23,6 +23,7 @@ const PackageSidebar = () => {
         <BaseSidebar
             title="Danh mục đóng gói"
             items={packageMenuItems}
+            notificationBadgePath="/package/notification"
         />
     )
 }

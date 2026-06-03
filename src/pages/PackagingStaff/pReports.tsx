@@ -4,6 +4,7 @@ import {
     CalendarDays,
     CheckCircle2,
     Clock3,
+    Eye,
     Loader2,
     PackageCheck,
     RefreshCcw,
@@ -11,6 +12,7 @@ import {
     XCircle,
 } from "lucide-react"
 
+import PackagingOrderDetailModal from "./PackagingOrderDetailModal"
 import { packagingService } from "@/services/packaging.service"
 import type {
     PackagingHistoryQuery,
@@ -113,6 +115,12 @@ const PReports = () => {
     const [page, setPage] = useState(1)
     const [totalResult, setTotalResult] = useState(0)
 
+    const [detailModalOpen, setDetailModalOpen] = useState(false)
+    const [detailOrderId, setDetailOrderId] = useState<string | null>(null)
+    const [detailOrderItemId, setDetailOrderItemId] = useState<string | null>(
+        null,
+    )
+
     const totalPages = useMemo(
         () => Math.max(1, Math.ceil(totalResult / PAGE_SIZE)),
         [totalResult]
@@ -189,6 +197,20 @@ const PReports = () => {
     const handleNextPage = () => {
         const nextPage = Math.min(totalPages, page + 1)
         void loadHistory(nextPage)
+    }
+
+    const openOrderDetail = (record: PackagingHistoryRecord) => {
+        if (!record.orderId) return
+
+        setDetailOrderId(record.orderId)
+        setDetailOrderItemId(record.orderItemId || null)
+        setDetailModalOpen(true)
+    }
+
+    const closeOrderDetail = () => {
+        setDetailModalOpen(false)
+        setDetailOrderId(null)
+        setDetailOrderItemId(null)
     }
 
     return (
@@ -399,6 +421,9 @@ const PReports = () => {
                                         <th className="px-5 py-3 text-left text-xs font-bold uppercase tracking-wide text-slate-500">
                                             Lý do lỗi
                                         </th>
+                                        <th className="px-5 py-3 text-right text-xs font-bold uppercase tracking-wide text-slate-500">
+                                            Thao tác
+                                        </th>
                                     </tr>
                                 </thead>
 
@@ -453,6 +478,25 @@ const PReports = () => {
                                             <td className="min-w-[180px] px-5 py-4 text-sm text-slate-500">
                                                 {item.failureReason || "--"}
                                             </td>
+
+                                            <td className="whitespace-nowrap px-5 py-4 text-right">
+                                                {item.status === "Completed" ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                            openOrderDetail(item)
+                                                        }
+                                                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+                                                    >
+                                                        <Eye className="h-3.5 w-3.5" />
+                                                        Xem đơn
+                                                    </button>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400">
+                                                        --
+                                                    </span>
+                                                )}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -487,6 +531,13 @@ const PReports = () => {
                     </div>
                 </section>
             </div>
+
+            <PackagingOrderDetailModal
+                open={detailModalOpen}
+                orderId={detailOrderId}
+                highlightOrderItemId={detailOrderItemId}
+                onClose={closeOrderDetail}
+            />
         </main>
     )
 }

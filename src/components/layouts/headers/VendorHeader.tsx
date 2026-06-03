@@ -52,7 +52,6 @@ type SearchIndexPayload = {
 type CartItem = { qty: number }
 
 const HOME_ROUTE = "/"
-const IMPACT_ROUTE = "/impact"
 const PARTNER_ROUTE = "/partner/register"
 const CART_ROUTE = "/cart"
 const ORDERS_ROUTE = "/orders"
@@ -103,7 +102,6 @@ const CustomerHeader = () => {
         () => [
             { label: "Trang Chủ", key: "home" as const },
             { label: "Cửa Hàng", key: "shop" as const },
-            { label: "Tác Động", key: "impact" as const },
             { label: "Đối Tác", key: "partner" as const },
         ],
         []
@@ -147,14 +145,7 @@ const CustomerHeader = () => {
     const currentQuery = new URLSearchParams(location.search)
     const currentView = currentQuery.get("view")
 
-    const isActiveNav = (key: "home" | "shop" | "impact" | "partner") => {
-        if (key === "impact") {
-            return (
-                location.pathname === IMPACT_ROUTE ||
-                location.pathname.startsWith(`${IMPACT_ROUTE}/`)
-            )
-        }
-
+    const isActiveNav = (key: "home" | "shop" | "partner") => {
         if (key === "partner") {
             return (
                 location.pathname === PARTNER_ROUTE ||
@@ -222,11 +213,6 @@ const CustomerHeader = () => {
         })
     }
 
-    const goImpact = () => {
-        navigate(IMPACT_ROUTE)
-        closeAllMenus()
-    }
-
     const goPartner = () => {
         if (!user) {
             navigate(LOGIN_ROUTE, {
@@ -240,7 +226,7 @@ const CustomerHeader = () => {
         closeAllMenus()
     }
 
-    const handleNavClick = (key: "home" | "shop" | "impact" | "partner") => {
+    const handleNavClick = (key: "home" | "shop" | "partner") => {
         if (key === "home") {
             goHome()
             return
@@ -248,11 +234,6 @@ const CustomerHeader = () => {
 
         if (key === "shop") {
             goShop()
-            return
-        }
-
-        if (key === "impact") {
-            goImpact()
             return
         }
 

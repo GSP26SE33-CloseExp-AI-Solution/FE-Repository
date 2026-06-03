@@ -135,6 +135,7 @@ const MyOrderDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true)
     const [canceling, setCanceling] = useState(false)
     const [paying, setPaying] = useState(false)
+    const [confirmingReceipt, setConfirmingReceipt] = useState(false)
     const [error, setError] = useState("")
     const [pickupCatalogPoint, setPickupCatalogPoint] =
         useState<PickupPoint | null>(null)
@@ -273,6 +274,12 @@ const MyOrderDetailPage: React.FC = () => {
 
     const isPending = useMemo(
         () => (order?.status || "").toLowerCase() === "pending",
+        [order?.status],
+    )
+
+    const isDeliveredWaitConfirm = useMemo(
+        () =>
+            (order?.status || "").toLowerCase() === "deliveredwaitconfirm",
         [order?.status],
     )
 
@@ -429,6 +436,32 @@ const MyOrderDetailPage: React.FC = () => {
             toast.error(e?.message || "Không thể hủy đơn hàng.")
         } finally {
             setCanceling(false)
+        }
+    }
+
+    const handleConfirmReceipt = async () => {
+        if (!order || !isDeliveredWaitConfirm || confirmingReceipt) return
+
+        const ok = window.confirm(
+            "Bạn xác nhận đã nhận đủ hàng? Sau khi xác nhận, đơn sẽ chuyển sang trạng thái hoàn tất.",
+        )
+        if (!ok) return
+
+        try {
+            setConfirmingReceipt(true)
+            await orderService.confirmOrderReceipt(order.orderId)
+
+            const nextOrder = await orderService.getOrderDetails(order.orderId)
+            setOrder(nextOrder)
+            toast.success("Đã xác nhận nhận hàng. Đơn đã hoàn tất.")
+        } catch (e: unknown) {
+            const message =
+                e instanceof Error
+                    ? e.message
+                    : "Không thể xác nhận đã nhận hàng."
+            toast.error(message)
+        } finally {
+            setConfirmingReceipt(false)
         }
     }
 
@@ -601,6 +634,28 @@ const MyOrderDetailPage: React.FC = () => {
                                         />
                                     ) : null}
                                     Thanh toán lại
+                                </button>
+                            ) : null}
+
+                            {isDeliveredWaitConfirm ? (
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmReceipt}
+                                    disabled={confirmingReceipt}
+                                    className={cn(
+                                        primaryBtn,
+                                        "gap-1.5 !bg-emerald-600 hover:!bg-emerald-700",
+                                    )}
+                                >
+                                    {confirmingReceipt ? (
+                                        <Loader2
+                                            size={14}
+                                            className="animate-spin"
+                                        />
+                                    ) : (
+                                        <ShieldCheck size={14} />
+                                    )}
+                                    Tôi đã nhận đủ hàng
                                 </button>
                             ) : null}
 
