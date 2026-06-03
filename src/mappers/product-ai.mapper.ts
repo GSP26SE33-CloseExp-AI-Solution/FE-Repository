@@ -2,6 +2,7 @@ import type {
     BarcodeLookupInfoDto,
     ExistingProductSummaryDto,
     OcrExtractedInfoDto,
+    OcrPrefillFieldDto,
     ProductWorkflowMode,
     ProductWorkflowState,
     ProductWorkflowStep,
@@ -51,6 +52,9 @@ const normalizeDateInput = (value?: string | null) => {
     }
     return date.toISOString().slice(0, 10)
 }
+
+const prefillValue = (field?: OcrPrefillFieldDto | null) =>
+    (field?.value || "").trim()
 
 const normalizeStatusKey = (status?: string | number | null) => {
     if (typeof status === "number") return status
@@ -314,6 +318,7 @@ export const mapWorkflowAnalyzeImageResultToState = (
 ): ProductWorkflowState => {
     const extracted: OcrExtractedInfoDto | null = result.extractedInfo || null
     const lookup = result.barcodeLookupInfo || null
+    const prefill = result.prefillFields || null
 
     return {
         ...previous,
@@ -325,32 +330,38 @@ export const mapWorkflowAnalyzeImageResultToState = (
         productForm: {
             ...previous.productForm,
             barcode: firstText(
+                prefillValue(prefill?.barcode),
                 extracted?.barcode,
                 lookup?.barcode,
                 previous.productForm.barcode,
                 previous.barcode,
             ),
             name: firstText(
+                prefillValue(prefill?.name),
                 extracted?.name,
                 lookup?.productName,
                 previous.productForm.name,
             ),
             brand: firstText(
+                prefillValue(prefill?.brand),
                 extracted?.brand,
                 lookup?.brand,
                 previous.productForm.brand,
             ),
             categoryName: firstText(
+                prefillValue(prefill?.category),
                 extracted?.category,
                 lookup?.category,
                 previous.productForm.categoryName,
             ),
             manufacturer: firstText(
+                prefillValue(prefill?.manufacturer),
                 extracted?.manufacturer,
                 lookup?.manufacturer,
                 previous.productForm.manufacturer,
             ),
             origin: firstText(
+                prefillValue(prefill?.origin),
                 extracted?.origin,
                 lookup?.country,
                 previous.productForm.origin,
@@ -360,6 +371,7 @@ export const mapWorkflowAnalyzeImageResultToState = (
                 lookup?.description,
             ),
             ingredients: firstText(
+                prefillValue(prefill?.ingredients),
                 stringifyIngredients(extracted?.ingredients),
                 stringifyIngredients(lookup?.ingredients),
                 previous.productForm.ingredients,

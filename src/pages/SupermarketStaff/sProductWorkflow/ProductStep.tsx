@@ -12,6 +12,7 @@ import {
 import type {
     ExistingProductSummaryDto,
     LocalImageFile,
+    OcrPrefillFieldsDto,
     ProductFormState,
     ProductWorkflowMode,
     WorkflowAnalyzeImageResultDto,
@@ -59,6 +60,8 @@ type Props = {
     externalProducts: ExistingProductSummaryDto[]
     selectedReferenceProductId?: string
     analyzeResult: WorkflowAnalyzeImageResultDto | null
+    prefillFields?: OcrPrefillFieldsDto | null
+    missingRequiredFields?: string[] | null
     images: LocalImageFile[]
     uploadError: string | null
     usingCamera: boolean
@@ -100,6 +103,26 @@ const formatConfidence = (value?: number | null) => {
 const stringifyIngredients = (value?: string[] | null) => {
     if (!value?.length) return "—"
     return value.filter(Boolean).join(", ")
+}
+
+const SOURCE_LABEL: Record<string, string> = {
+    ocr_llm: "OCR/LLM",
+    barcode_lookup: "Barcode lookup",
+    rule_based: "Rule-based",
+    missing: "Thiếu dữ liệu",
+}
+
+const STATUS_LABEL: Record<string, string> = {
+    ok: "Tốt",
+    needs_review: "Cần kiểm tra",
+    missing: "Thiếu",
+}
+
+const statusClass = (status?: string | null) => {
+    if (status === "ok") return "bg-emerald-100 text-emerald-700 border-emerald-200"
+    if (status === "needs_review")
+        return "bg-amber-100 text-amber-700 border-amber-200"
+    return "bg-slate-100 text-slate-600 border-slate-200"
 }
 
 const OCR_PROGRESS_STEPS: OcrProgressStep[] = [
@@ -206,6 +229,8 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
     externalProducts,
     selectedReferenceProductId,
     analyzeResult,
+    prefillFields,
+    missingRequiredFields,
     images,
     uploadError,
     usingCamera,
@@ -506,6 +531,56 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                                     Độ tin cậy: {formatConfidence(analyzeResult.confidence)}
                                 </div>
                             </div>
+
+                            {prefillFields ? (
+                                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                                    {(
+                                        [
+                                            ["name", "Tên sản phẩm"],
+                                            ["brand", "Thương hiệu"],
+                                            ["barcode", "Mã vạch"],
+                                            ["category", "Danh mục"],
+                                        ] as const
+                                    ).map(([key, label]) => {
+                                        const field = prefillFields[key]
+                                        const source = field?.source || "missing"
+                                        const status = field?.status || "missing"
+                                        return (
+                                            <div
+                                                key={key}
+                                                className="rounded-xl border border-emerald-100 bg-white px-3 py-2 text-xs"
+                                            >
+                                                <div className="font-semibold text-slate-700">{label}</div>
+                                                <div className="mt-1 text-slate-600">
+                                                    {field?.value || "—"}
+                                                </div>
+                                                <div className="mt-2 flex items-center gap-2">
+                                                    <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700">
+                                                        {SOURCE_LABEL[source] || source}
+                                                    </span>
+                                                    <span
+                                                        className={cn(
+                                                            "rounded-full border px-2 py-0.5 text-[11px]",
+                                                            statusClass(status),
+                                                        )}
+                                                    >
+                                                        {STATUS_LABEL[status] || status}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            ) : null}
+
+                            {missingRequiredFields?.length ? (
+                                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                    Trường cần bổ sung trước khi tạo sản phẩm:{" "}
+                                    <span className="font-semibold">
+                                        {missingRequiredFields.join(", ")}
+                                    </span>
+                                </div>
+                            ) : null}
                         </div>
                     ) : (
                         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">

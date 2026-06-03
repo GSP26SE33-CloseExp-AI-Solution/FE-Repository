@@ -13,7 +13,7 @@ const supermarketStaffMenuItems: SidebarMenuItem[] = [
     { label: "Tổng quan", path: "/supermarketStaff/dashboard", icon: LayoutDashboard, end: true },
     { label: "Sản phẩm", path: "/supermarketStaff/products", icon: Box },
     {
-        label: "Đơn vị bán",
+        label: "Đơn vị mua",
         path: "/supermarketStaff/purchase-units",
         icon: Scale,
     },

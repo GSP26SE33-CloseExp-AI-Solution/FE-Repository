@@ -7,11 +7,13 @@ import {
 import { useAuthContext } from "@/contexts/AuthContext"
 import { useLogoutAll } from "@/hooks/useLogoutAll"
 import { Bot } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const SupermarketStaffHeader = () => {
     const config = STAFF_HEADER_CONFIG.SupermarketStaff
     const { supermarketName } = useAuthContext()
     const { logoutAll, loggingOutAll } = useLogoutAll()
+    const navigate = useNavigate()
 
     return (
         <BaseStaffHeader
@@ -54,6 +56,7 @@ const SupermarketStaffHeader = () => {
 
                     <button
                         type="button"
+                        onClick={() => navigate("/supermarketStaff/products/workflow")}
                         className="inline-flex h-10 items-center rounded-xl border border-sky-200 bg-white px-3 text-sm font-medium text-sky-700 transition hover:bg-sky-50"
                     >
                         Thêm sản phẩm

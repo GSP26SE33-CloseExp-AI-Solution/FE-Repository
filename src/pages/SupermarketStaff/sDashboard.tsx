@@ -277,7 +277,6 @@ const SupermarketDashboard: React.FC = () => {
                         : nextLots.length,
                 )
             } catch (error) {
-                console.error("SupermarketDashboard.loadDashboard -> error:", error)
                 toast.error("Không tải được dashboard siêu thị")
                 setWorkflowSummary(null)
                 setLots([])

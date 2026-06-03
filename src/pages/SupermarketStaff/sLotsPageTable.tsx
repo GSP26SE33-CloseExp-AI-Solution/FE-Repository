@@ -713,8 +713,7 @@ const ProductsLotsPage: React.FC = () => {
                     (Array.isArray(units) ? units : []).map((unit) => [unit.unitId, unit]),
                 )
                 setUnitById(map)
-            } catch (error) {
-                console.error("ProductsLotsPage.loadUnits -> error:", error)
+            } catch {
             }
         }
 
@@ -1152,10 +1151,6 @@ const ProductsLotsPage: React.FC = () => {
                 actualNutrition === expectedNutrition
 
             if (!didChange) {
-                console.warn(
-                    "ProductsLotsPage.handleSaveProduct -> BE trả success nhưng dữ liệu sau reload không đổi",
-                )
-
                 toast.error(
                     updateResponse.message ||
                     "BE báo thành công nhưng dữ liệu chưa được cập nhật thật",
@@ -1190,8 +1185,6 @@ const ProductsLotsPage: React.FC = () => {
                     : updateResponse.message || "Cập nhật thông tin sản phẩm thành công",
             )
         } catch (error) {
-            console.error("ProductsLotsPage.handleSaveProduct -> error:", error)
-
             toast.error(
                 error instanceof Error
                     ? error.message
@@ -1933,18 +1926,7 @@ const ProductsLotsPage: React.FC = () => {
                                                 src={getImageUrl(popupImageUrl)}
                                                 alt={selectedLot.productName || selectedProductDetail?.name || selectedProduct?.name || "sản phẩm"}
                                                 className="h-[280px] w-full object-cover"
-                                                onLoad={() => {
-                                                    console.log("[Product image] load success:", {
-                                                        rawUrl: popupImageUrl,
-                                                        resolvedUrl: getImageUrl(popupImageUrl),
-                                                    })
-                                                }}
                                                 onError={(event) => {
-                                                    console.error("[Product image] load failed:", {
-                                                        rawUrl: popupImageUrl,
-                                                        resolvedUrl: getImageUrl(popupImageUrl),
-                                                    })
-
                                                     if (event.currentTarget.src !== `${window.location.origin}/placeholder.png`) {
                                                         event.currentTarget.src = "/placeholder.png"
                                                     }

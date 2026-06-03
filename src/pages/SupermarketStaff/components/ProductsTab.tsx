@@ -77,7 +77,6 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ supermarketId, onViewDetail }
                 ),
             )
         } catch (error) {
-            console.error("ProductsTab.loadProducts -> error:", error)
             toast.error("Không tải được danh sách sản phẩm")
             setProducts([])
             setServerTotal(0)

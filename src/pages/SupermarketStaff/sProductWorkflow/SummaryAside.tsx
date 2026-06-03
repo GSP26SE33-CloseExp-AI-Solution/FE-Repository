@@ -135,6 +135,12 @@ const WorkflowSummaryAside: React.FC<Props> = ({ workflow, images, unitOptions =
                     {workflow.analyzeResult ? (
                         <InfoRow label="Độ tin cậy OCR" value={ocrConfidence} />
                     ) : null}
+                    {workflow.analyzeResult?.missingRequiredFields?.length ? (
+                        <InfoRow
+                            label="Thiếu bắt buộc"
+                            value={workflow.analyzeResult.missingRequiredFields.join(", ")}
+                        />
+                    ) : null}
 
                     {workflow.createdProduct?.productId || workflow.ownProduct?.productId ? (
                         <InfoRow

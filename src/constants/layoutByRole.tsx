@@ -45,7 +45,7 @@ export const STAFF_HEADER_CONFIG = {
         meta: (
             <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
                 <PackageCheck size={12} />
-                Operation desk
+                Trung tâm vận hành
             </span>
         ),
     },
@@ -59,7 +59,7 @@ export const STAFF_HEADER_CONFIG = {
         meta: (
             <span className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700">
                 <Store size={12} />
-                Store hub
+                Không gian siêu thị
             </span>
         ),
     },

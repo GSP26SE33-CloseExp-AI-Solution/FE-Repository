@@ -81,6 +81,13 @@ const formatUnit = (name?: string | null, symbol?: string | null) => {
     return safeSymbol ? `${safeName} (${safeSymbol})` : safeName
 }
 
+const normalizeSourceLabel = (source?: string | null, fallback = "Nguồn tham khảo") => {
+    if (!source) return fallback
+    const trimmed = source.trim()
+    if (!trimmed) return fallback
+    return trimmed.replace(/^https?:\/\//i, "").replace(/^www\./i, "")
+}
+
 const WorkflowLotStep: React.FC<Props> = ({
     ownProduct,
     createdProduct,
@@ -240,6 +247,28 @@ const WorkflowLotStep: React.FC<Props> = ({
         (form.acceptedSuggestion ||
             (typeof form.finalUnitPrice === "number" && form.finalUnitPrice > 0)),
     )
+
+    const marketDetails = useMemo(() => {
+        if (!marketPriceData?.details?.length) return []
+        return marketPriceData.details
+            .filter((item) => typeof item.price === "number" && item.price > 0)
+            .slice(0, 10)
+            .map((item, index) => {
+                const sourceLabel = normalizeSourceLabel(item.source)
+                const storeLabel =
+                    item.storeName?.trim() || sourceLabel || `Nguồn #${index + 1}`
+                return {
+                    ...item,
+                    storeName: storeLabel,
+                    key: `${item.storeName || sourceLabel}-${index}`,
+                    sourceLabel,
+                    storeLabel,
+                    hasLink: Boolean(item.sourceUrl || item.source),
+                }
+            })
+    }, [marketPriceData?.details])
+
+    const displayedSourceCount = marketDetails.length
 
     return (
         <div className="space-y-5">
@@ -640,13 +669,27 @@ const WorkflowLotStep: React.FC<Props> = ({
                                         </div>
                                     </div>
 
-                                    {marketPriceData.details && marketPriceData.details.length > 0 ? (
+                                    <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                                        <p>
+                                            Đang hiển thị <span className="font-semibold text-slate-900">{displayedSourceCount}</span> nguồn
+                                            {marketPriceData.sourceCount && marketPriceData.sourceCount > displayedSourceCount
+                                                ? ` / ${marketPriceData.sourceCount} nguồn tìm được`
+                                                : ""} (tối đa 10 nguồn).
+                                        </p>
+                                        {marketPriceData.lastUpdated ? (
+                                            <p className="mt-1">
+                                                Cập nhật gần nhất: <span className="font-medium text-slate-900">{formatDateTimeVN(marketPriceData.lastUpdated)}</span>
+                                            </p>
+                                        ) : null}
+                                    </div>
+
+                                    {marketDetails.length > 0 ? (
                                         <div className="h-64 w-full relative">
                                             <div className="absolute -top-6 right-0 text-xs italic text-slate-400">
                                                 * Bấm vào cột biểu đồ để mở trang gốc
                                             </div>
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={marketPriceData.details} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                                <BarChart data={marketDetails} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                                     <XAxis dataKey="storeName" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
                                                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
@@ -665,13 +708,13 @@ const WorkflowLotStep: React.FC<Props> = ({
                                                         maxBarSize={50}
                                                     >
                                                         {
-                                                            marketPriceData.details.map((entry, index) => (
+                                                            marketDetails.map((entry, index) => (
                                                                 <Cell 
-                                                                    key={`cell-${index}`} 
+                                                                    key={entry.key}
                                                                     fill={entry.price === marketPriceData.minPrice ? '#10B981' : entry.price === marketPriceData.maxPrice ? '#F43F5E' : '#6366F1'} 
-                                                                    style={{ cursor: entry.source ? 'pointer' : 'default' }}
+                                                                    style={{ cursor: entry.sourceUrl || entry.source ? 'pointer' : 'default' }}
                                                                     onClick={() => {
-                                                                        const rawSource = entry.source;
+                                                                        const rawSource = entry.sourceUrl || entry.source;
                                                                         if (!rawSource) return;
 
                                                                         let finalUrl = rawSource.trim();
@@ -686,7 +729,6 @@ const WorkflowLotStep: React.FC<Props> = ({
                                                                             new URL(finalUrl);
                                                                             window.open(finalUrl, '_blank', 'noopener,noreferrer');
                                                                         } catch (err) {
-                                                                            console.error("Invalid URL:", finalUrl, err);
                                                                             toast.error("Đường dẫn không đúng định dạng: " + rawSource);
                                                                         }
                                                                     }}
@@ -702,6 +744,54 @@ const WorkflowLotStep: React.FC<Props> = ({
                                             Chưa có đủ dữ liệu từ các nguồn khác nhau để vẽ biểu đồ.
                                         </div>
                                     )}
+
+                                    {marketDetails.length > 0 ? (
+                                        <div className="mt-5 overflow-hidden rounded-xl border border-slate-200">
+                                            <div className="grid grid-cols-[1.6fr_1fr_1fr] bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                                <span>Nguồn</span>
+                                                <span>Giá</span>
+                                                <span>Liên kết</span>
+                                            </div>
+                                            <div className="max-h-52 overflow-auto divide-y divide-slate-100">
+                                                {marketDetails.map((entry) => {
+                                                    const hrefCandidate = entry.sourceUrl || entry.source
+                                                    let safeHref = ""
+                                                    if (hrefCandidate) {
+                                                        safeHref = hrefCandidate.startsWith("http")
+                                                            ? hrefCandidate
+                                                            : `https://${hrefCandidate}`
+                                                    }
+
+                                                    return (
+                                                        <div
+                                                            key={`row-${entry.key}`}
+                                                            className="grid grid-cols-[1.6fr_1fr_1fr] items-center px-4 py-2 text-sm text-slate-700"
+                                                        >
+                                                            <div>
+                                                                <p className="font-medium text-slate-800">{entry.storeLabel}</p>
+                                                                <p className="text-xs text-slate-500">{entry.sourceLabel}</p>
+                                                            </div>
+                                                            <span className="font-semibold text-slate-900">
+                                                                {formatCurrencyVN(entry.price ?? undefined)}
+                                                            </span>
+                                                            {entry.hasLink && safeHref ? (
+                                                                <a
+                                                                    href={safeHref}
+                                                                    target="_blank"
+                                                                    rel="noreferrer noopener"
+                                                                    className="text-indigo-600 hover:text-indigo-700 hover:underline"
+                                                                >
+                                                                    Mở nguồn
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-400">Không có</span>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    ) : null}
                                 </div>
                             ) : (
                                 <div className="text-center py-12">

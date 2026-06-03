@@ -243,7 +243,6 @@ const ProductWorkflowPage: React.FC = () => {
             setUsingCamera(true)
             setUploadError(null)
         } catch (error) {
-            console.error("ProductWorkflowPage.startCamera -> error:", error)
             setUploadError("Không thể mở camera. Vui lòng kiểm tra quyền truy cập.")
         }
     }
@@ -372,8 +371,7 @@ const ProductWorkflowPage: React.FC = () => {
             try {
                 const data = await categoryService.getCategories(false)
                 setCategories(Array.isArray(data) ? data : [])
-            } catch (error) {
-                console.error("ProductWorkflowPage.loadCategories -> error:", error)
+            } catch {
                 toast.error("Không tải được danh mục sản phẩm")
             }
         }
@@ -394,8 +392,7 @@ const ProductWorkflowPage: React.FC = () => {
                         }))
                         : [],
                 )
-            } catch (error) {
-                console.error("ProductWorkflowPage.loadUnits -> error:", error)
+            } catch {
                 toast.error("Không tải được đơn vị sản phẩm")
             }
         }
@@ -555,12 +552,6 @@ const ProductWorkflowPage: React.FC = () => {
                 `Đã quét thành công barcode: ${result.barcode || barcode}`,
             )
         } catch (error: any) {
-            console.error("ProductWorkflowPage.handleIdentify -> error:", error)
-            console.error(
-                "ProductWorkflowPage.handleIdentify -> response data:",
-                error?.response?.data,
-            )
-
             toast.error(
                 error?.response?.data?.errors?.[0] ||
                 error?.response?.data?.message ||
@@ -668,12 +659,6 @@ const ProductWorkflowPage: React.FC = () => {
 
             toast.success(`Hệ thống đã phân tích ${results.length} ảnh và điền sẵn thông tin`)
         } catch (error: any) {
-            console.error("ProductWorkflowPage.handleAnalyzeImage -> error:", error)
-            console.error(
-                "ProductWorkflowPage.handleAnalyzeImage -> response data:",
-                error?.response?.data,
-            )
-
             toast.error(
                 error?.response?.data?.errors?.[0] ||
                 error?.response?.data?.message ||
@@ -772,12 +757,6 @@ const ProductWorkflowPage: React.FC = () => {
                     : "Đã tạo sản phẩm thành công",
             )
         } catch (error: any) {
-            console.error("ProductWorkflowPage.handleSubmitProduct -> error:", error)
-            console.error(
-                "ProductWorkflowPage.handleSubmitProduct -> response data:",
-                error?.response?.data,
-            )
-
             toast.error(
                 error?.response?.data?.errors?.[0] ||
                 error?.response?.data?.message ||
@@ -894,12 +873,6 @@ const ProductWorkflowPage: React.FC = () => {
                     : "Tạo lot + định giá + đăng bán thành công",
             )
         } catch (error: any) {
-            console.error("ProductWorkflowPage.handleSubmitLot -> error:", error)
-            console.error(
-                "ProductWorkflowPage.handleSubmitLot -> response data:",
-                error?.response?.data,
-            )
-
             const responseMessage = error?.response?.data?.message || ""
             const responseErrors = error?.response?.data?.errors || []
 
@@ -1019,6 +992,8 @@ const ProductWorkflowPage: React.FC = () => {
                                 externalProducts={workflow.externalProducts}
                                 selectedReferenceProductId={workflow.referenceProduct?.productId}
                                 analyzeResult={workflow.analyzeResult}
+                                prefillFields={workflow.analyzeResult?.prefillFields}
+                                missingRequiredFields={workflow.analyzeResult?.missingRequiredFields}
                                 images={images}
                                 uploadError={uploadError}
                                 usingCamera={usingCamera}

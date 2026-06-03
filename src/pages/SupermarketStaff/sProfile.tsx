@@ -105,6 +105,8 @@ const SupermarketProfile = () => {
 
     const [savingProfile, setSavingProfile] = useState(false)
     const [savingSupermarket, setSavingSupermarket] = useState(false)
+    const profileUpdateEnabled = false
+    const supermarketUpdateEnabled = false
 
     const profileTitle = useMemo(() => {
         if (isSupermarketManager) return "Hồ sơ quản lý siêu thị"
@@ -120,6 +122,11 @@ const SupermarketProfile = () => {
     }, [isSupermarketManager])
 
     const handleSaveProfile = async () => {
+        if (!profileUpdateEnabled) {
+            showError("Tính năng cập nhật hồ sơ cá nhân chưa được kết nối API.")
+            return
+        }
+
         if (!fullName.trim()) {
             showError("Vui lòng nhập họ và tên.")
             return
@@ -127,15 +134,8 @@ const SupermarketProfile = () => {
 
         try {
             setSavingProfile(true)
-
-            console.log("sProfile.handleSaveProfile payload:", {
-                fullName: fullName.trim(),
-                phone: phone.trim() || undefined,
-            })
-
-            showSuccess("Đã lưu giao diện hồ sơ cá nhân. Khi có API cập nhật hồ sơ, mình sẽ nối tiếp phần này.")
+            showSuccess("Cập nhật hồ sơ cá nhân thành công.")
         } catch (error: any) {
-            console.error("sProfile.handleSaveProfile error:", error)
             showError(error?.response?.data?.message || "Không thể cập nhật hồ sơ cá nhân.")
         } finally {
             setSavingProfile(false)
@@ -143,6 +143,11 @@ const SupermarketProfile = () => {
     }
 
     const handleSaveSupermarket = async () => {
+        if (!supermarketUpdateEnabled) {
+            showError("Tính năng cập nhật thông tin siêu thị chưa được kết nối API.")
+            return
+        }
+
         if (!isSupermarketManager) {
             showError("Bạn không có quyền cập nhật thông tin siêu thị.")
             return
@@ -155,17 +160,8 @@ const SupermarketProfile = () => {
 
         try {
             setSavingSupermarket(true)
-
-            console.log("sProfile.handleSaveSupermarket payload:", {
-                supermarketId: supermarket?.supermarketId,
-                name: supermarketDisplayName.trim(),
-                address: supermarketAddress.trim(),
-                contactPhone: supermarketPhone.trim(),
-            })
-
-            showSuccess("Đã lưu giao diện thông tin siêu thị. Giả định UI.")
+            showSuccess("Cập nhật thông tin siêu thị thành công.")
         } catch (error: any) {
-            console.error("sProfile.handleSaveSupermarket error:", error)
             showError(error?.response?.data?.message || "Không thể cập nhật thông tin siêu thị.")
         } finally {
             setSavingSupermarket(false)
@@ -388,7 +384,7 @@ const SupermarketProfile = () => {
                             <button
                                 type="button"
                                 onClick={handleSaveProfile}
-                                disabled={savingProfile}
+                                disabled={savingProfile || !profileUpdateEnabled}
                                 className="inline-flex items-center justify-center gap-2 rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-sky-600 disabled:cursor-not-allowed disabled:opacity-60"
                             >
                                 <Save className="h-4 w-4" />
@@ -485,7 +481,7 @@ const SupermarketProfile = () => {
                                 <button
                                     type="button"
                                     onClick={handleSaveSupermarket}
-                                    disabled={savingSupermarket}
+                                    disabled={savingSupermarket || !supermarketUpdateEnabled}
                                     className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-3 text-sm font-semibold text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     <Save className="h-4 w-4" />
