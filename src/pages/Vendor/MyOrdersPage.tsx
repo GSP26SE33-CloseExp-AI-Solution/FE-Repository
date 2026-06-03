@@ -10,6 +10,7 @@ import {
     ShoppingBag,
     Truck,
 } from "lucide-react"
+import toast from "react-hot-toast"
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
@@ -140,11 +141,52 @@ const MyOrdersPage: React.FC = () => {
     const [refundByOrderId, setRefundByOrderId] = useState<
         Record<string, RefundDetails>
     >({})
+    const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(
+        null,
+    )
 
     const breadcrumbs = useMemo(
         () => getBreadcrumbsByPath(location.pathname),
         [location.pathname],
     )
+
+    const handleConfirmReceipt = async (order: OrderDetails) => {
+        if (confirmingOrderId) return
+
+        const ok = window.confirm(
+            `Xác nhận đã nhận đủ hàng cho đơn ${order.orderCode || order.orderId}?`,
+        )
+        if (!ok) return
+
+        try {
+            setConfirmingOrderId(order.orderId)
+            await orderService.confirmOrderReceipt(order.orderId)
+
+            const [pagedRes, allRes] = await Promise.all([
+                orderService.getMyOrders({
+                    pageNumber: page,
+                    pageSize,
+                }),
+                orderService.getMyOrders({
+                    pageNumber: 1,
+                    pageSize: 1000,
+                }),
+            ])
+
+            setOrders(pagedRes.items || [])
+            setTotalResult(pagedRes.totalResult || 0)
+            setAllOrders(allRes.items || [])
+            toast.success("Đã xác nhận nhận hàng. Đơn đã hoàn tất.")
+        } catch (e: unknown) {
+            const message =
+                e instanceof Error
+                    ? e.message
+                    : "Không thể xác nhận đã nhận hàng."
+            toast.error(message)
+        } finally {
+            setConfirmingOrderId(null)
+        }
+    }
 
     useEffect(() => {
         let mounted = true
@@ -461,6 +503,10 @@ const MyOrdersPage: React.FC = () => {
                     <div className="space-y-3">
                         {filteredOrders.map((order) => {
                             const meta = getOrderMeta(order.status)
+                            const isDeliveredWaitConfirm =
+                                (order.status || "") === "DeliveredWaitConfirm"
+                            const isConfirming =
+                                confirmingOrderId === order.orderId
                             const isDelivery = order.deliveryType === "DELIVERY"
                             const catalogPickup =
                                 !isDelivery && order.collectionId
@@ -640,6 +686,27 @@ const MyOrdersPage: React.FC = () => {
                                                     : "Mở chi tiết để xem sản phẩm"}
                                             </div>
 
+                                            {isDeliveredWaitConfirm ? (
+                                                <button
+                                                    type="button"
+                                                    disabled={isConfirming}
+                                                    onClick={() =>
+                                                        void handleConfirmReceipt(
+                                                            order,
+                                                        )
+                                                    }
+                                                    className={cn(
+                                                        primaryBtn,
+                                                        "mt-4 w-full !bg-emerald-600 hover:!bg-emerald-700",
+                                                    )}
+                                                >
+                                                    {isConfirming ? (
+                                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                                    ) : null}
+                                                    Tôi đã nhận đủ hàng
+                                                </button>
+                                            ) : null}
+
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -649,8 +716,10 @@ const MyOrdersPage: React.FC = () => {
                                                     )
                                                 }}
                                                 className={cn(
-                                                    primaryBtn,
-                                                    "mt-4 w-full",
+                                                    isDeliveredWaitConfirm
+                                                        ? secondaryBtn
+                                                        : primaryBtn,
+                                                    "mt-2 w-full",
                                                 )}
                                             >
                                                 Xem chi tiết đơn

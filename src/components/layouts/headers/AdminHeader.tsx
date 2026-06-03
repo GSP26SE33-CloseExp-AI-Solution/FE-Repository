@@ -18,6 +18,7 @@ const AdminHeader = () => {
             centerHint={config.centerHint}
             extraMeta={config.meta}
             notificationRoute={STAFF_NOTIFICATION_ROUTES.Admin}
+            notificationScope="admin"
             onLogoutAll={logoutAll}
             loggingOutAll={loggingOutAll}
             headerActions={

@@ -88,3 +88,11 @@ export const formatNotificationDateTime = (value?: string | null) => {
 export const getNotificationTypeLabel = (typeKey: NotificationTypeKey) =>
     NOTIFICATION_TYPE_FILTERS.find((item) => item.value === typeKey)?.label ??
     "Thông báo"
+
+export type NotificationListScope = "mine" | "admin"
+
+export const countUnreadNotifications = (items: ApiNotification[]) =>
+    items.filter((item) => !item.isRead).length
+
+export const formatNotificationBadgeCount = (count: number) =>
+    count > 99 ? "99+" : String(count)
