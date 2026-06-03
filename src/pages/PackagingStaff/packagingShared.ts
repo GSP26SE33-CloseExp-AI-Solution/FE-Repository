@@ -61,6 +61,35 @@ export const normalizeStatus = (value?: string | number) =>
         .toLowerCase()
         .replace(/[\s_-]+/g, "")
 
+/** Chưa gom — chỉ dòng Pending được chọn trên trang thu gom. */
+export const isPackagingLineSelectableForCollect = (packagingStatus?: string) =>
+    normalizeStatus(packagingStatus) === "pending"
+
+/** Chưa hoàn tất đóng gói — Pending hoặc Packaging (khớp BE CompletePackaging). */
+export const isPackagingLineSelectableForPacking = (packagingStatus?: string) => {
+    const key = normalizeStatus(packagingStatus)
+    return key === "pending" || key === "packaging"
+}
+
+export const filterSelectablePackagingItemIds = (
+    items: PackagingOrderItem[] | undefined,
+    phase: "collect" | "packing",
+) => {
+    if (!items?.length) return []
+
+    const isSelectable =
+        phase === "collect"
+            ? (item: PackagingOrderItem) =>
+                  isPackagingLineSelectableForCollect(item.packagingStatus)
+            : (item: PackagingOrderItem) =>
+                  isPackagingLineSelectableForPacking(item.packagingStatus)
+
+    return items
+        .filter(isSelectable)
+        .map((item) => item.orderItemId)
+        .filter(Boolean)
+}
+
 /** BE order-level packagingStatus is often a Vietnamese progress summary, not an enum. */
 const normalizeSummaryText = (value?: string) =>
     String(value ?? "")
@@ -126,6 +155,10 @@ export const resolvePackagingOrderActionPhase = (
         return "view"
     }
 
+    if (isPackagingOrderFailed(packagingStatus, orderStatus, items)) {
+        return "view"
+    }
+
     if (items?.length) {
         const statuses = items.map((item) =>
             normalizeStatus(item.packagingStatus),
@@ -181,6 +214,51 @@ export const isPackagingOrderItemsCompleted = (
     )
 }
 
+export const isPackagingOrderItemsAllFailed = (
+    items?: PackagingOrderItem[],
+) => {
+    if (!items?.length) return false
+
+    return items.every(
+        (item) => normalizeStatus(item.packagingStatus) === "failed",
+    )
+}
+
+/** Summary when every line failed, e.g. "0 thành công, 1 thất bại". */
+export const isPackagingProgressSummaryAllFailed = (status?: string) => {
+    if (normalizeStatus(status) === "failed") return true
+
+    const raw = normalizeSummaryText(status)
+    if (!raw.includes("that bai")) return false
+
+    const match = raw.match(/(\d+)\s*thanh\s*cong.*?(\d+)\s*that\s*bai/)
+    if (!match) return false
+
+    const success = Number.parseInt(match[1], 10)
+    const failed = Number.parseInt(match[2], 10)
+
+    return (
+        !Number.isNaN(success) &&
+        !Number.isNaN(failed) &&
+        success === 0 &&
+        failed > 0
+    )
+}
+
+export const isPackagingOrderFailed = (
+    packagingStatus?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    if (normalizeStatus(orderStatus) === "failed") return true
+
+    if (items?.length && isPackagingOrderItemsAllFailed(items)) {
+        return true
+    }
+
+    return isPackagingProgressSummaryAllFailed(packagingStatus)
+}
+
 export const isPackagingOrderItemsHasActionable = (
     items?: PackagingOrderItem[],
 ) => {
@@ -188,12 +266,37 @@ export const isPackagingOrderItemsHasActionable = (
 
     return items.some((item) => {
         const value = normalizeStatus(item.packagingStatus)
-        return (
-            value === "pending" ||
-            value === "packaging" ||
-            value === "failed"
-        )
+        return value === "pending" || value === "packaging"
     })
+}
+
+export const isPackagingOrderPartiallyPackaged = (
+    packagingStatus?: string,
+    orderStatus?: string,
+    items?: PackagingOrderItem[],
+) => {
+    if (isPackagingOrderCompleted(packagingStatus, orderStatus, items)) {
+        return false
+    }
+
+    if (isPackagingOrderFailed(packagingStatus, orderStatus, items)) {
+        return false
+    }
+
+    if (items?.length) {
+        const hasCompleted = items.some(
+            (item) => normalizeStatus(item.packagingStatus) === "completed",
+        )
+        const hasOpen = items.some((item) => {
+            const value = normalizeStatus(item.packagingStatus)
+            return value === "pending" || value === "packaging"
+        })
+
+        return hasCompleted && hasOpen
+    }
+
+    const parsed = parsePackagingProgressSummary(packagingStatus)
+    return Boolean(parsed && parsed.done > 0 && parsed.open > 0)
 }
 
 export const isPackagingOrderCompleted = (
@@ -209,7 +312,15 @@ export const isPackagingOrderCompleted = (
         return true
     }
 
-    return normalizeStatus(orderStatus) === "readytoship"
+    if (normalizeStatus(orderStatus) === "readytoship") {
+        if (items?.length) {
+            return isPackagingOrderItemsCompleted(items)
+        }
+
+        return isPackagingProgressSummaryCompleted(packagingStatus)
+    }
+
+    return false
 }
 
 export const isPackagingOrderActionableFromSummary = (
@@ -220,8 +331,12 @@ export const isPackagingOrderActionableFromSummary = (
         return false
     }
 
+    if (isPackagingOrderFailed(packagingStatus, orderStatus)) {
+        return false
+    }
+
     const key = normalizeStatus(packagingStatus)
-    if (key === "pending" || key === "packaging" || key === "failed") {
+    if (key === "pending" || key === "packaging") {
         return true
     }
 
@@ -242,6 +357,10 @@ export const isPackagingOrderActionable = (
     items?: PackagingOrderItem[],
 ) => {
     if (isPackagingOrderCompleted(packagingStatus, orderStatus, items)) {
+        return false
+    }
+
+    if (isPackagingOrderFailed(packagingStatus, orderStatus, items)) {
         return false
     }
 
@@ -393,7 +512,13 @@ export const getPackagingActionLabel = (
         items,
     )
 
-    if (phase === "view") return "Xem đơn đã đóng gói"
+    if (phase === "view") {
+        if (isPackagingOrderFailed(status, orderStatus, items)) {
+            return "Xem đơn lỗi đóng gói"
+        }
+
+        return "Xem đơn đã đóng gói"
+    }
     if (phase === "collect") return "Bắt đầu gom hàng"
     if (phase === "packing") {
         if (

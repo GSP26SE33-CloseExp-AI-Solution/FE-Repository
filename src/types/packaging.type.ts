@@ -57,11 +57,19 @@ export type PackagingOrderSummary = {
     orderDate: string
 }
 
+export type PackagingActivityLog = {
+    changedAt: string
+    actionLabel: string
+    note: string
+    changedByUserId?: string | null
+}
+
 export type PackagingOrderDetail = PackagingOrderSummary & {
     packagingStaffId?: string | null
     packagingStaffName?: string | null
     lastPackagedAt?: string | null
     items: PackagingOrderItem[]
+    activityLogs?: PackagingActivityLog[]
 }
 
 /** GET /api/Packaging/history query params */

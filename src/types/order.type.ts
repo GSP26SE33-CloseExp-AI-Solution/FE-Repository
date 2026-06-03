@@ -399,6 +399,9 @@ export type OrderItemResponse = {
 	lineTotal?: number;
 	productName?: string;
 	expiryDate?: string;
+	packagingStatus?: string;
+	deliveryStatus?: string | null;
+	packagedAt?: string | null;
 };
 
 /**
@@ -427,6 +430,8 @@ export type OrderDetails = {
 	deliveryFee?: number;
 	systemUsageFeeAmount?: number;
 	status?: string;
+	/** Vietnamese packaging progress summary from BE (e.g. "1/2 dòng đã đóng gói xong, 1 dòng đang xử lý"). */
+	packagingStatus?: string;
 	orderDate?: string;
 	addressId?: string | null;
 	promotionId?: string | null;
@@ -435,6 +440,11 @@ export type OrderDetails = {
 	cancelDeadline?: string;
 	createdAt?: string;
 	updatedAt?: string;
+	latestTransactionId?: string | null;
+	paymentStatus?: string;
+	paymentMethod?: string | null;
+	payOsOrderCode?: number | null;
+	checkoutUrl?: string | null;
 	orderItems?: OrderItemResponse[];
 };
 

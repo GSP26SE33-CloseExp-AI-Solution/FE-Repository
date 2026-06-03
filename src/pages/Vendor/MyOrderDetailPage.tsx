@@ -8,11 +8,21 @@ import {
     CreditCard,
     Loader2,
     MapPin,
+    Package,
     ReceiptText,
     ShieldCheck,
     ShoppingBag,
     Truck,
 } from "lucide-react"
+
+import {
+    getPackagingProgress,
+    getPackagingProgressClass,
+    getPackagingStatusClass,
+    getPackagingStatusLabel,
+    getPackagingStepText,
+} from "@/pages/PackagingStaff/packagingShared"
+import type { PackagingOrderItem } from "@/types/packaging.type"
 import toast from "react-hot-toast"
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
@@ -57,6 +67,22 @@ const formatDateTime = (value?: string) => {
         year: "numeric",
     }).format(date)
 }
+
+const mapOrderItemsToPackagingItems = (
+    items?: OrderDetails["orderItems"],
+): PackagingOrderItem[] | undefined =>
+    items?.map((item) => ({
+        orderItemId: item.orderItemId,
+        lotId: item.lotId,
+        productName: item.productName || item.lotId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subTotal:
+            item.lineTotal ??
+            item.totalPrice ??
+            item.unitPrice * item.quantity,
+        packagingStatus: item.packagingStatus ?? "Pending",
+    }))
 
 const getOrderStatusMeta = (status?: string) => {
     switch ((status || "").toLowerCase()) {
@@ -122,6 +148,75 @@ const getOrderStatusMeta = (status?: string) => {
                 className: "border-slate-200 bg-slate-50 text-slate-700",
                 note: "Trạng thái đơn hàng hiện chưa được xác định rõ.",
             }
+    }
+}
+
+const getPaymentStatusMeta = (
+    paymentStatus?: string,
+    orderStatus?: string,
+) => {
+    const payment = (paymentStatus || "").toLowerCase()
+
+    if (payment === "paid") {
+        return {
+            label: "Đã thanh toán",
+            containerClassName: "border-emerald-100 bg-emerald-50",
+            labelClassName: "text-emerald-700",
+        }
+    }
+
+    if (payment === "pending") {
+        return {
+            label: "Chưa thanh toán",
+            containerClassName: "border-amber-100 bg-amber-50",
+            labelClassName: "text-amber-700",
+        }
+    }
+
+    if (payment === "failed") {
+        return {
+            label: "Thanh toán thất bại",
+            containerClassName: "border-rose-100 bg-rose-50",
+            labelClassName: "text-rose-700",
+        }
+    }
+
+    // Fallback khi BE chưa trả paymentStatus (legacy)
+    const status = (orderStatus || "").toLowerCase()
+
+    if (status === "pending") {
+        return {
+            label: "Chưa thanh toán",
+            containerClassName: "border-amber-100 bg-amber-50",
+            labelClassName: "text-amber-700",
+        }
+    }
+
+    if (
+        status === "paid" ||
+        status === "readytoship" ||
+        status === "deliveredwaitconfirm" ||
+        status === "completed"
+    ) {
+        return {
+            label: "Đã thanh toán",
+            containerClassName: "border-emerald-100 bg-emerald-50",
+            labelClassName: "text-emerald-700",
+        }
+    }
+
+    if (status === "refunded") {
+        return {
+            label: "Đã hoàn tiền",
+            containerClassName: "border-fuchsia-100 bg-fuchsia-50",
+            labelClassName: "text-fuchsia-700",
+        }
+    }
+
+    return {
+        label: "Chưa rõ",
+        containerClassName: "border-slate-200 bg-slate-50",
+        labelClassName: "text-slate-700",
     }
 }
 
@@ -272,6 +367,53 @@ const MyOrderDetailPage: React.FC = () => {
         [order?.status],
     )
 
+    const packagingOrderItems = useMemo(
+        () => mapOrderItemsToPackagingItems(order?.orderItems),
+        [order?.orderItems],
+    )
+
+    const showPackagingSection = useMemo(() => {
+        if (!order) return false
+
+        const status = (order.status || "").toLowerCase()
+        if (
+            status === "pending" ||
+            status === "canceled" ||
+            status === "refunded"
+        ) {
+            return false
+        }
+
+        if (order.packagingStatus?.trim()) return true
+        if (status === "paid") return true
+
+        return (
+            packagingOrderItems?.some((item) =>
+                Boolean(item.packagingStatus?.trim()),
+            ) ?? false
+        )
+    }, [order, packagingOrderItems])
+
+    const packagingProgress = useMemo(() => {
+        if (!order) return 0
+
+        return getPackagingProgress(
+            order.packagingStatus,
+            order.status,
+            packagingOrderItems,
+        )
+    }, [order, packagingOrderItems])
+
+    const packagingStepText = useMemo(() => {
+        if (!order) return ""
+
+        return getPackagingStepText(
+            order.packagingStatus,
+            order.status,
+            packagingOrderItems,
+        )
+    }, [order, packagingOrderItems])
+
     const isPending = useMemo(
         () => (order?.status || "").toLowerCase() === "pending",
         [order?.status],
@@ -303,23 +445,10 @@ const MyOrderDetailPage: React.FC = () => {
         return new Date(order.cancelDeadline).getTime() >= Date.now()
     }, [order])
 
-    const paymentStatusLabel = useMemo(() => {
-        const status = (order?.status || "").toLowerCase()
-
-        if (status === "pending") return "Chưa thanh toán"
-        if (
-            status === "paid" ||
-            status === "readytoship" ||
-            status === "deliveredwaitconfirm" ||
-            status === "completed"
-        ) {
-            return "Đã thanh toán"
-        }
-        if (status === "refunded") return "Đã hoàn tiền"
-        if (status === "canceled" || status === "failed") return "Không thanh toán"
-
-        return "Chưa rõ"
-    }, [order?.status])
+    const paymentStatusMeta = useMemo(
+        () => getPaymentStatusMeta(order?.paymentStatus, order?.status),
+        [order?.paymentStatus, order?.status],
+    )
 
     const subtotal = useMemo(() => {
         if (!order?.orderItems?.length) return order?.totalAmount || 0
@@ -754,6 +883,23 @@ const MyOrderDetailPage: React.FC = () => {
                                                             },
                                                         )}
                                                     </div>
+
+                                                    {showPackagingSection &&
+                                                    item.packagingStatus ? (
+                                                        <span
+                                                            className={cn(
+                                                                "mt-2 inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1",
+                                                                getPackagingStatusClass(
+                                                                    item.packagingStatus,
+                                                                ),
+                                                            )}
+                                                        >
+                                                            Đóng gói:{" "}
+                                                            {getPackagingStatusLabel(
+                                                                item.packagingStatus,
+                                                            )}
+                                                        </span>
+                                                    ) : null}
                                                 </div>
 
                                                 <div className="text-right text-[14px] font-bold text-slate-950">
@@ -940,13 +1086,79 @@ const MyOrderDetailPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
-                                    <div className="text-[11px] text-emerald-700">
+                                {showPackagingSection ? (
+                                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="text-[11px] text-slate-500">
+                                                    Đóng gói
+                                                </div>
+                                                <div
+                                                    className={cn(
+                                                        "mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-[12px] font-semibold ring-1",
+                                                        getPackagingStatusClass(
+                                                            order.packagingStatus,
+                                                            order.status,
+                                                            packagingOrderItems,
+                                                        ),
+                                                    )}
+                                                >
+                                                    {order.packagingStatus ||
+                                                        packagingStepText}
+                                                </div>
+                                                <div className="mt-2 text-[12px] leading-5 text-slate-500">
+                                                    {packagingStepText}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-sky-700 ring-1 ring-slate-200">
+                                                <Package size={16} />
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                                            <div
+                                                className={cn(
+                                                    "h-full rounded-full transition-all",
+                                                    getPackagingProgressClass(
+                                                        order.packagingStatus,
+                                                        order.status,
+                                                        packagingOrderItems,
+                                                    ),
+                                                )}
+                                                style={{
+                                                    width: `${packagingProgress}%`,
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                <div
+                                    className={cn(
+                                        "mt-3 rounded-xl border px-3 py-3",
+                                        paymentStatusMeta.containerClassName,
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            "text-[11px]",
+                                            paymentStatusMeta.labelClassName,
+                                        )}
+                                    >
                                         Thanh toán
                                     </div>
-                                    <div className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-emerald-700">
+                                    <div
+                                        className={cn(
+                                            "mt-1 flex items-center gap-2 text-[13px] font-semibold",
+                                            paymentStatusMeta.labelClassName,
+                                        )}
+                                    >
                                         <CreditCard size={14} />
-                                        {paymentStatusLabel}
+                                        {paymentStatusMeta.label}
+                                        {order?.paymentMethod
+                                            ? ` · ${order.paymentMethod}`
+                                            : null}
                                     </div>
                                 </div>
                             </section>

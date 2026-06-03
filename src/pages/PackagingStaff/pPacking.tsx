@@ -19,6 +19,7 @@ import { packagingService } from "@/services/packaging.service"
 import type { PackagingOrderDetail } from "@/types/packaging.type"
 import { showError, showSuccess } from "@/utils/toast"
 
+import PackagingActivitySection from "./PackagingActivitySection"
 import PackagingLabelPrintModal from "./PackagingLabelPrintModal"
 import PackagingLabelPrintSection from "./PackagingLabelPrintSection"
 import {
@@ -26,14 +27,17 @@ import {
     currency,
     formatDateTime,
     countPackagingOrderLines,
+    filterSelectablePackagingItemIds,
     formatPackagingItemQuantityLabel,
     getDeliveryTypeLabel,
     getFriendlyPackagingErrorMessage,
     getOrderStatusLabel,
     getPackagingStatusClass,
     getPackagingStatusLabel,
+    isPackagingLineSelectableForPacking,
     isPackagingOrderActionable,
     isPackagingOrderCompleted,
+    isPackagingOrderPartiallyPackaged,
 } from "./packagingShared"
 
 const formatActionDateTime = (date = new Date()) => {
@@ -143,7 +147,12 @@ const PackagePacking = () => {
 
     const allItemIds = useMemo(
         () => order?.items?.map((item) => item.orderItemId).filter(Boolean) || [],
-        [order]
+        [order],
+    )
+
+    const selectableItemIds = useMemo(
+        () => filterSelectablePackagingItemIds(order?.items, "packing"),
+        [order?.items],
     )
 
     const selectedItems = useMemo(() => {
@@ -184,6 +193,16 @@ const PackagePacking = () => {
         [order],
     )
 
+    const orderPartiallyPackaged = useMemo(
+        () =>
+            isPackagingOrderPartiallyPackaged(
+                order?.packagingStatus,
+                order?.orderStatus,
+                order?.items,
+            ),
+        [order],
+    )
+
     const canPerformActions = useMemo(() => {
         if (!order || isViewOnly) return false
 
@@ -195,7 +214,8 @@ const PackagePacking = () => {
     }, [order, isViewOnly])
 
     const isAllSelected =
-        allItemIds.length > 0 && selectedItemIds.length === allItemIds.length
+        selectableItemIds.length > 0 &&
+        selectableItemIds.every((id) => selectedItemIds.includes(id))
 
     const fetchDetail = useCallback(
         async (isRefresh = false) => {
@@ -213,9 +233,7 @@ const PackagePacking = () => {
 
                 setOrder(nextOrder)
                 setSelectedItemIds(
-                    nextOrder?.items
-                        ?.map((item) => item.orderItemId)
-                        .filter(Boolean) || []
+                    filterSelectablePackagingItemIds(nextOrder?.items, "packing"),
                 )
             } catch (error: any) {
                 showError(
@@ -237,6 +255,8 @@ const PackagePacking = () => {
     }, [fetchDetail])
 
     const toggleItem = (itemId: string) => {
+        if (!selectableItemIds.includes(itemId)) return
+
         setSelectedItemIds((current) => {
             if (current.includes(itemId)) {
                 return current.filter((id) => id !== itemId)
@@ -247,7 +267,7 @@ const PackagePacking = () => {
     }
 
     const toggleAllItems = () => {
-        setSelectedItemIds(isAllSelected ? [] : allItemIds)
+        setSelectedItemIds(isAllSelected ? [] : selectableItemIds)
     }
 
     const handlePackage = async () => {
@@ -454,7 +474,7 @@ const PackagePacking = () => {
                             Đã chọn
                         </div>
                         <p className="mt-1 text-sm font-semibold text-slate-900">
-                            {selectedItemIds.length}/{allItemIds.length} món
+                            {selectedItemIds.length}/{selectableItemIds.length} món
                         </p>
                     </div>
 
@@ -479,6 +499,23 @@ const PackagePacking = () => {
                     </div>
                 </div>
             </div>
+
+            {orderPartiallyPackaged && canPerformActions ? (
+                <div className="mb-4 rounded-3xl border border-amber-200 bg-amber-50 p-5">
+                    <div className="flex gap-3">
+                        <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                        <div>
+                            <h2 className="font-semibold text-amber-900">
+                                Đóng gói một phần
+                            </h2>
+                            <p className="mt-1 text-sm leading-6 text-amber-800">
+                                {order?.packagingStatus ||
+                                    "Một số dòng đã xong, còn dòng chưa đóng gói. Tiếp tục xử lý các món còn lại trước khi đơn sẵn sàng giao."}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             {!canPerformActions && orderCompleted ? (
                 <div className="space-y-4">
@@ -518,6 +555,11 @@ const PackagePacking = () => {
                 </div>
             ) : null}
 
+            <PackagingActivitySection
+                logs={order?.activityLogs}
+                className="mb-4"
+            />
+
             <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
                 <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
                     <div className="flex flex-col gap-3 border-b border-slate-100 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
@@ -526,12 +568,16 @@ const PackagePacking = () => {
                                 Checklist kiểm tra cuối
                             </h2>
                             <p className="mt-1 text-sm text-slate-500">
-                                Đã chọn {selectedItemIds.length}/{allItemIds.length} món ·{" "}
-                                {selectedQuantity}/{totalQuantity} sản phẩm
+                                Đã chọn {selectedItemIds.length}/
+                                {selectableItemIds.length} món cần đóng gói
+                                {allItemIds.length > selectableItemIds.length
+                                    ? ` (${allItemIds.length - selectableItemIds.length} món đã xử lý)`
+                                    : ""}{" "}
+                                · {selectedQuantity}/{totalQuantity} sản phẩm
                             </p>
                         </div>
 
-                        {canPerformActions ? (
+                        {canPerformActions && selectableItemIds.length > 0 ? (
                             <button
                                 type="button"
                                 onClick={toggleAllItems}
@@ -546,30 +592,37 @@ const PackagePacking = () => {
                     <div className="divide-y divide-slate-100">
                         {order.items?.map((item, index) => {
                             const checked = selectedItemIds.includes(item.orderItemId)
+                            const selectable = isPackagingLineSelectableForPacking(
+                                item.packagingStatus,
+                            )
+                            const rowInteractive = canPerformActions && selectable
                             const hasFailedReason = Boolean(
                                 item.packagingFailedReason?.trim()
                             )
                             const expiryDate = getItemExpiryDate(item)
 
-                            const RowTag = canPerformActions ? "label" : "div"
+                            const RowTag = rowInteractive ? "label" : "div"
 
                             return (
                                 <RowTag
                                     key={item.orderItemId}
                                     className={cn(
                                         "flex gap-4 px-5 py-4 transition",
+                                        rowInteractive &&
+                                            "cursor-pointer hover:bg-slate-50",
+                                        checked && rowInteractive && "bg-emerald-50/50",
+                                        hasFailedReason && "bg-rose-50/60",
                                         canPerformActions &&
-                                        "cursor-pointer hover:bg-slate-50",
-                                        checked && "bg-emerald-50/50",
-                                        hasFailedReason && "bg-rose-50/60"
+                                            !selectable &&
+                                            "bg-slate-50/80 opacity-75",
                                     )}
                                 >
                                     <input
                                         type="checkbox"
                                         checked={checked}
-                                        disabled={!canPerformActions}
+                                        disabled={!rowInteractive}
                                         onChange={() => toggleItem(item.orderItemId)}
-                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-default disabled:opacity-70"
+                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
                                     />
 
                                     <div className="min-w-0 flex-1">
@@ -680,7 +733,7 @@ const PackagePacking = () => {
                             <div className="rounded-2xl bg-slate-50 px-4 py-3">
                                 <p className="text-xs text-slate-500">Món đã chọn</p>
                                 <p className="mt-1 text-xl font-semibold text-slate-900">
-                                    {selectedItemIds.length}/{allItemIds.length}
+                                    {selectedItemIds.length}/{selectableItemIds.length}
                                 </p>
                             </div>
 

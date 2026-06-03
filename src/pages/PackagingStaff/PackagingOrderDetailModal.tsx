@@ -15,6 +15,7 @@ import { packagingService } from "@/services/packaging.service"
 import type { PackagingOrderDetail } from "@/types/packaging.type"
 import { showError } from "@/utils/toast"
 
+import PackagingActivitySection from "./PackagingActivitySection"
 import {
     cn,
     currency,
@@ -250,6 +251,8 @@ const PackagingOrderDetailModal = ({
                                     ) : null}
                                 </div>
                             )}
+
+                            <PackagingActivitySection logs={order.activityLogs} />
 
                             <div className="overflow-hidden rounded-2xl border border-slate-200">
                                 <div className="border-b border-slate-100 bg-slate-50 px-4 py-3">
