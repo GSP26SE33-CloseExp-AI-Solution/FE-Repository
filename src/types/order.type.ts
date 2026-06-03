@@ -402,6 +402,8 @@ export type OrderItemResponse = {
 	packagingStatus?: string;
 	deliveryStatus?: string | null;
 	packagedAt?: string | null;
+	deliveredAt?: string | null;
+	deliveryFailedReason?: string | null;
 };
 
 /**
