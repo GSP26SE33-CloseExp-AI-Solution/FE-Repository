@@ -6,12 +6,21 @@ import {
 	CheckCircle2,
 	XCircle,
 	CircleDollarSign,
-	Eye,
+	Package,
+	Mail,
+	Phone,
+	User,
 	ArrowRight,
+	ShoppingBag,
 } from "lucide-react";
 
 import { refundService } from "@/services/refund.service";
-import type { RefundListItem, RefundStatus } from "@/types/refund.types";
+import type {
+	AdminRefundOrderDetail,
+	AdminRefundOrderSummary,
+	RefundListItem,
+	RefundStatus,
+} from "@/types/refund.types";
 import { showSuccess, showError } from "@/utils/toast";
 
 const PAGE_SIZE = 10;
@@ -75,8 +84,10 @@ const NEXT_STATUS_MAP: Partial<Record<RefundStatus, RefundStatus[]>> = {
 };
 
 const AdminRefunds = () => {
-	const [items, setItems] = useState<RefundListItem[]>([]);
+	const [orders, setOrders] = useState<AdminRefundOrderSummary[]>([]);
+	const [detail, setDetail] = useState<AdminRefundOrderDetail | null>(null);
 	const [loading, setLoading] = useState(true);
+	const [detailLoading, setDetailLoading] = useState(false);
 	const [refreshing, setRefreshing] = useState(false);
 	const [error, setError] = useState("");
 
@@ -84,28 +95,25 @@ const AdminRefunds = () => {
 	const [totalResult, setTotalResult] = useState(0);
 	const [statusFilter, setStatusFilter] = useState("");
 
-	const [selectedId, setSelectedId] = useState("");
-	const [updatingStatus, setUpdatingStatus] = useState(false);
+	const [selectedOrderId, setSelectedOrderId] = useState("");
+	const [updatingRefundId, setUpdatingRefundId] = useState("");
 
-	const loadRefunds = async (isRefresh = false) => {
+	const loadOrders = async (isRefresh = false) => {
 		try {
-			if (isRefresh) {
-				setRefreshing(true);
-			} else {
-				setLoading(true);
-			}
+			if (isRefresh) setRefreshing(true);
+			else setLoading(true);
 			setError("");
 
-			const result = await refundService.listRefunds({
+			const result = await refundService.listOrdersWithRefunds({
 				pageNumber: page,
 				pageSize: PAGE_SIZE,
 			});
 
-			setItems(result.items);
+			setOrders(result.items);
 			setTotalResult(result.totalResult);
 		} catch (err) {
 			const message =
-				err instanceof Error ? err.message : "Không thể tải danh sách hoàn tiền";
+				err instanceof Error ? err.message : "Không thể tải danh sách đơn hoàn tiền";
 			setError(message);
 		} finally {
 			setLoading(false);
@@ -113,23 +121,46 @@ const AdminRefunds = () => {
 		}
 	};
 
+	const loadOrderDetail = async (orderId: string) => {
+		try {
+			setDetailLoading(true);
+			const data = await refundService.getOrderRefundDetail(orderId);
+			setDetail(data);
+		} catch (err) {
+			const message =
+				err instanceof Error ? err.message : "Không thể tải chi tiết đơn hàng";
+			showError(message);
+			setDetail(null);
+		} finally {
+			setDetailLoading(false);
+		}
+	};
+
 	useEffect(() => {
-		void loadRefunds();
+		void loadOrders();
 	}, [page]); // eslint-disable-line react-hooks/exhaustive-deps
 
-	const filteredItems = useMemo(() => {
-		if (!statusFilter) return items;
-		return items.filter((item) => item.status === statusFilter);
-	}, [items, statusFilter]);
+	useEffect(() => {
+		if (!selectedOrderId) {
+			setDetail(null);
+			return;
+		}
+		void loadOrderDetail(selectedOrderId);
+	}, [selectedOrderId]);
 
-	const selectedItem = useMemo(
-		() => items.find((item) => item.refundId === selectedId) ?? null,
-		[items, selectedId]
-	);
+	const filteredOrders = useMemo(() => {
+		if (!statusFilter) return orders;
+		return orders.filter((o) => o.primaryRefundStatus === statusFilter);
+	}, [orders, statusFilter]);
 
-	const handleUpdateStatus = async (newStatus: RefundStatus) => {
-		if (!selectedItem) return;
+	const handleSelectOrder = (orderId: string) => {
+		setSelectedOrderId(orderId);
+	};
 
+	const handleUpdateRefundStatus = async (
+		refund: RefundListItem,
+		newStatus: RefundStatus
+	) => {
 		const confirmMsg =
 			newStatus === "Approved"
 				? "Bạn có chắc muốn duyệt yêu cầu hoàn tiền này?"
@@ -142,45 +173,51 @@ const AdminRefunds = () => {
 		if (!window.confirm(confirmMsg)) return;
 
 		try {
-			setUpdatingStatus(true);
-			await refundService.updateStatus(selectedItem.refundId, newStatus);
+			setUpdatingRefundId(refund.refundId);
+			await refundService.updateStatus(refund.refundId, newStatus);
 			showSuccess(`Đã cập nhật trạng thái thành ${STATUS_CONFIG[newStatus].label}`);
-			void loadRefunds(true);
+			if (selectedOrderId) {
+				await loadOrderDetail(selectedOrderId);
+			}
+			void loadOrders(true);
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : "Cập nhật trạng thái thất bại";
 			showError(message);
 		} finally {
-			setUpdatingStatus(false);
+			setUpdatingRefundId("");
 		}
 	};
 
 	const totalPages = Math.max(1, Math.ceil(totalResult / PAGE_SIZE));
 
 	const stats = useMemo(() => {
-		const pending = items.filter((i) => i.status === "Pending").length;
-		const approved = items.filter((i) => i.status === "Approved").length;
-		const rejected = items.filter((i) => i.status === "Rejected").length;
-		const completed = items.filter((i) => i.status === "Completed").length;
-		const totalAmount = items.reduce((sum, i) => sum + i.amount, 0);
-		return { pending, approved, rejected, completed, totalAmount };
-	}, [items]);
+		const pending = orders.filter((o) => o.primaryRefundStatus === "Pending").length;
+		const pendingAmount = orders.reduce((s, o) => s + o.pendingRefundAmount, 0);
+		const totalRefund = orders.reduce((s, o) => s + o.totalRefundAmount, 0);
+		return { pending, pendingAmount, totalRefund, orderCount: totalResult };
+	}, [orders, totalResult]);
+
+	const feeRefundEstimate = useMemo(() => {
+		if (!detail) return 0;
+		const itemsTotal = detail.items
+			.filter((i) => i.isRefunded)
+			.reduce((s, i) => s + (i.lineRefundAmount ?? i.totalPrice), 0);
+		return Math.max(0, detail.totalRefundAmount - itemsTotal);
+	}, [detail]);
 
 	return (
 		<div className="space-y-6">
 			<div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
 				<div>
-					<h1 className="text-2xl font-bold text-slate-900">
-						Quản lý hoàn tiền
-					</h1>
+					<h1 className="text-2xl font-bold text-slate-900">Quản lý hoàn tiền</h1>
 					<p className="mt-1 text-sm text-slate-500">
-						Duyệt và theo dõi các yêu cầu hoàn tiền từ khách hàng
+						Theo dõi theo đơn hàng — xem toàn bộ sản phẩm và số tiền cần hoàn
 					</p>
 				</div>
-
 				<button
 					type="button"
-					onClick={() => void loadRefunds(true)}
+					onClick={() => void loadOrders(true)}
 					disabled={refreshing}
 					className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
 				>
@@ -195,83 +232,26 @@ const AdminRefunds = () => {
 				</div>
 			)}
 
-			<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+			<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 				<div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-					<div className="flex items-start justify-between gap-4">
-						<div>
-							<p className="text-sm font-medium text-slate-500">Tổng yêu cầu</p>
-							<h3 className="mt-2 text-2xl font-bold text-slate-900">
-								{totalResult}
-							</h3>
-						</div>
-						<div className="rounded-2xl bg-slate-100 p-3">
-							<Banknote className="h-5 w-5 text-slate-700" />
-						</div>
-					</div>
+					<p className="text-sm font-medium text-slate-500">Đơn có hoàn tiền</p>
+					<h3 className="mt-2 text-2xl font-bold text-slate-900">{stats.orderCount}</h3>
 				</div>
-
 				<div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-					<div className="flex items-start justify-between gap-4">
-						<div>
-							<p className="text-sm font-medium text-slate-500">Chờ duyệt</p>
-							<h3 className="mt-2 text-2xl font-bold text-amber-600">
-								{stats.pending}
-							</h3>
-						</div>
-						<div className="rounded-2xl bg-amber-50 p-3">
-							<Clock className="h-5 w-5 text-amber-600" />
-						</div>
-					</div>
+					<p className="text-sm font-medium text-slate-500">Chờ xử lý (trang này)</p>
+					<h3 className="mt-2 text-2xl font-bold text-amber-600">{stats.pending}</h3>
 				</div>
-
 				<div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-					<div className="flex items-start justify-between gap-4">
-						<div>
-							<p className="text-sm font-medium text-slate-500">Đã duyệt</p>
-							<h3 className="mt-2 text-2xl font-bold text-blue-600">
-								{stats.approved}
-							</h3>
-						</div>
-						<div className="rounded-2xl bg-blue-50 p-3">
-							<CheckCircle2 className="h-5 w-5 text-blue-600" />
-						</div>
-					</div>
-				</div>
-
-				<div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-					<div className="flex items-start justify-between gap-4">
-						<div>
-							<p className="text-sm font-medium text-slate-500">Hoàn tất</p>
-							<h3 className="mt-2 text-2xl font-bold text-emerald-600">
-								{stats.completed}
-							</h3>
-						</div>
-						<div className="rounded-2xl bg-emerald-50 p-3">
-							<CircleDollarSign className="h-5 w-5 text-emerald-600" />
-						</div>
-					</div>
-				</div>
-
-				<div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-					<div className="flex items-start justify-between gap-4">
-						<div>
-							<p className="text-sm font-medium text-slate-500">Tổng tiền</p>
-							<h3 className="mt-2 text-lg font-bold text-slate-900">
-								{formatCurrency(stats.totalAmount)}
-							</h3>
-						</div>
-						<div className="rounded-2xl bg-slate-100 p-3">
-							<CircleDollarSign className="h-5 w-5 text-slate-700" />
-						</div>
-					</div>
+					<p className="text-sm font-medium text-slate-500">Tiền chờ hoàn (trang)</p>
+					<h3 className="mt-2 text-lg font-bold text-rose-600">
+						{formatCurrency(stats.pendingAmount)}
+					</h3>
 				</div>
 			</div>
 
 			<div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-					<label className="text-sm font-medium text-slate-700">
-						Lọc theo trạng thái:
-					</label>
+					<label className="text-sm font-medium text-slate-700">Lọc trạng thái:</label>
 					<select
 						value={statusFilter}
 						onChange={(e) => setStatusFilter(e.target.value)}
@@ -286,302 +266,339 @@ const AdminRefunds = () => {
 				</div>
 			</div>
 
-			{loading ? (
-				<div className="space-y-4">
-					{Array.from({ length: 4 }).map((_, index) => (
-						<div
-							key={index}
-							className="h-20 animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
-						/>
-					))}
-				</div>
-			) : filteredItems.length === 0 ? (
-				<div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center shadow-sm">
-					<div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
-						<Banknote className="h-7 w-7 text-slate-500" />
-					</div>
-					<h3 className="mt-4 text-lg font-bold text-slate-900">
-						Không có yêu cầu hoàn tiền
-					</h3>
-					<p className="mt-2 text-sm text-slate-500">
-						Chưa có yêu cầu hoàn tiền nào phù hợp với điều kiện lọc.
-					</p>
-				</div>
-			) : (
-				<div className="space-y-4">
-					<div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-						<div className="overflow-x-auto">
-							<table className="w-full text-left text-sm">
-								<thead className="border-b border-slate-200 bg-slate-50">
-									<tr>
-										<th className="whitespace-nowrap px-6 py-4 font-semibold text-slate-700">
-											Mã refund
-										</th>
-										<th className="whitespace-nowrap px-6 py-4 font-semibold text-slate-700">
-											Mã đơn hàng
-										</th>
-										<th className="whitespace-nowrap px-6 py-4 font-semibold text-slate-700">
-											Số tiền
-										</th>
-										<th className="whitespace-nowrap px-6 py-4 font-semibold text-slate-700">
-											Trạng thái
-										</th>
-										<th className="whitespace-nowrap px-6 py-4 font-semibold text-slate-700">
-											Lý do
-										</th>
-										<th className="whitespace-nowrap px-6 py-4 font-semibold text-slate-700">
-											Ngày tạo
-										</th>
-										<th className="whitespace-nowrap px-6 py-4 font-semibold text-slate-700">
-											Xử lý bởi
-										</th>
-									</tr>
-								</thead>
-								<tbody className="divide-y divide-slate-100">
-									{filteredItems.map((item) => {
-										const isSelected = selectedId === item.refundId;
-										return (
-											<tr
-												key={item.refundId}
-												onClick={() => setSelectedId(item.refundId)}
-												className={cn(
-													"cursor-pointer transition",
-													isSelected
-														? "bg-slate-100"
-														: "hover:bg-slate-50"
-												)}
-											>
-												<td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-slate-600">
-													{item.refundId.slice(0, 8)}...
-												</td>
-												<td className="whitespace-nowrap px-6 py-4 font-mono text-xs text-slate-600">
-													{item.orderId.slice(0, 8)}...
-												</td>
-												<td className="whitespace-nowrap px-6 py-4 font-semibold text-slate-900">
-													{formatCurrency(item.amount)}
-												</td>
-												<td className="whitespace-nowrap px-6 py-4">
-													{getStatusBadge(item.status)}
-												</td>
-												<td className="max-w-[200px] truncate px-6 py-4 text-slate-600">
-													{item.reason || "--"}
-												</td>
-												<td className="whitespace-nowrap px-6 py-4 text-slate-600">
-													{formatDateTime(item.createdAt)}
-												</td>
-												<td className="whitespace-nowrap px-6 py-4 text-slate-600">
-													{item.processedBy || "--"}
-												</td>
-											</tr>
-										);
-									})}
-								</tbody>
-							</table>
+			<div className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+				<div className="space-y-4 xl:col-span-2">
+					{loading ? (
+						<div className="space-y-3">
+							{Array.from({ length: 4 }).map((_, i) => (
+								<div
+									key={i}
+									className="h-24 animate-pulse rounded-2xl border border-slate-200 bg-slate-100"
+								/>
+							))}
 						</div>
-					</div>
+					) : filteredOrders.length === 0 ? (
+						<div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
+							<Banknote className="mx-auto h-8 w-8 text-slate-400" />
+							<p className="mt-3 text-sm text-slate-500">Không có đơn phù hợp</p>
+						</div>
+					) : (
+						<div className="space-y-3">
+							{filteredOrders.map((order) => {
+								const isSelected = selectedOrderId === order.orderId;
+								return (
+									<button
+										key={order.orderId}
+										type="button"
+										onClick={() => handleSelectOrder(order.orderId)}
+										className={cn(
+											"w-full rounded-2xl border p-4 text-left transition",
+											isSelected
+												? "border-slate-900 bg-slate-50 shadow-sm"
+												: "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
+										)}
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div>
+												<p className="font-bold text-slate-900">{order.orderCode}</p>
+												<p className="mt-1 text-sm text-slate-600">
+													{order.customerFullName || "Khách hàng"}
+												</p>
+												<p className="text-xs text-slate-500">
+													{order.refundCount} yêu cầu ·{" "}
+													{formatDateTime(order.lastRefundAt)}
+												</p>
+											</div>
+											{getStatusBadge(order.primaryRefundStatus)}
+										</div>
+										<div className="mt-3 flex flex-wrap gap-3 text-sm">
+											<span className="font-semibold text-rose-700">
+												Cần hoàn: {formatCurrency(order.pendingRefundAmount)}
+											</span>
+											<span className="text-slate-500">
+												Tổng HT: {formatCurrency(order.totalRefundAmount)}
+											</span>
+										</div>
+									</button>
+								);
+							})}
+						</div>
+					)}
 
-					<div className="flex flex-col gap-3 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-						<p className="text-sm text-slate-500">
-							Hiển thị{" "}
-							<span className="font-semibold text-slate-900">
-								{filteredItems.length}
-							</span>{" "}
-							/{" "}
-							<span className="font-semibold text-slate-900">{totalResult}</span>{" "}
-							yêu cầu
-						</p>
-
-						<div className="flex items-center gap-2">
+					{!loading && filteredOrders.length > 0 && (
+						<div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-3">
 							<button
 								type="button"
-								onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+								onClick={() => setPage((p) => Math.max(1, p - 1))}
 								disabled={page === 1}
-								className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+								className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
 							>
 								Trước
 							</button>
-
-							<div className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700">
+							<span className="text-sm font-medium text-slate-600">
 								{page} / {totalPages}
-							</div>
-
+							</span>
 							<button
 								type="button"
-								onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+								onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
 								disabled={page >= totalPages}
-								className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+								className="rounded-xl border border-slate-200 px-3 py-1.5 text-sm font-semibold disabled:opacity-50"
 							>
 								Sau
 							</button>
 						</div>
-					</div>
+					)}
+				</div>
 
-					{selectedItem && (
-						<div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-							<div className="flex items-center gap-2 border-b border-slate-100 pb-4">
-								<Eye className="h-5 w-5 text-slate-600" />
-								<h2 className="text-lg font-bold text-slate-900">
-									Chi tiết yêu cầu hoàn tiền
-								</h2>
+				<div className="xl:col-span-3">
+					{!selectedOrderId ? (
+						<div className="flex min-h-[320px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+							<ShoppingBag className="h-10 w-10 text-slate-400" />
+							<p className="mt-4 text-sm font-medium text-slate-600">
+								Chọn một đơn hàng để xem chi tiết sản phẩm và hoàn tiền
+							</p>
+						</div>
+					) : detailLoading ? (
+						<div className="h-96 animate-pulse rounded-3xl border border-slate-200 bg-slate-100" />
+					) : detail ? (
+						<div className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+							<div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 pb-4">
+								<div>
+									<h2 className="text-xl font-bold text-slate-900">
+										{detail.orderCode}
+									</h2>
+									<p className="mt-1 text-sm text-slate-500">
+										Trạng thái đơn: {detail.orderStatus}
+									</p>
+								</div>
+								<div className="text-right">
+									<p className="text-xs font-medium uppercase text-slate-500">
+										Tổng cần hoàn (đơn)
+									</p>
+									<p className="text-xl font-bold text-rose-600">
+										{formatCurrency(detail.pendingRefundAmount)}
+									</p>
+									<p className="mt-1 text-xs text-slate-500">
+										Đã ghi nhận HT: {formatCurrency(detail.totalRefundAmount)}
+									</p>
+								</div>
 							</div>
 
-							<div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-								<div className="rounded-2xl bg-slate-50 px-4 py-3">
-									<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-										Mã refund
-									</p>
-									<p className="mt-1 break-all font-mono text-sm text-slate-900">
-										{selectedItem.refundId}
-									</p>
-								</div>
-
-								<div className="rounded-2xl bg-slate-50 px-4 py-3">
-									<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-										Mã đơn hàng
-									</p>
-									<p className="mt-1 break-all font-mono text-sm text-slate-900">
-										{selectedItem.orderId}
-									</p>
-								</div>
-
-								<div className="rounded-2xl bg-slate-50 px-4 py-3">
-									<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-										Mã giao dịch
-									</p>
-									<p className="mt-1 break-all font-mono text-sm text-slate-900">
-										{selectedItem.transactionId}
-									</p>
-								</div>
-
-								<div className="rounded-2xl bg-slate-50 px-4 py-3">
-									<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-										Số tiền
-									</p>
-									<p className="mt-1 text-lg font-bold text-slate-900">
-										{formatCurrency(selectedItem.amount)}
-									</p>
-								</div>
-
-								<div className="rounded-2xl bg-slate-50 px-4 py-3">
-									<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-										Trạng thái
-									</p>
-									<div className="mt-1">
-										{getStatusBadge(selectedItem.status)}
+							<div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+								<p className="text-xs font-semibold uppercase tracking-wide text-emerald-800">
+									Khách hàng
+								</p>
+								<div className="mt-3 grid gap-2 sm:grid-cols-3">
+									<div className="flex items-center gap-2 text-sm">
+										<User className="h-4 w-4 text-emerald-700" />
+										{detail.customerFullName || "--"}
+									</div>
+									<div className="flex items-center gap-2 text-sm">
+										<Mail className="h-4 w-4 text-emerald-700" />
+										{detail.customerEmail ? (
+											<a
+												href={`mailto:${detail.customerEmail}`}
+												className="text-emerald-800 hover:underline"
+											>
+												{detail.customerEmail}
+											</a>
+										) : (
+											"--"
+										)}
+									</div>
+									<div className="flex items-center gap-2 text-sm">
+										<Phone className="h-4 w-4 text-emerald-700" />
+										{detail.customerPhone ? (
+											<a
+												href={`tel:${detail.customerPhone}`}
+												className="text-emerald-800 hover:underline"
+											>
+												{detail.customerPhone}
+											</a>
+										) : (
+											"--"
+										)}
 									</div>
 								</div>
-
-								<div className="rounded-2xl bg-slate-50 px-4 py-3">
-									<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-										Ngày tạo
-									</p>
-									<p className="mt-1 text-sm text-slate-900">
-										{formatDateTime(selectedItem.createdAt)}
-									</p>
-								</div>
-
-								<div className="rounded-2xl bg-slate-50 px-4 py-3 md:col-span-2">
-									<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-										Lý do
-									</p>
-									<p className="mt-1 whitespace-pre-wrap text-sm text-slate-900">
-										{selectedItem.reason || "--"}
-									</p>
-								</div>
-
-								{selectedItem.processedBy && (
-									<div className="rounded-2xl bg-slate-50 px-4 py-3">
-										<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-											Xử lý bởi
-										</p>
-										<p className="mt-1 text-sm text-slate-900">
-											{selectedItem.processedBy}
-										</p>
-									</div>
-								)}
-
-								{selectedItem.processedAt && (
-									<div className="rounded-2xl bg-slate-50 px-4 py-3">
-										<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-											Xử lý lúc
-										</p>
-										<p className="mt-1 text-sm text-slate-900">
-											{formatDateTime(selectedItem.processedAt)}
-										</p>
-									</div>
-								)}
-
-								{selectedItem.refundedOrderItemIds &&
-									selectedItem.refundedOrderItemIds.length > 0 && (
-										<div className="rounded-2xl bg-slate-50 px-4 py-3 md:col-span-2">
-											<p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-												Sản phẩm hoàn tiền
-											</p>
-											<div className="mt-2 flex flex-wrap gap-2">
-												{selectedItem.refundedOrderItemIds.map((id) => (
-													<span
-														key={id}
-														className="rounded-lg bg-slate-200 px-2 py-1 font-mono text-xs text-slate-700"
-													>
-														{id.slice(0, 8)}...
-													</span>
-												))}
-											</div>
-										</div>
-									)}
 							</div>
 
-							{NEXT_STATUS_MAP[selectedItem.status]?.length ? (
-								<div className="mt-6 border-t border-slate-100 pt-5">
-									<h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
-										<ArrowRight className="h-4 w-4" />
-										Thao tác
-									</h3>
-									<div className="flex flex-wrap gap-3">
-										{NEXT_STATUS_MAP[selectedItem.status]?.map((nextStatus) => {
-											const config = STATUS_CONFIG[nextStatus];
-											return (
-												<button
-													key={nextStatus}
-													type="button"
-													onClick={() => void handleUpdateStatus(nextStatus)}
-													disabled={updatingStatus}
-													className={cn(
-														"inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60",
-														nextStatus === "Approved" &&
-															"border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100",
-														nextStatus === "Rejected" &&
-															"border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100",
-														nextStatus === "Completed" &&
-															"border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-													)}
-												>
-													{nextStatus === "Approved" && (
-														<CheckCircle2 className="h-4 w-4" />
-													)}
-													{nextStatus === "Rejected" && (
-														<XCircle className="h-4 w-4" />
-													)}
-													{nextStatus === "Completed" && (
-														<CircleDollarSign className="h-4 w-4" />
-													)}
-													{config.label}
-												</button>
-											);
-										})}
-									</div>
-								</div>
-							) : (
-								<div className="mt-6 border-t border-slate-100 pt-5">
-									<p className="text-sm text-slate-500">
-										Không có thao tác khả dụng cho trạng thái này.
+							<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+								<div className="rounded-xl bg-slate-50 px-3 py-2">
+									<p className="text-xs text-slate-500">Tiền hàng</p>
+									<p className="font-semibold text-slate-900">
+										{formatCurrency(detail.totalAmount)}
 									</p>
+								</div>
+								<div className="rounded-xl bg-slate-50 px-3 py-2">
+									<p className="text-xs text-slate-500">Phí giao</p>
+									<p className="font-semibold text-slate-900">
+										{formatCurrency(detail.deliveryFee)}
+									</p>
+								</div>
+								<div className="rounded-xl bg-slate-50 px-3 py-2">
+									<p className="text-xs text-slate-500">Phí hệ thống</p>
+									<p className="font-semibold text-slate-900">
+										{formatCurrency(detail.systemUsageFeeAmount)}
+									</p>
+								</div>
+								<div className="rounded-xl bg-slate-50 px-3 py-2">
+									<p className="text-xs text-slate-500">Thanh toán</p>
+									<p className="font-semibold text-slate-900">
+										{formatCurrency(detail.orderFinalAmount)}
+									</p>
+								</div>
+							</div>
+
+							{feeRefundEstimate > 0 && (
+								<div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+									Phần hoàn phí (ước tính từ yêu cầu hoàn tiền):{" "}
+									<span className="font-bold">{formatCurrency(feeRefundEstimate)}</span>
 								</div>
 							)}
+
+							<div>
+								<h3 className="mb-3 flex items-center gap-2 text-sm font-bold text-slate-800">
+									<Package className="h-4 w-4" />
+									Tất cả sản phẩm trong đơn
+								</h3>
+								<div className="overflow-hidden rounded-2xl border border-slate-200">
+									<table className="w-full text-left text-sm">
+										<thead className="bg-slate-50 text-xs uppercase text-slate-500">
+											<tr>
+												<th className="px-4 py-3">Sản phẩm</th>
+												<th className="px-4 py-3">Siêu thị</th>
+												<th className="px-4 py-3">SL</th>
+												<th className="px-4 py-3">Thành tiền</th>
+												<th className="px-4 py-3">Hoàn tiền</th>
+											</tr>
+										</thead>
+										<tbody className="divide-y divide-slate-100">
+											{detail.items.map((item) => (
+												<tr
+													key={item.orderItemId}
+													className={cn(
+														item.isRefunded ? "bg-rose-50/50" : "bg-white"
+													)}
+												>
+													<td className="px-4 py-3">
+														<p className="font-medium text-slate-900">
+															{item.productName || "--"}
+														</p>
+														<p className="text-xs text-slate-500">
+															ĐG: {formatCurrency(item.unitPrice)}
+														</p>
+													</td>
+													<td className="px-4 py-3 text-slate-600">
+														{item.supermarketName || "--"}
+													</td>
+													<td className="px-4 py-3">{item.quantity}</td>
+													<td className="px-4 py-3 font-medium">
+														{formatCurrency(item.totalPrice)}
+													</td>
+													<td className="px-4 py-3">
+														{item.isRefunded ? (
+															<div className="space-y-1">
+																<span className="inline-flex rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700">
+																	Có hoàn tiền
+																</span>
+																{item.refundStatus &&
+																	getStatusBadge(item.refundStatus)}
+																{item.lineRefundAmount != null && (
+																	<p className="text-xs font-semibold text-rose-700">
+																		{formatCurrency(item.lineRefundAmount)}
+																	</p>
+																)}
+															</div>
+														) : (
+															<span className="text-xs text-slate-400">
+																Không hoàn
+															</span>
+														)}
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							</div>
+
+							<div>
+								<h3 className="mb-3 text-sm font-bold text-slate-800">
+									Yêu cầu hoàn tiền ({detail.refunds.length})
+								</h3>
+								<div className="space-y-4">
+									{detail.refunds.map((refund) => (
+										<div
+											key={refund.refundId}
+											className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4"
+										>
+											<div className="flex flex-wrap items-start justify-between gap-3">
+												<div>
+													<p className="font-mono text-xs text-slate-500">
+														{refund.refundId.slice(0, 8)}...
+													</p>
+													<p className="mt-1 text-lg font-bold text-slate-900">
+														{formatCurrency(refund.amount)}
+													</p>
+													<p className="mt-1 text-sm text-slate-600">
+														{refund.reason}
+													</p>
+													<p className="mt-1 text-xs text-slate-500">
+														{formatDateTime(refund.createdAt)}
+														{refund.isFullOrderRefund
+															? " · Hoàn cả đơn (gồm phí)"
+															: refund.refundedOrderItemIds?.length
+																? ` · ${refund.refundedOrderItemIds.length} dòng hàng`
+																: ""}
+													</p>
+												</div>
+												{getStatusBadge(refund.status)}
+											</div>
+
+											{NEXT_STATUS_MAP[refund.status]?.length ? (
+												<div className="mt-4 flex flex-wrap gap-2 border-t border-slate-200 pt-3">
+													{NEXT_STATUS_MAP[refund.status]?.map((nextStatus) => {
+														const config = STATUS_CONFIG[nextStatus];
+														return (
+															<button
+																key={nextStatus}
+																type="button"
+																onClick={() =>
+																	void handleUpdateRefundStatus(
+																		refund,
+																		nextStatus
+																	)
+																}
+																disabled={updatingRefundId === refund.refundId}
+																className={cn(
+																	"inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:opacity-50",
+																	nextStatus === "Approved" &&
+																		"border-blue-200 bg-blue-50 text-blue-700",
+																	nextStatus === "Rejected" &&
+																		"border-rose-200 bg-rose-50 text-rose-700",
+																	nextStatus === "Completed" &&
+																		"border-emerald-200 bg-emerald-50 text-emerald-700"
+																)}
+															>
+																<ArrowRight className="h-3 w-3" />
+																{config.label}
+															</button>
+														);
+													})}
+												</div>
+											) : null}
+										</div>
+									))}
+								</div>
+							</div>
+						</div>
+					) : (
+						<div className="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-8 text-center text-sm text-rose-700">
+							Không tải được chi tiết đơn hàng
 						</div>
 					)}
 				</div>
-			)}
+			</div>
 		</div>
 	);
 };
