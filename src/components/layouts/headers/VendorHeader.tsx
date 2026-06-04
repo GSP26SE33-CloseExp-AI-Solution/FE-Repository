@@ -24,6 +24,8 @@ const cn = (...classes: Array<string | false | null | undefined>) =>
 
 const SEARCH_INDEX_KEY = "customer_visible_search_index_v1"
 
+type CustomerNavKey = "home" | "shop" | "partner" | "about" | "policy"
+
 type SearchableProductItem = {
     type: "product"
     lotId: string
@@ -52,6 +54,8 @@ type SearchIndexPayload = {
 type CartItem = { qty: number }
 
 const HOME_ROUTE = "/"
+const ABOUT_ROUTE = "/about"
+const BUYER_POLICY_ROUTE = "/buyer-policy"
 const PARTNER_ROUTE = "/partner/register"
 const CART_ROUTE = "/cart"
 const ORDERS_ROUTE = "/orders"
@@ -101,8 +105,10 @@ const CustomerHeader = () => {
     const navItems = useMemo(
         () => [
             { label: "Trang Chủ", key: "home" as const },
-            { label: "Cửa Hàng", key: "shop" as const },
+            { label: "Mua Hàng", key: "shop" as const },
             { label: "Đối Tác", key: "partner" as const },
+            { label: "Về chúng tôi", key: "about" as const },
+            { label: "Chính sách", key: "policy" as const },
         ],
         []
     )
@@ -145,12 +151,20 @@ const CustomerHeader = () => {
     const currentQuery = new URLSearchParams(location.search)
     const currentView = currentQuery.get("view")
 
-    const isActiveNav = (key: "home" | "shop" | "partner") => {
+    const isActiveNav = (key: CustomerNavKey) => {
         if (key === "partner") {
             return (
                 location.pathname === PARTNER_ROUTE ||
                 location.pathname.startsWith(`${PARTNER_ROUTE}/`)
             )
+        }
+
+        if (key === "about") {
+            return location.pathname === ABOUT_ROUTE
+        }
+
+        if (key === "policy") {
+            return location.pathname === BUYER_POLICY_ROUTE
         }
 
         if (location.pathname !== HOME_ROUTE) return false
@@ -226,7 +240,7 @@ const CustomerHeader = () => {
         closeAllMenus()
     }
 
-    const handleNavClick = (key: "home" | "shop" | "partner") => {
+    const handleNavClick = (key: CustomerNavKey) => {
         if (key === "home") {
             goHome()
             return
@@ -237,7 +251,19 @@ const CustomerHeader = () => {
             return
         }
 
-        goPartner()
+        if (key === "partner") {
+            goPartner()
+            return
+        }
+
+        if (key === "about") {
+            navigate(ABOUT_ROUTE)
+            closeAllMenus()
+            return
+        }
+
+        navigate(BUYER_POLICY_ROUTE)
+        closeAllMenus()
     }
 
     const handleViewCart = () => {
