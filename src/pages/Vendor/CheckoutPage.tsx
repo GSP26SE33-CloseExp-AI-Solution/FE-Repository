@@ -11,7 +11,10 @@ import {
   ReceiptText,
   ShoppingBag,
   ShoppingCart,
+  Tag,
+  TicketPercent,
   Truck,
+  X,
 } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -28,7 +31,9 @@ import {
   pendingPaymentOrderStorage,
 } from "@/utils/orderStorage"
 import { orderService } from "@/services/order.service"
+import { customerPromotionService } from "@/services/customer-promotion.service"
 import { customerAddressService } from "@/services/customer-address.service"
+import type { CustomerPromotionOption } from "@/types/promotion.type"
 import { useAuthContext } from "@/contexts/AuthContext"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 
@@ -377,6 +382,14 @@ const CheckoutPage: React.FC = () => {
   const [submitError, setSubmitError] = useState("")
   const [now, setNow] = useState(() => new Date())
 
+  const [promotions, setPromotions] = useState<CustomerPromotionOption[]>([])
+  const [loadingPromotions, setLoadingPromotions] = useState(false)
+  const [promoCodeInput, setPromoCodeInput] = useState("")
+  const [validatingPromo, setValidatingPromo] = useState(false)
+  const [appliedPromotion, setAppliedPromotion] =
+    useState<CustomerPromotionOption | null>(null)
+  const [promoMessage, setPromoMessage] = useState("")
+
   const todayKey = useMemo(() => toDateKey(now), [now])
   const deliveryDateOptions = useMemo(
     () => buildDeliveryDateOptions(now),
@@ -520,7 +533,137 @@ const CheckoutPage: React.FC = () => {
   }, [ctx.deliveryMethodId])
 
   const serviceFee = SERVICE_FEE
-  const total = subtotal + deliveryFee + serviceFee
+  const discountAmount = appliedPromotion?.previewDiscountAmount ?? 0
+  const total = Math.max(
+    0,
+    subtotal - discountAmount + deliveryFee + serviceFee,
+  )
+
+  useEffect(() => {
+    let mounted = true
+
+    const loadPromotions = async () => {
+      try {
+        setLoadingPromotions(true)
+        const rows = await customerPromotionService.getAvailable(subtotal)
+        if (!mounted) return
+        setPromotions(rows)
+
+        if (appliedPromotion) {
+          const stillValid = rows.find(
+            (p) =>
+              p.promotionId === appliedPromotion.promotionId && p.canApply,
+          )
+          if (!stillValid) {
+            setAppliedPromotion(null)
+            setPromoMessage("Mã đã chọn không còn áp dụng được với giỏ hàng hiện tại.")
+            setCtx((prev) => {
+              const next = { ...prev, promotionId: undefined, promotionCode: undefined }
+              orderContextStorage.set(next)
+              return next
+            })
+          } else if (
+            stillValid.previewDiscountAmount !==
+            appliedPromotion.previewDiscountAmount
+          ) {
+            setAppliedPromotion(stillValid)
+          }
+        }
+      } catch {
+        if (mounted) setPromotions([])
+      } finally {
+        if (mounted) setLoadingPromotions(false)
+      }
+    }
+
+    void loadPromotions()
+    return () => {
+      mounted = false
+    }
+  }, [subtotal]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const applyPromotion = (option: CustomerPromotionOption) => {
+    if (option.isDisabled || !option.canApply) {
+      toast.error(option.disabledReason || "Không thể áp dụng mã này")
+      return
+    }
+
+    setAppliedPromotion(option)
+    setPromoCodeInput(option.code)
+    setPromoMessage(`Đã chọn mã ${option.code}`)
+    setCtx((prev) => {
+      const next = {
+        ...prev,
+        promotionId: option.promotionId,
+        promotionCode: option.code,
+      }
+      orderContextStorage.set(next)
+      return next
+    })
+  }
+
+  const clearPromotion = () => {
+    setAppliedPromotion(null)
+    setPromoCodeInput("")
+    setPromoMessage("")
+    setCtx((prev) => {
+      const next = { ...prev, promotionId: undefined, promotionCode: undefined }
+      orderContextStorage.set(next)
+      return next
+    })
+  }
+
+  const handleApplyPromoCode = async () => {
+    const code = promoCodeInput.trim()
+    if (!code) {
+      toast.error("Nhập mã khuyến mãi")
+      return
+    }
+
+    const fromList = promotions.find(
+      (p) => p.code.toLowerCase() === code.toLowerCase(),
+    )
+    if (fromList) {
+      applyPromotion(fromList)
+      return
+    }
+
+    try {
+      setValidatingPromo(true)
+      setPromoMessage("")
+      const result = await customerPromotionService.validate({
+        promotionCode: code,
+        totalAmount: subtotal,
+      })
+      if (!result.isValid || !result.promotionId) {
+        setPromoMessage(result.message)
+        toast.error(result.message)
+        return
+      }
+
+      const option: CustomerPromotionOption = {
+        promotionId: result.promotionId,
+        code: result.promotionCode || code,
+        name: result.promotionCode || code,
+        discountType: "",
+        discountValue: 0,
+        perUserLimit: 0,
+        userUsageCount: 0,
+        canApply: true,
+        isDisabled: false,
+        previewDiscountAmount: result.discountAmount,
+        previewFinalAmount: result.finalAmount,
+      }
+      applyPromotion(option)
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Không thể áp dụng mã"
+      setPromoMessage(message)
+      toast.error(message)
+    } finally {
+      setValidatingPromo(false)
+    }
+  }
 
   const selectedTimeSlot = useMemo(
     () => timeSlots.find((slot) => slot.timeSlotId === ctx.timeSlotId),
@@ -1274,6 +1417,100 @@ const CheckoutPage: React.FC = () => {
                 </div>
               </div>
 
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <div className="flex items-center gap-2 text-[13px] font-semibold text-slate-900">
+                  <TicketPercent className="h-4 w-4 text-emerald-600" />
+                  Khuyến mãi
+                </div>
+
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    value={promoCodeInput}
+                    onChange={(e) => setPromoCodeInput(e.target.value)}
+                    placeholder="Nhập mã khuyến mãi"
+                    className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-sky-400"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleApplyPromoCode()}
+                    disabled={validatingPromo}
+                    className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-60"
+                  >
+                    {validatingPromo ? "..." : "Áp dụng"}
+                  </button>
+                </div>
+
+                {appliedPromotion ? (
+                  <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                    <span>
+                      <Tag className="mr-1 inline h-3 w-3" />
+                      {appliedPromotion.code} (−{money(discountAmount)})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearPromotion}
+                      className="rounded p-0.5 hover:bg-emerald-100"
+                      aria-label="Bỏ mã"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : null}
+
+                {promoMessage ? (
+                  <p className="mt-2 text-xs text-amber-700">{promoMessage}</p>
+                ) : null}
+
+                {loadingPromotions ? (
+                  <p className="mt-3 text-xs text-slate-500">Đang tải mã khả dụng...</p>
+                ) : promotions.length > 0 ? (
+                  <div className="mt-3 max-h-40 space-y-2 overflow-y-auto">
+                    {promotions.map((promo) => {
+                      const selected =
+                        appliedPromotion?.promotionId === promo.promotionId
+                      return (
+                        <button
+                          key={promo.promotionId}
+                          type="button"
+                          disabled={promo.isDisabled}
+                          onClick={() => applyPromotion(promo)}
+                          className={cn(
+                            "w-full rounded-lg border px-3 py-2 text-left text-xs transition",
+                            promo.isDisabled
+                              ? "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400"
+                              : selected
+                                ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                                : "border-slate-200 bg-white text-slate-700 hover:border-emerald-200",
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-semibold">{promo.code}</span>
+                            {!promo.isDisabled && (
+                              <span className="text-emerald-700">
+                                −{money(promo.previewDiscountAmount)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 line-clamp-1 text-[11px] opacity-80">
+                            {promo.name}
+                          </p>
+                          {promo.isDisabled && promo.disabledReason ? (
+                            <p className="mt-1 text-[11px] text-rose-500">
+                              {promo.disabledReason}
+                            </p>
+                          ) : null}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-slate-500">
+                    Chưa có mã khuyến mãi khả dụng.
+                  </p>
+                )}
+              </div>
+
               <div className="mt-4 space-y-3">
                 <div className="flex items-center justify-between text-[13px]">
                   <span className={muted}>
@@ -1283,6 +1520,15 @@ const CheckoutPage: React.FC = () => {
                     {money(subtotal)}
                   </span>
                 </div>
+
+                {discountAmount > 0 ? (
+                  <div className="flex items-center justify-between text-[13px]">
+                    <span className={muted}>Giảm giá</span>
+                    <span className="font-semibold text-emerald-700">
+                      −{money(discountAmount)}
+                    </span>
+                  </div>
+                ) : null}
 
                 <div className="flex items-center justify-between text-[13px]">
                   <span className={muted}>Phí giao hàng</span>

@@ -1296,12 +1296,35 @@ const MyOrderDetailPage: React.FC = () => {
                                         </span>
                                     </div>
 
-                                    <div className="flex items-center justify-between text-[13px]">
-                                        <span className={muted}>Giảm giá</span>
-                                        <span className="font-semibold text-slate-900">
-                                            -{money(order.discountAmount || 0)}
-                                        </span>
-                                    </div>
+                                    {(order.discountAmount || 0) > 0 ? (
+                                        <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2">
+                                            <div className="flex items-center justify-between text-[13px]">
+                                                <span className={muted}>Giảm giá</span>
+                                                <span className="font-semibold text-emerald-700">
+                                                    −{money(order.discountAmount || 0)}
+                                                </span>
+                                            </div>
+                                            {order.promotionCode || order.promotionName ? (
+                                                <p className="mt-1 text-xs text-emerald-800">
+                                                    Mã đã dùng:{" "}
+                                                    <span className="font-semibold">
+                                                        {order.promotionCode ||
+                                                            order.promotionName}
+                                                    </span>
+                                                    {order.promotionCode &&
+                                                    order.promotionName &&
+                                                    order.promotionName !==
+                                                        order.promotionCode
+                                                        ? ` — ${order.promotionName}`
+                                                        : ""}
+                                                </p>
+                                            ) : order.promotionId ? (
+                                                <p className="mt-1 text-xs text-emerald-800">
+                                                    Đơn có áp dụng khuyến mãi
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    ) : null}
 
                                     <div className="h-px bg-slate-200" />
 

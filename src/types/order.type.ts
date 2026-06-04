@@ -136,6 +136,7 @@ export type CustomerOrderContext = {
 
 	addressId?: string;
 	promotionId?: string;
+	promotionCode?: string;
 	orderId?: string;
 };
 
@@ -437,6 +438,8 @@ export type OrderDetails = {
 	orderDate?: string;
 	addressId?: string | null;
 	promotionId?: string | null;
+	promotionCode?: string | null;
+	promotionName?: string | null;
 	deliveryGroupId?: string | null;
 	deliveryNote?: string;
 	cancelDeadline?: string;

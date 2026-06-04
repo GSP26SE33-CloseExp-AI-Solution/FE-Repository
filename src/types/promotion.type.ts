@@ -57,6 +57,23 @@ export type PromotionValidationResult = {
 	finalAmount: number;
 };
 
+export type CustomerPromotionOption = {
+	promotionId: string;
+	code: string;
+	name: string;
+	discountType: string;
+	discountValue: number;
+	minOrderAmount?: number | null;
+	maxDiscountAmount?: number | null;
+	perUserLimit: number;
+	userUsageCount: number;
+	canApply: boolean;
+	isDisabled: boolean;
+	disabledReason?: string | null;
+	previewDiscountAmount: number;
+	previewFinalAmount: number;
+};
+
 export type UpdatePromotionBasicPayload = {
 	code?: string;
 	categoryId?: string;

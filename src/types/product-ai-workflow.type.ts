@@ -84,6 +84,7 @@ export type OcrExtractedInfoDto = {
     brand?: string | null
     barcode?: string | null
     category?: string | null
+    description?: string | null
     expiryDate?: string | null
     manufactureDate?: string | null
     weight?: string | null
@@ -91,6 +92,9 @@ export type OcrExtractedInfoDto = {
     manufacturer?: string | null
     origin?: string | null
     nutritionFacts?: NutritionFactsMap | null
+    usageInstructions?: string | null
+    storageInstructions?: string | null
+    safetyWarnings?: string | null
 }
 
 export type OcrPrefillFieldDto = {
@@ -107,9 +111,14 @@ export type OcrPrefillFieldsDto = {
     barcode?: OcrPrefillFieldDto | null
     category?: OcrPrefillFieldDto | null
     weight?: OcrPrefillFieldDto | null
+    description?: OcrPrefillFieldDto | null
     ingredients?: OcrPrefillFieldDto | null
+    nutritionFacts?: OcrPrefillFieldDto | null
     manufacturer?: OcrPrefillFieldDto | null
     origin?: OcrPrefillFieldDto | null
+    usageInstructions?: OcrPrefillFieldDto | null
+    storageInstructions?: OcrPrefillFieldDto | null
+    safetyWarnings?: OcrPrefillFieldDto | null
     expiryDate?: OcrPrefillFieldDto | null
     manufactureDate?: OcrPrefillFieldDto | null
 }

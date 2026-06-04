@@ -338,55 +338,77 @@ export const mapWorkflowAnalyzeImageResultToState = (
             ),
             name: firstText(
                 prefillValue(prefill?.name),
-                extracted?.name,
                 lookup?.productName,
+                extracted?.name,
                 previous.productForm.name,
             ),
             brand: firstText(
                 prefillValue(prefill?.brand),
-                extracted?.brand,
                 lookup?.brand,
+                extracted?.brand,
                 previous.productForm.brand,
             ),
             categoryName: firstText(
                 prefillValue(prefill?.category),
-                extracted?.category,
                 lookup?.category,
+                extracted?.category,
                 previous.productForm.categoryName,
             ),
             manufacturer: firstText(
                 prefillValue(prefill?.manufacturer),
-                extracted?.manufacturer,
                 lookup?.manufacturer,
+                extracted?.manufacturer,
                 previous.productForm.manufacturer,
             ),
             origin: firstText(
                 prefillValue(prefill?.origin),
-                extracted?.origin,
                 lookup?.country,
+                extracted?.origin,
                 previous.productForm.origin,
             ),
             description: firstText(
-                previous.productForm.description,
+                prefillValue(prefill?.description),
                 lookup?.description,
+                lookup?.productName,
+                extracted?.description,
+                previous.productForm.description,
             ),
             ingredients: firstText(
                 prefillValue(prefill?.ingredients),
-                stringifyIngredients(extracted?.ingredients),
                 stringifyIngredients(lookup?.ingredients),
+                stringifyIngredients(extracted?.ingredients),
                 previous.productForm.ingredients,
             ),
             nutritionFacts: firstText(
-                stringifyNutrition(extracted?.nutritionFacts),
+                prefillValue(prefill?.nutritionFacts),
                 stringifyNutrition(lookup?.nutritionFacts),
+                stringifyNutrition(extracted?.nutritionFacts),
                 previous.productForm.nutritionFacts,
+            ),
+            usageInstructions: firstText(
+                prefillValue(prefill?.usageInstructions),
+                extracted?.usageInstructions,
+                previous.productForm.usageInstructions,
+            ),
+            storageInstructions: firstText(
+                prefillValue(prefill?.storageInstructions),
+                extracted?.storageInstructions,
+                previous.productForm.storageInstructions,
+            ),
+            safetyWarnings: firstText(
+                prefillValue(prefill?.safetyWarnings),
+                extracted?.safetyWarnings,
+                previous.productForm.safetyWarnings,
             ),
         },
         lotForm: {
             ...previous.lotForm,
             expiryDate:
-                normalizeDateInput(extracted?.expiryDate) || previous.lotForm.expiryDate,
+                normalizeDateInput(prefillValue(prefill?.expiryDate)) ||
+                normalizeDateInput(extracted?.expiryDate) ||
+                previous.lotForm.expiryDate,
             manufactureDate:
+                normalizeDateInput(prefillValue(prefill?.manufactureDate)) ||
                 normalizeDateInput(extracted?.manufactureDate) ||
                 previous.lotForm.manufactureDate,
         },

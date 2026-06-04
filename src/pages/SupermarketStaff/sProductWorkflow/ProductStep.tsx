@@ -540,6 +540,8 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                                             ["brand", "Thương hiệu"],
                                             ["barcode", "Mã vạch"],
                                             ["category", "Danh mục"],
+                                            ["description", "Mô tả"],
+                                            ["ingredients", "Thành phần"],
                                         ] as const
                                     ).map(([key, label]) => {
                                         const field = prefillFields[key]
