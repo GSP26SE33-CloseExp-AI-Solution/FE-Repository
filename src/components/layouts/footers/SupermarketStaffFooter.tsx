@@ -1,9 +1,11 @@
 import React from "react"
 import { useAuthContext } from "@/contexts/AuthContext"
 import { Package, Sparkles, BadgeCheck } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 const SupermarketStaffFooter: React.FC = () => {
     const { supermarketName } = useAuthContext()
+    const navigate = useNavigate()
 
     return (
         <footer className="w-full bg-white border-t border-gray-100">
@@ -22,6 +24,7 @@ const SupermarketStaffFooter: React.FC = () => {
                     <div className="flex flex-wrap gap-2">
                         <button
                             type="button"
+                            onClick={() => navigate("/supermarketStaff/products")}
                             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-sm"
                         >
                             <Package size={16} />
@@ -30,6 +33,7 @@ const SupermarketStaffFooter: React.FC = () => {
 
                         <button
                             type="button"
+                            onClick={() => navigate("/supermarketStaff/products/workflow")}
                             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-sm"
                         >
                             <Sparkles size={16} />
@@ -38,6 +42,7 @@ const SupermarketStaffFooter: React.FC = () => {
 
                         <button
                             type="button"
+                            onClick={() => navigate("/supermarketStaff/purchase-units")}
                             className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition text-sm"
                         >
                             <BadgeCheck size={16} />

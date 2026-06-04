@@ -541,8 +541,7 @@ const WorkflowScanStep: React.FC<Props> = ({
     const stopCamera = () => {
         try {
             cameraStreamRef.current?.getTracks().forEach((track) => track.stop())
-        } catch (error) {
-            console.error("WorkflowScanStep.stopCamera -> stream stop error:", error)
+        } catch {
         }
 
         cameraStreamRef.current = null
@@ -635,8 +634,7 @@ const WorkflowScanStep: React.FC<Props> = ({
                 await videoEl.play()
             } catch (playError) {
             }
-        } catch (error) {
-            console.error("WorkflowScanStep.startCamera -> error:", error)
+        } catch {
             setScanStatus("ERROR")
             setScanError(
                 "Không mở được camera. Vui lòng kiểm tra quyền camera rồi thử lại sau.",
@@ -729,8 +727,7 @@ const WorkflowScanStep: React.FC<Props> = ({
             setScanError(
                 "Chưa đọc được barcode từ ảnh vừa chụp. Bạn kéo khung cắt sát phần barcode rồi bấm “Cắt & phóng to”, sau đó bấm “Quét ảnh hiện tại”.",
             )
-        } catch (error) {
-            console.error("WorkflowScanStep.handleCaptureFromCamera -> error:", error)
+        } catch {
             setScanStatus("ERROR")
             setScanError("Không chụp hoặc xử lý được ảnh từ camera.")
         } finally {
@@ -806,8 +803,7 @@ const WorkflowScanStep: React.FC<Props> = ({
             setScanError(
                 "Chưa đọc được barcode từ toàn ảnh. Bạn vui lòng kéo chỉnh khung cắt lại rồi bấm “Cắt & phóng to”.",
             )
-        } catch (error) {
-            console.error("WorkflowScanStep.decodeImageFile -> error:", error)
+        } catch {
             setScanStatus("ERROR")
             setScanError("Không xử lý được ảnh này.")
         } finally {
@@ -1082,8 +1078,7 @@ const WorkflowScanStep: React.FC<Props> = ({
             lastDetectedRef.current = ""
             lastDetectedAtRef.current = 0
             await handleDetected(detectedText)
-        } catch (error) {
-            console.error("WorkflowScanStep.handleDecodeWorkingImage -> error:", error)
+        } catch {
             setScanStatus("ERROR")
             setScanError(
                 "Chưa đọc được barcode từ ảnh hiện tại. Bạn vui lòng thử crop sát hơn vào phần barcode rồi quét lại.",
@@ -1110,8 +1105,7 @@ const WorkflowScanStep: React.FC<Props> = ({
             setCropRect(DEFAULT_CROP_RECT)
             setCropMode(true)
             setScanStatus("IDLE")
-        } catch (error) {
-            console.error("WorkflowScanStep.handleApplyCrop -> error:", error)
+        } catch {
             setScanStatus("ERROR")
             setScanError("Không cắt được ảnh. Bạn vui lòng thử lại lần nữa.")
         } finally {

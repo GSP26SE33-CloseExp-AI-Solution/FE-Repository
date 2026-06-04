@@ -11,8 +11,9 @@ import {
 
 import { orderService } from "@/services/order.service"
 import type { ConfirmPaymentResponse } from "@/types/order.type"
-import { cartStorage } from "@/utils/orderStorage"
+import { cartBridge } from "@/utils/cartBridge"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
+import { cartStorage } from "@/utils/orderStorage"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -45,7 +46,11 @@ const PaymentReturnPage: React.FC = () => {
                 await orderService.confirmPaymentWithRetry(orderCode)
 
             if (result.success) {
-                cartStorage.clear()
+                try {
+                    await cartBridge.clear()
+                } catch {
+                    cartStorage.clear()
+                }
                 setState({ kind: "success", orderCode })
             } else {
                 setState({

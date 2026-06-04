@@ -32,11 +32,14 @@ import {
     getFriendlyPackagingErrorMessage,
     getOrderStatusLabel,
     countPackagingOrderLines,
+    filterSelectablePackagingItemIds,
     formatPackagingItemQuantityLabel,
     getPackagingItemMeta,
     getPackagingStatusClass,
     getPackagingStatusLabel,
+    isPackagingLineSelectableForCollect,
 } from "./packagingShared"
+import PackagingActivitySection from "./PackagingActivitySection"
 
 const PackageCollect = () => {
     const navigate = useNavigate()
@@ -56,7 +59,12 @@ const PackageCollect = () => {
 
     const allItemIds = useMemo(
         () => order?.items?.map((item) => item.orderItemId).filter(Boolean) || [],
-        [order]
+        [order],
+    )
+
+    const selectableItemIds = useMemo(
+        () => filterSelectablePackagingItemIds(order?.items, "collect"),
+        [order?.items],
     )
 
     const selectedItems = useMemo(() => {
@@ -98,7 +106,8 @@ const PackageCollect = () => {
     }, [supermarketNames])
 
     const isAllSelected =
-        allItemIds.length > 0 && selectedItemIds.length === allItemIds.length
+        selectableItemIds.length > 0 &&
+        selectableItemIds.every((id) => selectedItemIds.includes(id))
 
     const fetchDetail = useCallback(
         async (isRefresh = false) => {
@@ -116,9 +125,7 @@ const PackageCollect = () => {
 
                 setOrder(nextOrder)
                 setSelectedItemIds(
-                    nextOrder?.items
-                        ?.map((item) => item.orderItemId)
-                        .filter(Boolean) || []
+                    filterSelectablePackagingItemIds(nextOrder?.items, "collect"),
                 )
                 setHasStartedCollecting(false)
                 setStartedCollectNote("")
@@ -142,6 +149,8 @@ const PackageCollect = () => {
     }, [fetchDetail])
 
     const toggleItem = (itemId: string) => {
+        if (!selectableItemIds.includes(itemId)) return
+
         setSelectedItemIds((current) => {
             if (current.includes(itemId)) {
                 return current.filter((id) => id !== itemId)
@@ -152,7 +161,7 @@ const PackageCollect = () => {
     }
 
     const toggleAllItems = () => {
-        setSelectedItemIds(isAllSelected ? [] : allItemIds)
+        setSelectedItemIds(isAllSelected ? [] : selectableItemIds)
     }
 
     const buildSelectedPayload = ({
@@ -393,6 +402,11 @@ const PackageCollect = () => {
                 </div>
             </div>
 
+            <PackagingActivitySection
+                logs={order?.activityLogs}
+                className="mb-4"
+            />
+
             <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
                 <div className="rounded-[28px] border border-slate-200 bg-white shadow-sm">
                     <div className="flex flex-col gap-3 border-b border-slate-100 p-5 sm:flex-row sm:items-center sm:justify-between">
@@ -401,40 +415,54 @@ const PackageCollect = () => {
                                 Checklist món cần gom
                             </h2>
                             <p className="mt-1 text-sm text-slate-500">
-                                Đã chọn {selectedItemIds.length}/{allItemIds.length} món ·{" "}
-                                {selectedQuantity}/{totalQuantity} sản phẩm
+                                Đã chọn {selectedItemIds.length}/
+                                {selectableItemIds.length} món cần gom
+                                {allItemIds.length > selectableItemIds.length
+                                    ? ` (${allItemIds.length - selectableItemIds.length} món đã xử lý)`
+                                    : ""}{" "}
+                                · {selectedQuantity}/{totalQuantity} sản phẩm
                             </p>
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={toggleAllItems}
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                            <CheckCircle2 className="h-4 w-4" />
-                            {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-                        </button>
+                        {selectableItemIds.length > 0 ? (
+                            <button
+                                type="button"
+                                onClick={toggleAllItems}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                            >
+                                <CheckCircle2 className="h-4 w-4" />
+                                {isAllSelected ? "Bỏ chọn tất cả" : "Chọn tất cả"}
+                            </button>
+                        ) : null}
                     </div>
 
                     <div className="divide-y divide-slate-100">
                         {order.items?.map((item, index) => {
                             const checked = selectedItemIds.includes(item.orderItemId)
+                            const selectable = isPackagingLineSelectableForCollect(
+                                item.packagingStatus,
+                            )
                             const expiryDate = item.expiryDate
                             const expiryText = getExpiryText(expiryDate)
+                            const RowTag = selectable ? "label" : "div"
 
                             return (
-                                <label
+                                <RowTag
                                     key={item.orderItemId}
                                     className={cn(
-                                        "flex cursor-pointer gap-4 px-5 py-4 transition hover:bg-slate-50",
-                                        checked && "bg-sky-50/50"
+                                        "flex gap-4 px-5 py-4 transition",
+                                        selectable &&
+                                            "cursor-pointer hover:bg-slate-50",
+                                        checked && selectable && "bg-sky-50/50",
+                                        !selectable && "bg-slate-50/80 opacity-75",
                                     )}
                                 >
                                     <input
                                         type="checkbox"
                                         checked={checked}
+                                        disabled={!selectable}
                                         onChange={() => toggleItem(item.orderItemId)}
-                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                                        className="mt-1 h-5 w-5 rounded border-slate-300 text-sky-600 focus:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
                                     />
 
                                     <div className="min-w-0 flex-1">
@@ -539,7 +567,7 @@ const PackageCollect = () => {
                                             </div>
                                         </div>
                                     </div>
-                                </label>
+                                </RowTag>
                             )
                         })}
                     </div>
@@ -566,7 +594,7 @@ const PackageCollect = () => {
                             <div className="rounded-2xl bg-slate-50 px-4 py-3">
                                 <p className="text-xs text-slate-500">Món đã chọn</p>
                                 <p className="mt-1 text-xl font-semibold text-slate-900">
-                                    {selectedItemIds.length}/{allItemIds.length}
+                                    {selectedItemIds.length}/{selectableItemIds.length}
                                 </p>
                             </div>
 

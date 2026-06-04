@@ -11,6 +11,7 @@ import {
     Star,
     Truck,
 } from "lucide-react"
+import toast from "react-hot-toast"
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
 import { orderService } from "@/services/order.service"
@@ -23,6 +24,13 @@ import type {
 import type { PickupPoint } from "@/types/supermarket.type"
 import { lastOrderStorage, money } from "@/utils/orderStorage"
 import { formatOrderItemPurchaseQuantityLine } from "@/utils/unitMeasure"
+import {
+    buildConfirmReceiptDialogMessage,
+    deriveDeliveryProgress,
+    getConfirmReceiptButtonLabel,
+    getConfirmReceiptSuccessMessage,
+    resolveVendorOrderStatusDisplay,
+} from "@/pages/Vendor/vendorOrderDelivery.utils"
 
 const cn = (...classes: Array<string | false | undefined | null>) =>
     classes.filter(Boolean).join(" ")
@@ -141,11 +149,68 @@ const MyOrdersPage: React.FC = () => {
     const [refundByOrderId, setRefundByOrderId] = useState<
         Record<string, RefundDetails>
     >({})
+    const [confirmingOrderId, setConfirmingOrderId] = useState<string | null>(
+        null,
+    )
 
     const breadcrumbs = useMemo(
         () => getBreadcrumbsByPath(location.pathname),
         [location.pathname],
     )
+
+    const handleConfirmReceipt = async (order: OrderDetails) => {
+        if (confirmingOrderId) return
+
+        const deliveryProgress = deriveDeliveryProgress(order.orderItems)
+        if (!deliveryProgress.canConfirmReceipt) return
+
+        if (deliveryProgress.isPartialDelivery) {
+            toast.error(
+                "Đơn đang giao từng phần. Vui lòng mở chi tiết để xác nhận phần đã nhận.",
+            )
+            return
+        }
+
+        const ok = window.confirm(
+            buildConfirmReceiptDialogMessage(
+                deliveryProgress,
+                order.orderCode || order.orderId,
+            ),
+        )
+        if (!ok) return
+
+        const successMessage =
+            getConfirmReceiptSuccessMessage(deliveryProgress)
+
+        try {
+            setConfirmingOrderId(order.orderId)
+            await orderService.confirmOrderReceipt(order.orderId)
+
+            const [pagedRes, allRes] = await Promise.all([
+                orderService.getMyOrders({
+                    pageNumber: page,
+                    pageSize,
+                }),
+                orderService.getMyOrders({
+                    pageNumber: 1,
+                    pageSize: 1000,
+                }),
+            ])
+
+            setOrders(pagedRes.items || [])
+            setTotalResult(pagedRes.totalResult || 0)
+            setAllOrders(allRes.items || [])
+            toast.success(successMessage)
+        } catch (e: unknown) {
+            const message =
+                e instanceof Error
+                    ? e.message
+                    : "Không thể xác nhận đã nhận hàng."
+            toast.error(message)
+        } finally {
+            setConfirmingOrderId(null)
+        }
+    }
 
     useEffect(() => {
         let mounted = true
@@ -461,7 +526,19 @@ const MyOrdersPage: React.FC = () => {
                 ) : (
                     <div className="space-y-3">
                         {filteredOrders.map((order) => {
-                            const meta = getOrderMeta(order.status)
+                            const deliveryProgress = deriveDeliveryProgress(
+                                order.orderItems,
+                            )
+                            const statusDisplay = resolveVendorOrderStatusDisplay(
+                                order.status,
+                                deliveryProgress,
+                            )
+                            const canConfirmReceipt =
+                                deliveryProgress.canConfirmReceipt
+                            const isPartialDelivery =
+                                deliveryProgress.isPartialDelivery
+                            const isConfirming =
+                                confirmingOrderId === order.orderId
                             const isDelivery = order.deliveryType === "DELIVERY"
                             const catalogPickup =
                                 !isDelivery && order.collectionId
@@ -488,10 +565,10 @@ const MyOrdersPage: React.FC = () => {
                                                 <span
                                                     className={cn(
                                                         "inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold",
-                                                        meta.className,
+                                                        statusDisplay.className,
                                                     )}
                                                 >
-                                                    {meta.label}
+                                                    {statusDisplay.label}
                                                 </span>
 
                                                 {refundByOrderId[
@@ -642,6 +719,42 @@ const MyOrdersPage: React.FC = () => {
                                             </div>
 
                                             <div className="mt-4 flex flex-col gap-2">
+                                                {canConfirmReceipt &&
+                                                isPartialDelivery ? (
+                                                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] leading-5 text-amber-800">
+                                                        {deliveryProgress.waitConfirmCount}
+                                                        /
+                                                        {deliveryProgress.shippableCount}{" "}
+                                                        món chờ xác nhận — mở chi
+                                                        tiết để xác nhận phần đã
+                                                        nhận.
+                                                    </div>
+                                                ) : null}
+
+                                                {canConfirmReceipt &&
+                                                !isPartialDelivery ? (
+                                                    <button
+                                                        type="button"
+                                                        disabled={isConfirming}
+                                                        onClick={() =>
+                                                            void handleConfirmReceipt(
+                                                                order,
+                                                            )
+                                                        }
+                                                        className={cn(
+                                                            primaryBtn,
+                                                            "w-full !bg-emerald-600 hover:!bg-emerald-700",
+                                                        )}
+                                                    >
+                                                        {isConfirming ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : null}
+                                                        {getConfirmReceiptButtonLabel(
+                                                            deliveryProgress,
+                                                        )}
+                                                    </button>
+                                                ) : null}
+
                                                 <button
                                                     type="button"
                                                     onClick={() => {
@@ -650,9 +763,17 @@ const MyOrdersPage: React.FC = () => {
                                                             `/orders/${order.orderId}`,
                                                         )
                                                     }}
-                                                    className={cn(primaryBtn, "w-full")}
+                                                    className={cn(
+                                                        canConfirmReceipt
+                                                            ? secondaryBtn
+                                                            : primaryBtn,
+                                                        "w-full",
+                                                    )}
                                                 >
-                                                    Xem chi tiết đơn
+                                                    {canConfirmReceipt &&
+                                                    isPartialDelivery
+                                                        ? "Xem chi tiết để xác nhận"
+                                                        : "Xem chi tiết đơn"}
                                                 </button>
 
                                                 {order.status === "Completed" ? (

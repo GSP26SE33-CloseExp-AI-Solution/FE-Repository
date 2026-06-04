@@ -22,6 +22,7 @@
     "browser-image-hash": "^0.0.5",
     "framer-motion": "^12.29.2",
     "image-hash": "^7.0.1",
+    "jsbarcode": "^3.12.3",
     "lucide-react": "^0.563.0",
     "mapbox-gl": "^3.20.0",
     "react": "^19.2.3",
@@ -41,6 +42,7 @@
   },
   "scripts": {
     "start": "craco start",
+    "watch": "craco start watch",
     "build": "craco build",
     "test": "craco test",
     "eject": "react-scripts eject",
@@ -66,6 +68,7 @@
   },
   "devDependencies": {
     "@types/google.maps": "^3.58.1",
+    "@types/jsbarcode": "^3.11.4",
     "@types/mapbox-gl": "^3.5.0",
     "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.23",

@@ -93,6 +93,27 @@ export type OcrExtractedInfoDto = {
     nutritionFacts?: NutritionFactsMap | null
 }
 
+export type OcrPrefillFieldDto = {
+    value?: string | null
+    source?: "ocr_llm" | "barcode_lookup" | "rule_based" | "missing" | string | null
+    confidence?: number | null
+    status?: "ok" | "needs_review" | "missing" | string | null
+    editable?: boolean | null
+}
+
+export type OcrPrefillFieldsDto = {
+    name?: OcrPrefillFieldDto | null
+    brand?: OcrPrefillFieldDto | null
+    barcode?: OcrPrefillFieldDto | null
+    category?: OcrPrefillFieldDto | null
+    weight?: OcrPrefillFieldDto | null
+    ingredients?: OcrPrefillFieldDto | null
+    manufacturer?: OcrPrefillFieldDto | null
+    origin?: OcrPrefillFieldDto | null
+    expiryDate?: OcrPrefillFieldDto | null
+    manufactureDate?: OcrPrefillFieldDto | null
+}
+
 export type WorkflowIdentifyResultDto = ProductUnitInfoDto & {
     barcode: string
     productExists: boolean
@@ -113,6 +134,8 @@ export type WorkflowAnalyzeImageResultDto = {
     imageUrl?: string | null
     extractedInfo?: OcrExtractedInfoDto | null
     barcodeLookupInfo?: BarcodeLookupInfoDto | null
+    prefillFields?: OcrPrefillFieldsDto | null
+    missingRequiredFields?: string[] | null
     confidence?: number | null
     rawOcrData?: string | null
     aiSkipped?: boolean | null
@@ -178,6 +201,7 @@ export type WorkflowMarketPriceSourceDto = {
     storeName?: string | null
     price?: number | null
     source?: string | null
+    sourceUrl?: string | null
 }
 
 export type WorkflowPricingSuggestionDto = {

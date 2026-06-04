@@ -133,7 +133,6 @@ const SupermarketPurchaseUnitsPage = () => {
                 setSelectedProductId(null)
             }
         } catch (error) {
-            console.error("PurchaseUnitsPage.loadProducts ->", error)
             toast.error("Không tải được danh sách sản phẩm")
         } finally {
             setProductsLoading(false)
@@ -145,8 +144,7 @@ const SupermarketPurchaseUnitsPage = () => {
         try {
             const units = await unitService.getUnits()
             setCatalogUnits(Array.isArray(units) ? units : [])
-        } catch (error) {
-            console.error("PurchaseUnitsPage.loadCatalogUnits ->", error)
+        } catch {
         } finally {
             setCatalogLoading(false)
         }
@@ -171,7 +169,6 @@ const SupermarketPurchaseUnitsPage = () => {
                 (lotsResult.items ?? []).filter((lot) => lot.productId === productId),
             )
         } catch (error) {
-            console.error("PurchaseUnitsPage.loadProductDetail ->", error)
             toast.error("Không tải được đơn vị mua của sản phẩm")
         } finally {
             setDetailLoading(false)

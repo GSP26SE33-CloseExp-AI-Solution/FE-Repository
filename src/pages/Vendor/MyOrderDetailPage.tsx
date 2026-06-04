@@ -8,12 +8,36 @@ import {
     CreditCard,
     Loader2,
     MapPin,
+    Package,
     ReceiptText,
     ShieldCheck,
     ShoppingBag,
     Star,
     Truck,
 } from "lucide-react"
+
+import {
+    getPackagingProgress,
+    getPackagingProgressClass,
+    getPackagingStatusClass,
+    getPackagingStatusLabel,
+    getPackagingStepText,
+} from "@/pages/PackagingStaff/packagingShared"
+import {
+    buildConfirmReceiptDialogMessage,
+    deriveDeliveryProgress,
+    getConfirmReceiptButtonLabel,
+    getConfirmReceiptSuccessMessage,
+    getDeliveryItemStatusClass,
+    getDeliveryItemStatusLabel,
+    getDeliveryProgressPercent,
+    getDeliveryProgressSummaryText,
+    getPartialDeliveryBannerText,
+    isPackagingCompleted,
+    resolveVendorOrderStatusDisplay,
+    shouldShowDeliverySection,
+} from "@/pages/Vendor/vendorOrderDelivery.utils"
+import type { PackagingOrderItem } from "@/types/packaging.type"
 import toast from "react-hot-toast"
 
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
@@ -59,70 +83,88 @@ const formatDateTime = (value?: string) => {
     }).format(date)
 }
 
-const getOrderStatusMeta = (status?: string) => {
-    switch ((status || "").toLowerCase()) {
-        case "pending":
-            return {
-                label: "Chờ xác nhận",
-                className: "border-amber-200 bg-amber-50 text-amber-700",
-                note: "Đơn hàng đã được ghi nhận và đang chờ hệ thống xử lý.",
-            }
+const mapOrderItemsToPackagingItems = (
+    items?: OrderDetails["orderItems"],
+): PackagingOrderItem[] | undefined =>
+    items?.map((item) => ({
+        orderItemId: item.orderItemId,
+        lotId: item.lotId,
+        productName: item.productName || item.lotId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        subTotal:
+            item.lineTotal ??
+            item.totalPrice ??
+            item.unitPrice * item.quantity,
+        packagingStatus: item.packagingStatus ?? "Pending",
+    }))
 
-        case "paid":
-            return {
-                label: "Đang chuẩn bị hàng",
-                className: "border-sky-200 bg-sky-50 text-sky-700",
-                note: "Đơn hàng đã thanh toán và đang được chuẩn bị.",
-            }
+const getPaymentStatusMeta = (
+    paymentStatus?: string,
+    orderStatus?: string,
+) => {
+    const payment = (paymentStatus || "").toLowerCase()
 
-        case "readytoship":
-            return {
-                label: "Sẵn sàng giao",
-                className: "border-violet-200 bg-violet-50 text-violet-700",
-                note: "Đơn hàng đã sẵn sàng để giao hoặc bàn giao tại điểm nhận.",
-            }
+    if (payment === "paid") {
+        return {
+            label: "Đã thanh toán",
+            containerClassName: "border-emerald-100 bg-emerald-50",
+            labelClassName: "text-emerald-700",
+        }
+    }
 
-        case "deliveredwaitconfirm":
-            return {
-                label: "Đã giao, chờ xác nhận",
-                className: "border-indigo-200 bg-indigo-50 text-indigo-700",
-                note: "Đơn hàng đã được giao và đang chờ xác nhận hoàn tất.",
-            }
+    if (payment === "pending") {
+        return {
+            label: "Chưa thanh toán",
+            containerClassName: "border-amber-100 bg-amber-50",
+            labelClassName: "text-amber-700",
+        }
+    }
 
-        case "completed":
-            return {
-                label: "Hoàn tất",
-                className: "border-emerald-200 bg-emerald-50 text-emerald-700",
-                note: "Đơn hàng đã hoàn tất.",
-            }
+    if (payment === "failed") {
+        return {
+            label: "Thanh toán thất bại",
+            containerClassName: "border-rose-100 bg-rose-50",
+            labelClassName: "text-rose-700",
+        }
+    }
 
-        case "canceled":
-            return {
-                label: "Đã hủy",
-                className: "border-rose-200 bg-rose-50 text-rose-700",
-                note: "Đơn hàng đã bị hủy.",
-            }
+    // Fallback khi BE chưa trả paymentStatus (legacy)
+    const status = (orderStatus || "").toLowerCase()
 
-        case "refunded":
-            return {
-                label: "Đã hoàn tiền",
-                className: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
-                note: "Đơn hàng đã được hoàn tiền.",
-            }
+    if (status === "pending") {
+        return {
+            label: "Chưa thanh toán",
+            containerClassName: "border-amber-100 bg-amber-50",
+            labelClassName: "text-amber-700",
+        }
+    }
 
-        case "failed":
-            return {
-                label: "Không thành công",
-                className: "border-rose-200 bg-rose-50 text-rose-700",
-                note: "Đã có lỗi xảy ra khi xử lý đơn hàng.",
-            }
+    if (
+        status === "paid" ||
+        status === "readytoship" ||
+        status === "deliveredwaitconfirm" ||
+        status === "completed"
+    ) {
+        return {
+            label: "Đã thanh toán",
+            containerClassName: "border-emerald-100 bg-emerald-50",
+            labelClassName: "text-emerald-700",
+        }
+    }
 
-        default:
-            return {
-                label: status || "Chưa rõ",
-                className: "border-slate-200 bg-slate-50 text-slate-700",
-                note: "Trạng thái đơn hàng hiện chưa được xác định rõ.",
-            }
+    if (status === "refunded") {
+        return {
+            label: "Đã hoàn tiền",
+            containerClassName: "border-fuchsia-100 bg-fuchsia-50",
+            labelClassName: "text-fuchsia-700",
+        }
+    }
+
+    return {
+        label: "Chưa rõ",
+        containerClassName: "border-slate-200 bg-slate-50",
+        labelClassName: "text-slate-700",
     }
 }
 
@@ -136,6 +178,7 @@ const MyOrderDetailPage: React.FC = () => {
     const [loading, setLoading] = useState(true)
     const [canceling, setCanceling] = useState(false)
     const [paying, setPaying] = useState(false)
+    const [confirmingReceipt, setConfirmingReceipt] = useState(false)
     const [error, setError] = useState("")
     const [pickupCatalogPoint, setPickupCatalogPoint] =
         useState<PickupPoint | null>(null)
@@ -267,10 +310,91 @@ const MyOrderDetailPage: React.FC = () => {
         [location.pathname, order?.orderCode],
     )
 
-    const statusMeta = useMemo(
-        () => getOrderStatusMeta(order?.status),
-        [order?.status],
+    const deliveryProgress = useMemo(
+        () => deriveDeliveryProgress(order?.orderItems),
+        [order?.orderItems],
     )
+
+    const statusMeta = useMemo(
+        () =>
+            resolveVendorOrderStatusDisplay(order?.status, deliveryProgress),
+        [order?.status, deliveryProgress],
+    )
+
+    const partialDeliveryBanner = useMemo(
+        () =>
+            deliveryProgress.isPartialDelivery
+                ? getPartialDeliveryBannerText(deliveryProgress)
+                : null,
+        [deliveryProgress],
+    )
+
+    const showDeliverySection = useMemo(
+        () => shouldShowDeliverySection(order?.status, deliveryProgress),
+        [order?.status, deliveryProgress],
+    )
+
+    const deliveryProgressPercent = useMemo(
+        () => getDeliveryProgressPercent(deliveryProgress),
+        [deliveryProgress],
+    )
+
+    const deliveryProgressSummary = useMemo(
+        () => getDeliveryProgressSummaryText(deliveryProgress),
+        [deliveryProgress],
+    )
+
+    const confirmReceiptButtonLabel = useMemo(
+        () => getConfirmReceiptButtonLabel(deliveryProgress),
+        [deliveryProgress],
+    )
+
+    const packagingOrderItems = useMemo(
+        () => mapOrderItemsToPackagingItems(order?.orderItems),
+        [order?.orderItems],
+    )
+
+    const showPackagingSection = useMemo(() => {
+        if (!order) return false
+
+        const status = (order.status || "").toLowerCase()
+        if (
+            status === "pending" ||
+            status === "canceled" ||
+            status === "refunded"
+        ) {
+            return false
+        }
+
+        if (order.packagingStatus?.trim()) return true
+        if (status === "paid") return true
+
+        return (
+            packagingOrderItems?.some((item) =>
+                Boolean(item.packagingStatus?.trim()),
+            ) ?? false
+        )
+    }, [order, packagingOrderItems])
+
+    const packagingProgress = useMemo(() => {
+        if (!order) return 0
+
+        return getPackagingProgress(
+            order.packagingStatus,
+            order.status,
+            packagingOrderItems,
+        )
+    }, [order, packagingOrderItems])
+
+    const packagingStepText = useMemo(() => {
+        if (!order) return ""
+
+        return getPackagingStepText(
+            order.packagingStatus,
+            order.status,
+            packagingOrderItems,
+        )
+    }, [order, packagingOrderItems])
 
     const isPending = useMemo(
         () => (order?.status || "").toLowerCase() === "pending",
@@ -280,6 +404,11 @@ const MyOrderDetailPage: React.FC = () => {
     const isCompleted = useMemo(
         () => (order?.status || "").toLowerCase() === "completed",
         [order?.status],
+    )
+
+    const canConfirmReceipt = useMemo(
+        () => deliveryProgress.canConfirmReceipt,
+        [deliveryProgress],
     )
 
     const latestRefund = useMemo(() => {
@@ -302,23 +431,10 @@ const MyOrderDetailPage: React.FC = () => {
         return new Date(order.cancelDeadline).getTime() >= Date.now()
     }, [order])
 
-    const paymentStatusLabel = useMemo(() => {
-        const status = (order?.status || "").toLowerCase()
-
-        if (status === "pending") return "Chưa thanh toán"
-        if (
-            status === "paid" ||
-            status === "readytoship" ||
-            status === "deliveredwaitconfirm" ||
-            status === "completed"
-        ) {
-            return "Đã thanh toán"
-        }
-        if (status === "refunded") return "Đã hoàn tiền"
-        if (status === "canceled" || status === "failed") return "Không thanh toán"
-
-        return "Chưa rõ"
-    }, [order?.status])
+    const paymentStatusMeta = useMemo(
+        () => getPaymentStatusMeta(order?.paymentStatus, order?.status),
+        [order?.paymentStatus, order?.status],
+    )
 
     const subtotal = useMemo(() => {
         if (!order?.orderItems?.length) return order?.totalAmount || 0
@@ -435,6 +551,38 @@ const MyOrderDetailPage: React.FC = () => {
             toast.error(e?.message || "Không thể hủy đơn hàng.")
         } finally {
             setCanceling(false)
+        }
+    }
+
+    const handleConfirmReceipt = async () => {
+        if (!order || !canConfirmReceipt || confirmingReceipt) return
+
+        const ok = window.confirm(
+            buildConfirmReceiptDialogMessage(
+                deliveryProgress,
+                order.orderCode || order.orderId,
+            ),
+        )
+        if (!ok) return
+
+        const successMessage =
+            getConfirmReceiptSuccessMessage(deliveryProgress)
+
+        try {
+            setConfirmingReceipt(true)
+            await orderService.confirmOrderReceipt(order.orderId)
+
+            const nextOrder = await orderService.getOrderDetails(order.orderId)
+            setOrder(nextOrder)
+            toast.success(successMessage)
+        } catch (e: unknown) {
+            const message =
+                e instanceof Error
+                    ? e.message
+                    : "Không thể xác nhận đã nhận hàng."
+            toast.error(message)
+        } finally {
+            setConfirmingReceipt(false)
         }
     }
 
@@ -610,6 +758,28 @@ const MyOrderDetailPage: React.FC = () => {
                                 </button>
                             ) : null}
 
+                            {canConfirmReceipt ? (
+                                <button
+                                    type="button"
+                                    onClick={handleConfirmReceipt}
+                                    disabled={confirmingReceipt}
+                                    className={cn(
+                                        primaryBtn,
+                                        "gap-1.5 !bg-emerald-600 hover:!bg-emerald-700",
+                                    )}
+                                >
+                                    {confirmingReceipt ? (
+                                        <Loader2
+                                            size={14}
+                                            className="animate-spin"
+                                        />
+                                    ) : (
+                                        <ShieldCheck size={14} />
+                                    )}
+                                    {confirmReceiptButtonLabel}
+                                </button>
+                            ) : null}
+
                             {canCancelOrder ? (
                                 <button
                                     type="button"
@@ -668,6 +838,24 @@ const MyOrderDetailPage: React.FC = () => {
                     </div>
                 </section>
 
+                {partialDeliveryBanner ? (
+                    <section className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 shadow-sm">
+                        <div className="flex items-start gap-3">
+                            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-amber-700 ring-1 ring-amber-200">
+                                <Truck size={18} />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-[14px] font-bold text-amber-900">
+                                    {partialDeliveryBanner.title}
+                                </h2>
+                                <p className="mt-1 text-[13px] leading-6 text-amber-800">
+                                    {partialDeliveryBanner.description}
+                                </p>
+                            </div>
+                        </div>
+                    </section>
+                ) : null}
+
                 <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
                     <section className="space-y-4">
                         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -723,6 +911,53 @@ const MyOrderDetailPage: React.FC = () => {
                                                             },
                                                         )}
                                                     </div>
+
+                                                    <div className="mt-2 flex flex-wrap gap-2">
+                                                        {showPackagingSection &&
+                                                        item.packagingStatus ? (
+                                                            <span
+                                                                className={cn(
+                                                                    "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1",
+                                                                    getPackagingStatusClass(
+                                                                        item.packagingStatus,
+                                                                    ),
+                                                                )}
+                                                            >
+                                                                Đóng gói:{" "}
+                                                                {getPackagingStatusLabel(
+                                                                    item.packagingStatus,
+                                                                )}
+                                                            </span>
+                                                        ) : null}
+
+                                                        {showDeliverySection &&
+                                                        isPackagingCompleted(
+                                                            item.packagingStatus,
+                                                        ) ? (
+                                                            <span
+                                                                className={cn(
+                                                                    "inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1",
+                                                                    getDeliveryItemStatusClass(
+                                                                        item.deliveryStatus,
+                                                                    ),
+                                                                )}
+                                                            >
+                                                                Giao hàng:{" "}
+                                                                {getDeliveryItemStatusLabel(
+                                                                    item.deliveryStatus,
+                                                                )}
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
+
+                                                    {item.deliveryFailedReason ? (
+                                                        <div className="mt-1 text-[12px] text-rose-600">
+                                                            Lý do:{" "}
+                                                            {
+                                                                item.deliveryFailedReason
+                                                            }
+                                                        </div>
+                                                    ) : null}
                                                 </div>
 
                                                 <div className="text-right text-[14px] font-bold text-slate-950">
@@ -909,13 +1144,112 @@ const MyOrderDetailPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="mt-3 rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-3">
-                                    <div className="text-[11px] text-emerald-700">
+                                {showPackagingSection ? (
+                                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="text-[11px] text-slate-500">
+                                                    Đóng gói
+                                                </div>
+                                                <div
+                                                    className={cn(
+                                                        "mt-2 inline-flex max-w-full rounded-full px-3 py-1 text-[12px] font-semibold ring-1",
+                                                        getPackagingStatusClass(
+                                                            order.packagingStatus,
+                                                            order.status,
+                                                            packagingOrderItems,
+                                                        ),
+                                                    )}
+                                                >
+                                                    {order.packagingStatus ||
+                                                        packagingStepText}
+                                                </div>
+                                                <div className="mt-2 text-[12px] leading-5 text-slate-500">
+                                                    {packagingStepText}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-sky-700 ring-1 ring-slate-200">
+                                                <Package size={16} />
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                                            <div
+                                                className={cn(
+                                                    "h-full rounded-full transition-all",
+                                                    getPackagingProgressClass(
+                                                        order.packagingStatus,
+                                                        order.status,
+                                                        packagingOrderItems,
+                                                    ),
+                                                )}
+                                                style={{
+                                                    width: `${packagingProgress}%`,
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                {showDeliverySection ? (
+                                    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="min-w-0">
+                                                <div className="text-[11px] text-slate-500">
+                                                    Giao hàng
+                                                </div>
+                                                <div className="mt-2 inline-flex max-w-full rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-[12px] font-semibold text-violet-700">
+                                                    {deliveryProgressSummary}
+                                                </div>
+                                                <div className="mt-2 text-[12px] leading-5 text-slate-500">
+                                                    {deliveryProgress.isPartialDelivery
+                                                        ? "Vui lòng xác nhận từng phần đã nhận; các món còn lại vẫn đang giao."
+                                                        : "Theo dõi tiến độ giao từng món trong đơn."}
+                                                </div>
+                                            </div>
+
+                                            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white text-violet-700 ring-1 ring-slate-200">
+                                                <Truck size={16} />
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+                                            <div
+                                                className="h-full rounded-full bg-violet-500 transition-all"
+                                                style={{
+                                                    width: `${deliveryProgressPercent}%`,
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                ) : null}
+
+                                <div
+                                    className={cn(
+                                        "mt-3 rounded-xl border px-3 py-3",
+                                        paymentStatusMeta.containerClassName,
+                                    )}
+                                >
+                                    <div
+                                        className={cn(
+                                            "text-[11px]",
+                                            paymentStatusMeta.labelClassName,
+                                        )}
+                                    >
                                         Thanh toán
                                     </div>
-                                    <div className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-emerald-700">
+                                    <div
+                                        className={cn(
+                                            "mt-1 flex items-center gap-2 text-[13px] font-semibold",
+                                            paymentStatusMeta.labelClassName,
+                                        )}
+                                    >
                                         <CreditCard size={14} />
-                                        {paymentStatusLabel}
+                                        {paymentStatusMeta.label}
+                                        {order?.paymentMethod
+                                            ? ` · ${order.paymentMethod}`
+                                            : null}
                                     </div>
                                 </div>
                             </section>

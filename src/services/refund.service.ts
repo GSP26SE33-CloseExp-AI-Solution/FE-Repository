@@ -3,6 +3,9 @@ import axiosClient from "@/utils/axiosClient";
 import type { ApiEnvelope } from "@/types/api.types";
 import type { PaginationResult } from "@/types/order.type";
 import type {
+	AdminRefundOrderDetail,
+	AdminRefundOrderListParams,
+	AdminRefundOrderSummary,
 	RefundListItem,
 	RefundListParams,
 	RefundStatus,
@@ -28,6 +31,26 @@ export const refundService = {
 		const response = await axiosClient.get<
 			ApiEnvelope<PaginationResult<RefundListItem>>
 		>("/Refunds", { params });
+		return unwrap(response);
+	},
+
+	/**
+	 * GET /api/Refunds/orders — đơn hàng có yêu cầu hoàn tiền (Admin)
+	 */
+	async listOrdersWithRefunds(params?: AdminRefundOrderListParams) {
+		const response = await axiosClient.get<
+			ApiEnvelope<PaginationResult<AdminRefundOrderSummary>>
+		>("/Refunds/orders", { params });
+		return unwrap(response);
+	},
+
+	/**
+	 * GET /api/Refunds/orders/{orderId} — chi tiết đơn + tất cả dòng hàng
+	 */
+	async getOrderRefundDetail(orderId: string) {
+		const response = await axiosClient.get<ApiEnvelope<AdminRefundOrderDetail>>(
+			`/Refunds/orders/${orderId}`
+		);
 		return unwrap(response);
 	},
 

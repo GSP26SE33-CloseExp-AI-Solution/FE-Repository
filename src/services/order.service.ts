@@ -1,4 +1,5 @@
 import axios from "axios";
+import { deliveryService } from "@/services/delivery.service";
 import axiosClient from "@/utils/axiosClient";
 import type { ApiEnvelope } from "@/types/api.types";
 import type {
@@ -249,6 +250,23 @@ export const orderService = {
 
 	async markFailed(orderId: string) {
 		await axiosClient.put(`/Orders/${orderId}/failed`);
+	},
+
+	/** POST /api/delivery/orders/{id}/customer-confirmation — DeliveredWaitConfirm → Completed */
+	async confirmOrderReceipt(orderId: string, notes?: string) {
+		try {
+			await deliveryService.customerConfirmation(
+				orderId,
+				notes ? { notes } : {},
+			);
+		} catch (error) {
+			throw new Error(
+				getAxiosErrorMessage(
+					error,
+					"Xác nhận đã nhận hàng không thành công",
+				),
+			);
+		}
 	},
 
 	async getMyRefunds(params?: {
