@@ -9,7 +9,6 @@ import {
     MessageSquare,
     Star,
 } from "lucide-react"
-import toast from "react-hot-toast"
 
 import { useAuthContext } from "@/contexts/AuthContext"
 import { getBreadcrumbsByPath } from "@/constants/breadcrumbs"
@@ -283,7 +282,7 @@ const OrderFeedbackPage: React.FC = () => {
                             <span
                                 className={cn(
                                     index === breadcrumbs.length - 1 &&
-                                        "font-medium text-slate-800",
+                                    "font-medium text-slate-800",
                                 )}
                             >
                                 {crumb}
