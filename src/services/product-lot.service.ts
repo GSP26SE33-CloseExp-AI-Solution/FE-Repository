@@ -1,5 +1,4 @@
 import axiosClient from "@/utils/axiosClient"
-import { getApiErrorMessage } from "@/utils/apiError"
 import type { ApiResponse } from "@/types/api.types"
 import type {
     GetMySupermarketLotsQuery,
