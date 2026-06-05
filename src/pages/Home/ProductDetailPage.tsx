@@ -35,14 +35,9 @@ import {
     parsePurchaseUnitsResponse,
 } from "@/utils/purchaseUnits"
 import {
-    convertQuantityBetweenRates,
+    computeMaxPurchaseQuantity,
     convertUnitPriceBetweenRates,
-    formatConversionRateHint,
-    formatCustomerPurchaseUnitHint,
-    formatCustomerQuantityEquivalence,
-    formatCustomerUnitPriceHint,
     formatUnitDisplay,
-    type LotUnitContext,
 } from "@/utils/unitMeasure"
 import { getAuthSession } from "@/utils/authStorage"
 import { CART_ROUTE, LOGIN_ROUTE } from "@/constants/home.constants"
@@ -50,7 +45,6 @@ import { CART_ROUTE, LOGIN_ROUTE } from "@/constants/home.constants"
 import type {
     HomeProductGroupView,
     HomeProductLotApiItem,
-    HomeProductLotsResponse,
     HomeProductView,
 } from "@/types/home.type"
 
@@ -77,9 +71,6 @@ const softBtn =
 const getLotRaw = (lot: HomeProductView, rawLots: HomeProductLotApiItem[]) =>
     rawLots.find((item) => item.lotId === lot.lotId)
 
-const getLotUnitName = (lot: HomeProductView, rawLots: HomeProductLotApiItem[]) =>
-    getLotRaw(lot, rawLots)?.unitName || "Sản phẩm"
-
 const getLotExpiryDate = (lot: HomeProductView, rawLots: HomeProductLotApiItem[]) =>
     getLotRaw(lot, rawLots)?.expiryDate
 
@@ -97,8 +88,6 @@ const getExpiryLabel = (value?: string) => {
     return formatBestBefore(value)
 }
 
-const getUnitKey = (value?: string) => value?.trim() || "unknown"
-
 const getUrgencyTone = (daysToExpiry: number | null) => {
     if (typeof daysToExpiry !== "number") return "bg-slate-100 text-slate-600"
     if (daysToExpiry <= 1) return "bg-rose-50 text-rose-700 ring-1 ring-rose-100"
@@ -114,31 +103,44 @@ const getExpiryShortText = (daysToExpiry: number | null) => {
     return `Còn ${daysToExpiry} ngày`
 }
 
-const buildLotOptionLabel = (
-    option: LotOption | undefined,
-    rawLots: HomeProductLotApiItem[]
-) => {
-    if (!option) return "Chưa chọn lựa chọn"
-
-    const unitName = getLotUnitName(option.lot, rawLots)
-    const expiryDate = getLotExpiryDate(option.lot, rawLots)
-
-    return `${unitName} · HSD ${formatBestBefore(expiryDate)}`
+type PurchaseUnitAvailability = ProductPurchaseUnit & {
+    maxPurchaseQty: number
 }
 
-const toLotUnitContext = (
-    raw?: HomeProductLotApiItem | null,
-): LotUnitContext => ({
-    unitId: raw?.unitId,
-    unitName: raw?.unitName,
-    unitSymbol: raw?.unitSymbol,
-    unitType: raw?.unitType,
-    conversionRate: raw?.conversionRate,
-    productUnitId: raw?.productUnitId,
-    productUnitName: raw?.productUnitName,
-    productUnitSymbol: raw?.productUnitSymbol,
-    productConversionRate: raw?.productConversionRate,
-})
+const pickContextLotOption = (options: LotOption[]): LotOption | undefined => {
+    if (!options.length) return undefined
+
+    return [...options]
+        .filter((option) => Math.max(0, Number(option.lot.quantity ?? 0)) > 0)
+        .sort((a, b) => {
+            const aDays = a.lot.daysToExpiry ?? Number.MAX_SAFE_INTEGER
+            const bDays = b.lot.daysToExpiry ?? Number.MAX_SAFE_INTEGER
+
+            if (aDays !== bDays) return aDays - bDays
+            if (a.lot.price !== b.lot.price) return a.lot.price - b.lot.price
+            return a.lot.supermarketName.localeCompare(b.lot.supermarketName, "vi")
+        })[0]
+}
+
+const getPurchaseUnitAvailability = (
+    unit: ProductPurchaseUnit,
+    lotOption?: LotOption,
+): PurchaseUnitAvailability | null => {
+    const raw = lotOption?.raw
+    if (!raw) return null
+
+    const maxPurchaseQty = computeMaxPurchaseQuantity(
+        Number(lotOption.lot.quantity ?? 0),
+        raw.unitId,
+        unit.unitId,
+        raw.conversionRate,
+        unit.conversionRate,
+    )
+
+    if (maxPurchaseQty <= 0) return null
+
+    return { ...unit, maxPurchaseQty }
+}
 
 const ProductDetailPage = () => {
     const { productId = "" } = useParams()
@@ -152,10 +154,9 @@ const ProductDetailPage = () => {
     )
     const [selectedSupermarketName, setSelectedSupermarketName] = useState("")
     const [selectedExpiryKey, setSelectedExpiryKey] = useState("")
-    const [selectedUnitKey, setSelectedUnitKey] = useState("")
     const [purchaseUnits, setPurchaseUnits] = useState<ProductPurchaseUnit[]>([])
     const [selectedPurchaseUnitId, setSelectedPurchaseUnitId] = useState("")
-    const [loading, setLoading] = useState(!stateProduct)
+    const [loading, setLoading] = useState(!!productId)
     const [error, setError] = useState("")
 
     const { getCartQty, addToCart, increaseCart, decreaseCart } = useHomeCart()
@@ -172,27 +173,22 @@ const ProductDetailPage = () => {
     )
 
     useEffect(() => {
-        if (product || !productId) return
+        if (!productId) return
 
         const fetchProductLots = async () => {
             setLoading(true)
             setError("")
 
             try {
-                const response = await axiosClient.get<HomeProductLotsResponse>(
-                    "/customers/stocklots/available",
-                    {
-                        params: {
-                            pageNumber: 1,
-                            pageSize: 200,
-                        },
-                    }
-                )
+                const response = await axiosClient.get<{
+                    success: boolean
+                    message?: string
+                    data?: HomeProductLotApiItem[]
+                }>(`/customers/products/${productId}/available-stocklots`)
 
-                const rawLots = (response.data?.data?.items ?? []).map((item) =>
+                const scopedRawLots = (response.data?.data ?? []).map((item) =>
                     normalizeHomeLotApiItem(item),
                 )
-                const scopedRawLots = rawLots.filter((item) => item.productId === productId)
                 const supermarketNameMap = new Map<string, string>()
 
                 const mappedLots = scopedRawLots
@@ -200,8 +196,8 @@ const ProductDetailPage = () => {
                     .filter((item) =>
                         isProductVisibleByExpiry(
                             item.daysToExpiry ?? undefined,
-                            item.hoursRemaining ?? undefined
-                        )
+                            item.hoursRemaining ?? undefined,
+                        ),
                     )
 
                 const grouped = groupHomeProductsByProduct(mappedLots, scopedRawLots)
@@ -209,7 +205,9 @@ const ProductDetailPage = () => {
                 setProduct(grouped[0] ?? null)
 
                 if (!grouped.length) {
-                    setError("Không tìm thấy sản phẩm hoặc sản phẩm hiện chưa còn lựa chọn phù hợp.")
+                    setError(
+                        "Không tìm thấy sản phẩm hoặc sản phẩm hiện chưa còn lựa chọn phù hợp.",
+                    )
                 }
             } catch (err) {
                 console.error("[ProductDetail] load failed:", err)
@@ -221,41 +219,7 @@ const ProductDetailPage = () => {
         }
 
         void fetchProductLots()
-    }, [product, productId])
-
-    useEffect(() => {
-        if (!productId) return
-
-        const fetchPurchaseUnits = async () => {
-            try {
-                const response = await axiosClient.get(
-                    `/customers/products/${productId}/purchase-units`,
-                )
-                setPurchaseUnits(parsePurchaseUnitsResponse(response.data))
-            } catch (err) {
-                console.error("[ProductDetail] purchase units failed:", err)
-                setPurchaseUnits([])
-            }
-        }
-
-        void fetchPurchaseUnits()
     }, [productId])
-
-    const productDefaultUnitType = useMemo(() => {
-        const fromRawLots = product?.rawLots?.[0]?.unitType?.trim()
-        if (fromRawLots) return fromRawLots
-
-        const fromLots = product?.lots?.[0]?.unitType?.trim()
-        if (fromLots) return fromLots
-
-        const defaultUnit = purchaseUnits.find((unit) => unit.isProductDefault)
-        return defaultUnit?.type?.trim() ?? ""
-    }, [product?.rawLots, product?.lots, purchaseUnits])
-
-    const effectivePurchaseUnits = useMemo(() => {
-        const merged = mergePurchaseUnits(purchaseUnits, product?.rawLots ?? [])
-        return filterPurchaseUnitsByProductType(merged, productDefaultUnitType)
-    }, [purchaseUnits, product?.rawLots, productDefaultUnitType])
 
     const lotOptions: LotOption[] = useMemo(() => {
         if (!product) return []
@@ -372,63 +336,53 @@ const ProductDetailPage = () => {
         return expiryOptions.find((item) => item.key === selectedExpiryKey)?.options ?? []
     }, [expiryOptions, selectedExpiryKey])
 
-    const unitOptions = useMemo(() => {
-        const map = new Map<
-            string,
-            {
-                key: string
-                label: string
-                totalQuantity: number
-                minPrice: number
-                option: LotOption
-            }
-        >()
+    const productDefaultUnitType = useMemo(() => {
+        const fromRawLots = product?.rawLots?.[0]?.productUnitType?.trim()
+        if (fromRawLots) return fromRawLots
 
-        selectedExpiryOptions.forEach((option) => {
-            const unitName = getLotUnitName(option.lot, product?.rawLots ?? [])
-            const key = getUnitKey(unitName)
-            const current = map.get(key)
+        const defaultUnit = purchaseUnits.find((unit) => unit.isProductDefault)
+        return defaultUnit?.type?.trim() ?? purchaseUnits[0]?.type?.trim() ?? ""
+    }, [product?.rawLots, purchaseUnits])
 
-            if (!current) {
-                map.set(key, {
-                    key,
-                    label: unitName,
-                    totalQuantity: Math.max(0, option.lot.quantity ?? 0),
-                    minPrice: option.lot.price,
-                    option,
-                })
-                return
-            }
+    const effectivePurchaseUnits = useMemo(() => {
+        const merged = mergePurchaseUnits(purchaseUnits, product?.rawLots ?? [])
+        return filterPurchaseUnitsByProductType(merged, productDefaultUnitType)
+    }, [purchaseUnits, product?.rawLots, productDefaultUnitType])
 
-            current.totalQuantity += Math.max(0, option.lot.quantity ?? 0)
+    const contextLotOption = useMemo(
+        () => pickContextLotOption(selectedExpiryOptions),
+        [selectedExpiryOptions],
+    )
 
-            if (option.lot.price < current.minPrice) {
-                current.minPrice = option.lot.price
-                current.option = option
-            }
-        })
-
-        return Array.from(map.values()).sort((a, b) => a.minPrice - b.minPrice)
-    }, [selectedExpiryOptions, product?.rawLots])
-
-    const selectedOption = useMemo(() => {
-        if (!selectedUnitKey) return unitOptions[0]?.option
-        return (
-            unitOptions.find((item) => item.key === selectedUnitKey)?.option ??
-            unitOptions[0]?.option
-        )
-    }, [unitOptions, selectedUnitKey])
-
-    const selectedLot = selectedOption?.lot ?? null
-    const selectedRawLot = selectedOption?.raw
+    const selectablePurchaseUnits = useMemo(() => {
+        return effectivePurchaseUnits
+            .map((unit) => getPurchaseUnitAvailability(unit, contextLotOption))
+            .filter((unit): unit is PurchaseUnitAvailability => unit !== null)
+            .sort((a, b) => {
+                if (a.isProductDefault !== b.isProductDefault) {
+                    return a.isProductDefault ? -1 : 1
+                }
+                return a.name.localeCompare(b.name, "vi")
+            })
+    }, [effectivePurchaseUnits, contextLotOption])
 
     const selectedPurchaseUnit = useMemo(() => {
-        if (!effectivePurchaseUnits.length) return null
+        if (!selectablePurchaseUnits.length) return null
         return (
-            effectivePurchaseUnits.find((u) => u.unitId === selectedPurchaseUnitId) ??
-            effectivePurchaseUnits[0]
+            selectablePurchaseUnits.find((u) => u.unitId === selectedPurchaseUnitId) ??
+            selectablePurchaseUnits[0]
         )
-    }, [effectivePurchaseUnits, selectedPurchaseUnitId])
+    }, [selectablePurchaseUnits, selectedPurchaseUnitId])
+
+    const selectedLot = contextLotOption?.lot ?? null
+    const selectedRawLot = contextLotOption?.raw
+
+    const selectedLotRemainingQty = useMemo(
+        () => Math.max(0, Number(selectedLot?.quantity ?? 0)),
+        [selectedLot],
+    )
+
+    const selectedMaxPurchaseQty = selectedPurchaseUnit?.maxPurchaseQty ?? 0
 
     const selectedCartQty = selectedLot
         ? getCartQty(
@@ -453,34 +407,6 @@ const ProductDetailPage = () => {
         )
     }, [selectedLot, selectedRawLot, selectedPurchaseUnit])
 
-    const selectedMaxPurchaseQty = useMemo(() => {
-        const lotQty = Math.max(0, Number(selectedLot?.quantity ?? 0))
-        if (!selectedRawLot || !selectedPurchaseUnit) return lotQty
-
-        if (selectedPurchaseUnit.unitId === selectedRawLot.unitId) return lotQty
-
-        const converted = convertQuantityBetweenRates(
-            lotQty,
-            selectedRawLot.conversionRate,
-            selectedPurchaseUnit.conversionRate,
-        )
-        return Math.max(0, Math.floor(converted))
-    }, [selectedLot, selectedRawLot, selectedPurchaseUnit])
-
-    const selectedUnitContext = useMemo((): LotUnitContext => {
-        const base = toLotUnitContext(selectedRawLot)
-        if (!selectedPurchaseUnit) return base
-
-        return {
-            ...base,
-            unitId: selectedPurchaseUnit.unitId,
-            unitName: selectedPurchaseUnit.name,
-            unitSymbol: selectedPurchaseUnit.symbol,
-            unitType: selectedPurchaseUnit.type,
-            conversionRate: selectedPurchaseUnit.conversionRate,
-        }
-    }, [selectedRawLot, selectedPurchaseUnit])
-
     const buildSelectedCartLine = (): HomeCartLineInput | null => {
         if (!selectedLot || !selectedRawLot) return null
 
@@ -500,24 +426,11 @@ const ProductDetailPage = () => {
             maxPurchaseQty: selectedMaxPurchaseQty,
         }
     }
-    const selectedPurchaseUnitHint = useMemo(
-        () => formatCustomerPurchaseUnitHint(selectedUnitContext),
-        [selectedUnitContext],
-    )
-    const selectedQuantityEquivalence = useMemo(() => {
-        if (!selectedCartQty) return null
-        return formatCustomerQuantityEquivalence(selectedCartQty, selectedUnitContext)
-    }, [selectedCartQty, selectedUnitContext])
-    const selectedUnitPriceHint = useMemo(() => {
-        if (!selectedDisplayPrice) return null
-        return formatCustomerUnitPriceHint(
-            selectedDisplayPrice,
-            selectedUnitContext,
-        )
-    }, [selectedDisplayPrice, selectedUnitContext])
+
     const selectedReachedStockLimit =
         selectedMaxPurchaseQty > 0 && selectedCartQty >= selectedMaxPurchaseQty
-    const selectedOutOfStock = selectedMaxPurchaseQty <= 0
+    const selectedOutOfStock =
+        !selectedLot || !selectedPurchaseUnit || selectedMaxPurchaseQty <= 0
 
     useEffect(() => {
         if (!supermarketOptions.length) return
@@ -543,39 +456,41 @@ const ProductDetailPage = () => {
     }, [expiryOptions, selectedExpiryKey])
 
     useEffect(() => {
-        if (!unitOptions.length) {
-            setSelectedUnitKey("")
-            return
-        }
-
-        const stillValid = unitOptions.some((item) => item.key === selectedUnitKey)
-
-        if (!selectedUnitKey || !stillValid) {
-            setSelectedUnitKey(unitOptions[0].key)
-        }
-    }, [unitOptions, selectedUnitKey])
-
-    useEffect(() => {
-        if (!effectivePurchaseUnits.length) {
+        if (!selectablePurchaseUnits.length) {
             setSelectedPurchaseUnitId("")
             return
         }
 
-        const lotUnitId = selectedRawLot?.unitId
         const preferred =
-            (lotUnitId &&
-                effectivePurchaseUnits.find((u) => u.unitId === lotUnitId)?.unitId) ||
-            effectivePurchaseUnits.find((u) => u.isProductDefault)?.unitId ||
-            effectivePurchaseUnits[0].unitId
+            selectablePurchaseUnits.find((u) => u.isProductDefault)?.unitId ||
+            selectablePurchaseUnits[0].unitId
 
-        const stillValid = effectivePurchaseUnits.some(
+        const stillValid = selectablePurchaseUnits.some(
             (u) => u.unitId === selectedPurchaseUnitId,
         )
 
         if (!selectedPurchaseUnitId || !stillValid) {
             setSelectedPurchaseUnitId(preferred)
         }
-    }, [effectivePurchaseUnits, selectedRawLot?.unitId, selectedPurchaseUnitId])
+    }, [selectablePurchaseUnits, selectedPurchaseUnitId])
+
+    useEffect(() => {
+        if (!productId) return
+
+        const fetchPurchaseUnits = async () => {
+            try {
+                const response = await axiosClient.get(
+                    `/customers/products/${productId}/purchase-units`,
+                )
+                setPurchaseUnits(parsePurchaseUnitsResponse(response.data))
+            } catch (err) {
+                console.error("[ProductDetail] purchase units failed:", err)
+                setPurchaseUnits([])
+            }
+        }
+
+        void fetchPurchaseUnits()
+    }, [productId])
 
     const handleBack = () => {
         if (window.history.length > 1) {
@@ -722,7 +637,7 @@ const ProductDetailPage = () => {
                                 <CommitmentCard
                                     icon={<ShieldCheck size={16} />}
                                     title="Minh bạch lô hàng"
-                                    description="Hiển thị rõ siêu thị, đơn vị, hạn sử dụng, giá và số lượng."
+                                    description="Hiển thị rõ siêu thị, hạn sử dụng, đơn vị mua và giá bán."
                                 />
                                 <CommitmentCard
                                     icon={<Truck size={16} />}
@@ -737,7 +652,7 @@ const ProductDetailPage = () => {
                                 <CommitmentCard
                                     icon={<Clock3 size={16} />}
                                     title="Ưu tiên giá tốt"
-                                    description="Dễ so sánh theo hạn dùng, đơn vị và giá bán."
+                                    description="Dễ so sánh theo hạn dùng và giá bán."
                                 />
                             </div>
                         </div>
@@ -796,7 +711,7 @@ const ProductDetailPage = () => {
 
                                     <div className="rounded-lg bg-white px-3 py-2 text-right text-[11px] font-bold text-slate-500 shadow-sm">
                                         Giá thay đổi theo
-                                        <div className="text-blue-700">siêu thị · HSD · đơn vị</div>
+                                        <div className="text-blue-700">siêu thị · HSD · đơn vị mua</div>
                                     </div>
                                 </div>
                             </div>
@@ -815,7 +730,6 @@ const ProductDetailPage = () => {
                                                 onClick={() => {
                                                     setSelectedSupermarketName(option.name)
                                                     setSelectedExpiryKey("")
-                                                    setSelectedUnitKey("")
                                                 }}
                                                 className={cn(
                                                     "relative min-h-[68px] rounded-xl border bg-white px-3 py-2 text-center transition hover:border-rose-300",
@@ -851,10 +765,9 @@ const ProductDetailPage = () => {
                                                 <button
                                                     key={option.key}
                                                     type="button"
-                                                    onClick={() => {
+                                                    onClick={() =>
                                                         setSelectedExpiryKey(option.key)
-                                                        setSelectedUnitKey("")
-                                                    }}
+                                                    }
                                                     className={cn(
                                                         "relative min-h-[74px] rounded-xl border bg-white px-3 py-2 text-center transition hover:border-rose-300",
                                                         selected
@@ -887,63 +800,12 @@ const ProductDetailPage = () => {
                                 )}
                             </OptionSection>
 
-                            <OptionSection title="Quy cách lô">
-                                {unitOptions.length ? (
+                            <OptionSection title="Chọn đơn vị">
+                                {!contextLotOption ? (
+                                    <EmptyOption message="Chọn siêu thị và hạn sử dụng trước." />
+                                ) : selectablePurchaseUnits.length ? (
                                     <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                                        {unitOptions.map((option) => {
-                                            const selected = selectedUnitKey === option.key
-
-                                            return (
-                                                <button
-                                                    key={option.key}
-                                                    type="button"
-                                                    onClick={() => setSelectedUnitKey(option.key)}
-                                                    className={cn(
-                                                        "relative min-h-[68px] rounded-xl border bg-white px-3 py-2 text-center transition hover:border-rose-300",
-                                                        selected
-                                                            ? "border-rose-500 ring-1 ring-rose-200"
-                                                            : "border-slate-200"
-                                                    )}
-                                                >
-                                                    {selected && <SelectedCorner />}
-
-                                                    <div className="text-xs font-semibold text-slate-900">
-                                                        {formatUnitDisplay(
-                                                            option.option.raw?.unitName,
-                                                            option.option.raw?.unitSymbol,
-                                                            option.label,
-                                                        )}
-                                                    </div>
-                                                    {option.option.raw &&
-                                                    formatConversionRateHint(
-                                                        toLotUnitContext(option.option.raw),
-                                                    ) ? (
-                                                        <div className="mt-1 line-clamp-2 text-[9px] font-medium text-sky-700">
-                                                            {formatConversionRateHint(
-                                                                toLotUnitContext(option.option.raw),
-                                                            )}
-                                                        </div>
-                                                    ) : null}
-                                                    <div className="mt-1 text-[11px] font-bold text-rose-600">
-                                                        {formatCurrency(option.minPrice)}
-                                                    </div>
-                                                    <div className="mt-0.5 text-[10px] font-semibold text-slate-400">
-                                                        Còn {option.totalQuantity}{" "}
-                                                        {option.option.raw?.unitName || "đơn vị"}
-                                                    </div>
-                                                </button>
-                                            )
-                                        })}
-                                    </div>
-                                ) : (
-                                    <EmptyOption message="Hạn sử dụng này chưa còn quy cách lô khả dụng." />
-                                )}
-                            </OptionSection>
-
-                            <OptionSection title="Đơn vị mua">
-                                {effectivePurchaseUnits.length ? (
-                                    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                                        {effectivePurchaseUnits.map((unit) => {
+                                        {selectablePurchaseUnits.map((unit) => {
                                             const selected =
                                                 selectedPurchaseUnit?.unitId ===
                                                 unit.unitId
@@ -958,7 +820,7 @@ const ProductDetailPage = () => {
                                                         )
                                                     }
                                                     className={cn(
-                                                        "relative min-h-[68px] rounded-xl border bg-white px-3 py-2 text-center transition hover:border-rose-300",
+                                                        "relative min-h-[74px] rounded-xl border bg-white px-3 py-2 text-center transition hover:border-rose-300",
                                                         selected
                                                             ? "border-rose-500 ring-1 ring-rose-200"
                                                             : "border-slate-200",
@@ -972,31 +834,16 @@ const ProductDetailPage = () => {
                                                             unit.symbol,
                                                         )}
                                                     </div>
-                                                    {formatConversionRateHint({
-                                                        name: unit.name,
-                                                        symbol: unit.symbol,
-                                                        type: unit.type,
-                                                        conversionRate:
-                                                            unit.conversionRate,
-                                                    }) ? (
-                                                        <div className="mt-1 line-clamp-2 text-[9px] font-medium text-sky-700">
-                                                            {formatConversionRateHint(
-                                                                {
-                                                                    name: unit.name,
-                                                                    symbol: unit.symbol,
-                                                                    type: unit.type,
-                                                                    conversionRate:
-                                                                        unit.conversionRate,
-                                                                },
-                                                            )}
-                                                        </div>
-                                                    ) : null}
+                                                    <div className="mt-1 text-[10px] font-semibold text-slate-500">
+                                                        Còn {unit.maxPurchaseQty}{" "}
+                                                        {unit.name.toLowerCase()}
+                                                    </div>
                                                 </button>
                                             )
                                         })}
                                     </div>
                                 ) : (
-                                    <EmptyOption message="Chưa có đơn vị mua khả dụng cho sản phẩm này." />
+                                    <EmptyOption message="Lô hàng hiện tại không còn đơn vị mua phù hợp." />
                                 )}
                             </OptionSection>
 
@@ -1041,14 +888,8 @@ const ProductDetailPage = () => {
                                 <>
                                     <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50 p-3">
                                         <div className="text-xs font-bold text-slate-500">
-                                            Lựa chọn đang chọn
+                                            Lựa chọn của bạn
                                         </div>
-                                        <div className="mt-1 text-sm font-semibold leading-5 text-slate-900">
-                                            {buildLotOptionLabel(selectedOption, product.rawLots)}
-                                        </div>
-                                        <p className="mt-2 text-[11px] leading-5 text-sky-800">
-                                            {selectedPurchaseUnitHint}
-                                        </p>
 
                                         <div className="mt-3 grid grid-cols-2 gap-2">
                                             <div className="rounded-xl bg-white p-2">
@@ -1062,23 +903,48 @@ const ProductDetailPage = () => {
 
                                             <div className="rounded-xl bg-white p-2">
                                                 <div className="text-[10px] font-bold text-slate-400">
-                                                    Còn lại
+                                                    Đơn vị
                                                 </div>
                                                 <div className="mt-1 text-xs font-semibold text-slate-800">
-                                                    {selectedMaxPurchaseQty}{" "}
-                                                    {selectedPurchaseUnit?.name ||
-                                                        selectedRawLot?.unitName ||
-                                                        "đơn vị"}
+                                                    {formatUnitDisplay(
+                                                        selectedPurchaseUnit?.name,
+                                                        selectedPurchaseUnit?.symbol,
+                                                        "Đang cập nhật",
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="mt-2 rounded-xl bg-white p-2">
-                                            <div className="text-[10px] font-bold text-slate-400">
-                                                Hạn sử dụng
+                                        <div className="mt-2 grid grid-cols-2 gap-2">
+                                            <div className="rounded-xl bg-white p-2">
+                                                <div className="text-[10px] font-bold text-slate-400">
+                                                    Hạn sử dụng
+                                                </div>
+                                                <div className="mt-1 text-xs font-semibold text-slate-800">
+                                                    {formatBestBefore(selectedRawLot?.expiryDate)}
+                                                </div>
                                             </div>
-                                            <div className="mt-1 text-xs font-semibold text-slate-800">
-                                                {formatBestBefore(selectedRawLot?.expiryDate)}
+
+                                            <div className="rounded-xl bg-white p-2">
+                                                <div className="text-[10px] font-bold text-slate-400">
+                                                    Tồn lô hàng
+                                                </div>
+                                                <div className="mt-1 text-xs font-semibold text-slate-800">
+                                                    {selectedLotRemainingQty}{" "}
+                                                    {formatUnitDisplay(
+                                                        selectedRawLot?.unitName,
+                                                        selectedRawLot?.unitSymbol,
+                                                        "đơn vị",
+                                                    )}
+                                                </div>
+                                                {selectedPurchaseUnit &&
+                                                selectedPurchaseUnit.unitId !==
+                                                    selectedRawLot?.unitId ? (
+                                                    <div className="mt-1 text-[10px] font-medium text-sky-700">
+                                                        ≈ {selectedMaxPurchaseQty}{" "}
+                                                        {selectedPurchaseUnit.name.toLowerCase()}
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         </div>
                                     </div>
@@ -1099,15 +965,8 @@ const ProductDetailPage = () => {
                                                 "Giá cập nhật"}
                                             {selectedPurchaseUnit?.name
                                                 ? ` / ${selectedPurchaseUnit.name}`
-                                                : selectedRawLot?.unitName
-                                                  ? ` / ${selectedRawLot.unitName}`
-                                                  : ""}
+                                                : ""}
                                         </div>
-                                        {selectedUnitPriceHint ? (
-                                            <p className="mt-1 text-xs font-medium text-slate-600">
-                                                {selectedUnitPriceHint}
-                                            </p>
-                                        ) : null}
                                     </div>
 
                                     <div className="mt-4 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-3">
@@ -1117,14 +976,9 @@ const ProductDetailPage = () => {
                                             </div>
                                             <div className="mt-0.5 text-xs font-semibold text-slate-500">
                                                 {selectedCartQty > 0
-                                                    ? `Đã chọn ${selectedCartQty} ${selectedPurchaseUnit?.name || selectedRawLot?.unitName || ""}`.trim()
+                                                    ? `Đã chọn ${selectedCartQty} ${selectedPurchaseUnit?.name || ""}`.trim()
                                                     : "Chưa có trong giỏ"}
                                             </div>
-                                            {selectedQuantityEquivalence ? (
-                                                <p className="mt-1 text-[11px] font-medium text-sky-700">
-                                                    {selectedQuantityEquivalence}
-                                                </p>
-                                            ) : null}
                                         </div>
 
                                         {selectedCartQty > 0 ? (
@@ -1159,7 +1013,10 @@ const ProductDetailPage = () => {
                                                         const line = buildSelectedCartLine()
                                                         if (line) increaseCart(line)
                                                     }}
-                                                    disabled={selectedOutOfStock || selectedReachedStockLimit}
+                                                    disabled={
+                                                        selectedOutOfStock ||
+                                                        selectedReachedStockLimit
+                                                    }
                                                     className={cn(
                                                         qtyBtn,
                                                         (selectedOutOfStock ||
@@ -1213,7 +1070,7 @@ const ProductDetailPage = () => {
 
                                     {selectedReachedStockLimit && (
                                         <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700">
-                                            Bạn đã chọn tối đa số lượng còn lại của lô này.
+                                            Bạn đã chọn tối đa số lượng còn lại của lô hàng.
                                         </div>
                                     )}
                                 </>

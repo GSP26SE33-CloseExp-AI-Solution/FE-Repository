@@ -78,9 +78,15 @@ export const productService = {
         return unwrap(response.data)
     },
 
-    async getPurchaseUnits(productId: string): Promise<ProductPurchaseUnit[]> {
+    async getPurchaseUnits(
+        productId: string,
+        lotId?: string,
+    ): Promise<ProductPurchaseUnit[]> {
         const response = await axiosClient.get<ApiResponse<ProductPurchaseUnit[]>>(
             `/Products/${productId}/purchase-units`,
+            {
+                params: lotId ? { lotId } : undefined,
+            },
         )
 
         unwrap(response.data)

@@ -69,15 +69,12 @@ export const useHomeCart = () => {
     })
 
     const increaseCart = (item: HomeCartLineInput) => {
-        const stockQty = Math.max(
-            0,
-            Number(item.maxPurchaseQty ?? item.quantity ?? 0),
-        )
         const purchaseUnitId = item.purchaseUnitId ?? item.unitId
         const currentQty = getCartQty(item.lotId, purchaseUnitId)
 
-        if (stockQty <= 0) return
-        if (currentQty >= stockQty) return
+        if (typeof item.maxPurchaseQty === "number" && item.maxPurchaseQty > 0) {
+            if (currentQty >= item.maxPurchaseQty) return
+        }
 
         void cartBridge
             .add(toCartLine(item), 1)
