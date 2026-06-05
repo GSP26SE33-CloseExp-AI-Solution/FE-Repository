@@ -118,12 +118,16 @@ type RawHomeLotApiItem = HomeProductLotApiItem & {
     UnitType?: string
     UnitSymbol?: string
     ProductImagePreSignedUrl?: string | null
+    DaysRemaining?: number
+    HoursRemaining?: number
 }
 
 export const normalizeHomeLotApiItem = (
     item: RawHomeLotApiItem,
 ): HomeProductLotApiItem => ({
     ...item,
+    daysRemaining: item.daysRemaining ?? item.DaysRemaining,
+    hoursRemaining: item.hoursRemaining ?? item.HoursRemaining,
     productImagePreSignedUrl:
         item.productImagePreSignedUrl ?? item.ProductImagePreSignedUrl ?? null,
     unitType: item.unitType ?? item.UnitType,

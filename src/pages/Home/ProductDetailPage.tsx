@@ -155,7 +155,7 @@ const ProductDetailPage = () => {
     const [selectedUnitKey, setSelectedUnitKey] = useState("")
     const [purchaseUnits, setPurchaseUnits] = useState<ProductPurchaseUnit[]>([])
     const [selectedPurchaseUnitId, setSelectedPurchaseUnitId] = useState("")
-    const [loading, setLoading] = useState(!stateProduct)
+    const [loading, setLoading] = useState(!!productId)
     const [error, setError] = useState("")
 
     const { getCartQty, addToCart, increaseCart, decreaseCart } = useHomeCart()
@@ -172,27 +172,22 @@ const ProductDetailPage = () => {
     )
 
     useEffect(() => {
-        if (product || !productId) return
+        if (!productId) return
 
         const fetchProductLots = async () => {
             setLoading(true)
             setError("")
 
             try {
-                const response = await axiosClient.get<HomeProductLotsResponse>(
-                    "/customers/stocklots/available",
-                    {
-                        params: {
-                            pageNumber: 1,
-                            pageSize: 200,
-                        },
-                    }
-                )
+                const response = await axiosClient.get<{
+                    success: boolean
+                    message?: string
+                    data?: HomeProductLotApiItem[]
+                }>(`/customers/products/${productId}/available-stocklots`)
 
-                const rawLots = (response.data?.data?.items ?? []).map((item) =>
+                const scopedRawLots = (response.data?.data ?? []).map((item) =>
                     normalizeHomeLotApiItem(item),
                 )
-                const scopedRawLots = rawLots.filter((item) => item.productId === productId)
                 const supermarketNameMap = new Map<string, string>()
 
                 const mappedLots = scopedRawLots
@@ -200,8 +195,8 @@ const ProductDetailPage = () => {
                     .filter((item) =>
                         isProductVisibleByExpiry(
                             item.daysToExpiry ?? undefined,
-                            item.hoursRemaining ?? undefined
-                        )
+                            item.hoursRemaining ?? undefined,
+                        ),
                     )
 
                 const grouped = groupHomeProductsByProduct(mappedLots, scopedRawLots)
@@ -209,7 +204,9 @@ const ProductDetailPage = () => {
                 setProduct(grouped[0] ?? null)
 
                 if (!grouped.length) {
-                    setError("Không tìm thấy sản phẩm hoặc sản phẩm hiện chưa còn lựa chọn phù hợp.")
+                    setError(
+                        "Không tìm thấy sản phẩm hoặc sản phẩm hiện chưa còn lựa chọn phù hợp.",
+                    )
                 }
             } catch (err) {
                 console.error("[ProductDetail] load failed:", err)
@@ -221,7 +218,7 @@ const ProductDetailPage = () => {
         }
 
         void fetchProductLots()
-    }, [product, productId])
+    }, [productId])
 
     useEffect(() => {
         if (!productId) return
@@ -373,42 +370,32 @@ const ProductDetailPage = () => {
     }, [expiryOptions, selectedExpiryKey])
 
     const unitOptions = useMemo(() => {
-        const map = new Map<
-            string,
-            {
-                key: string
-                label: string
-                totalQuantity: number
-                minPrice: number
-                option: LotOption
-            }
-        >()
+        return selectedExpiryOptions
+            .map((option) => {
+                const unitName = getLotUnitName(option.lot, product?.rawLots ?? [])
+                const price = option.lot.price || 0
+                const duplicateUnitCount = selectedExpiryOptions.filter((item) => {
+                    return (
+                        getUnitKey(getLotUnitName(item.lot, product?.rawLots ?? [])) ===
+                        getUnitKey(unitName)
+                    )
+                }).length
 
-        selectedExpiryOptions.forEach((option) => {
-            const unitName = getLotUnitName(option.lot, product?.rawLots ?? [])
-            const key = getUnitKey(unitName)
-            const current = map.get(key)
-
-            if (!current) {
-                map.set(key, {
-                    key,
-                    label: unitName,
+                return {
+                    key: option.lot.lotId,
+                    label:
+                        duplicateUnitCount > 1
+                            ? `${unitName} · ${formatCurrency(price)}`
+                            : unitName,
                     totalQuantity: Math.max(0, option.lot.quantity ?? 0),
-                    minPrice: option.lot.price,
+                    minPrice: price,
                     option,
-                })
-                return
-            }
-
-            current.totalQuantity += Math.max(0, option.lot.quantity ?? 0)
-
-            if (option.lot.price < current.minPrice) {
-                current.minPrice = option.lot.price
-                current.option = option
-            }
-        })
-
-        return Array.from(map.values()).sort((a, b) => a.minPrice - b.minPrice)
+                }
+            })
+            .sort((a, b) => {
+                if (a.minPrice !== b.minPrice) return a.minPrice - b.minPrice
+                return a.label.localeCompare(b.label, "vi")
+            })
     }, [selectedExpiryOptions, product?.rawLots])
 
     const selectedOption = useMemo(() => {
