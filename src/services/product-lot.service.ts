@@ -62,4 +62,17 @@ export const productLotService = {
         return unwrap(response.data)
     },
 
+    async disableLot(lotId: string): Promise<void> {
+        const response = await axiosClient.patch<ApiResponse<null>>(
+            `/Products/lots/${lotId}/disable`,
+        )
+        unwrap(response.data)
+    },
+
+    async deleteLot(lotId: string): Promise<void> {
+        const response = await axiosClient.delete<ApiResponse<null>>(
+            `/Products/lots/${lotId}`,
+        )
+        unwrap(response.data)
+    },
 }

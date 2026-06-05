@@ -1,14 +1,21 @@
+import { useEffect, useState } from "react"
 import {
     Building2,
     Copy,
+    Loader2,
     Mail,
     MapPin,
     MapPinned,
     Phone,
+    UserRound,
     X,
 } from "lucide-react"
 
-import type { AdminSupermarketItem } from "@/types/admin.type"
+import { adminService } from "@/services/admin.service"
+import type {
+    AdminSupermarketItem,
+    AdminSupermarketStaffItem,
+} from "@/types/admin.type"
 
 import {
     cn,
@@ -32,6 +39,21 @@ type SupermarketDetailModalProps = {
     onUpdateStatus: (item: AdminSupermarketItem, nextStatus: number) => void | Promise<void>
 }
 
+const STAFF_STATUS_LABELS: Record<number, string> = {
+    0: "Đang hoạt động",
+    1: "Tạm ngưng",
+    2: "Đã nghỉ",
+}
+
+const getStaffStatusLabel = (status: number) =>
+    STAFF_STATUS_LABELS[status] ?? `Trạng thái ${status}`
+
+const getStaffStatusClass = (status: number) => {
+    if (status === 0) return "border-emerald-200 bg-emerald-50 text-emerald-700"
+    if (status === 1) return "border-amber-200 bg-amber-50 text-amber-700"
+    return "border-slate-200 bg-slate-50 text-slate-600"
+}
+
 const SupermarketDetailModal = ({
     supermarket,
     copiedCode,
@@ -41,6 +63,51 @@ const SupermarketDetailModal = ({
     onOpenMap,
     onUpdateStatus,
 }: SupermarketDetailModalProps) => {
+    const [staff, setStaff] = useState<AdminSupermarketStaffItem[]>([])
+    const [loadingStaff, setLoadingStaff] = useState(false)
+    const [staffError, setStaffError] = useState("")
+
+    useEffect(() => {
+        if (!supermarket?.supermarketId) {
+            setStaff([])
+            setStaffError("")
+            return
+        }
+
+        let cancelled = false
+
+        const loadStaff = async () => {
+            setLoadingStaff(true)
+            setStaffError("")
+
+            try {
+                const rows = await adminService.getSupermarketStaff(supermarket.supermarketId)
+                if (!cancelled) {
+                    setStaff(Array.isArray(rows) ? rows : [])
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setStaff([])
+                    setStaffError(
+                        error instanceof Error
+                            ? error.message
+                            : "Không tải được danh sách nhân viên",
+                    )
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingStaff(false)
+                }
+            }
+        }
+
+        void loadStaff()
+
+        return () => {
+            cancelled = true
+        }
+    }, [supermarket?.supermarketId])
+
     if (!supermarket) return null
 
     const disabled = updatingStatusId === supermarket.supermarketId
@@ -220,6 +287,96 @@ const SupermarketDetailModal = ({
                                     </p>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-slate-200 p-4">
+                        <div className="flex items-center justify-between gap-3">
+                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                Nhân viên siêu thị
+                            </p>
+                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                                {staff.length} người
+                            </span>
+                        </div>
+
+                        <div className="mt-4">
+                            {loadingStaff ? (
+                                <div className="flex items-center gap-2 text-sm text-slate-500">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Đang tải nhân viên...
+                                </div>
+                            ) : staffError ? (
+                                <p className="text-sm text-rose-600">{staffError}</p>
+                            ) : staff.length === 0 ? (
+                                <p className="text-sm text-slate-500">
+                                    Chưa có nhân viên nào được gán cho siêu thị này.
+                                </p>
+                            ) : (
+                                <div className="space-y-3">
+                                    {staff.map((member) => (
+                                        <div
+                                            key={member.supermarketStaffId}
+                                            className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
+                                        >
+                                            <div className="flex flex-wrap items-start justify-between gap-3">
+                                                <div className="flex min-w-0 items-start gap-3">
+                                                    <div className="rounded-xl bg-white p-2 shadow-sm">
+                                                        <UserRound className="h-4 w-4 text-slate-600" />
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <p className="text-sm font-semibold text-slate-900">
+                                                            {member.fullName || "--"}
+                                                        </p>
+                                                        <p className="mt-0.5 text-xs text-slate-500">
+                                                            {member.position || "Nhân viên"}
+                                                            {member.isManager ? " · Quản lý" : ""}
+                                                        </p>
+                                                    </div>
+                                                </div>
+
+                                                <span
+                                                    className={cn(
+                                                        "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
+                                                        getStaffStatusClass(member.status),
+                                                    )}
+                                                >
+                                                    {getStaffStatusLabel(member.status)}
+                                                </span>
+                                            </div>
+
+                                            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Email</p>
+                                                    <p className="break-all font-medium text-slate-800">
+                                                        {member.email || "--"}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Điện thoại</p>
+                                                    <p className="font-medium text-slate-800">
+                                                        {member.phone || "--"}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Mã nhân viên</p>
+                                                    <p className="font-medium text-slate-800">
+                                                        {member.employeeCodeHint
+                                                            ? `••••${member.employeeCodeHint}`
+                                                            : "--"}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500">Tham gia</p>
+                                                    <p className="font-medium text-slate-800">
+                                                        {formatDate(member.createdAt)}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 

@@ -720,6 +720,19 @@ export type AdminSupermarketItem = {
     updatedAt?: string
 }
 
+export type AdminSupermarketStaffItem = {
+    supermarketStaffId: string
+    userId: string
+    fullName: string
+    email: string
+    phone: string
+    position: string
+    isManager: boolean
+    employeeCodeHint?: string | null
+    status: number
+    createdAt: string
+}
+
 export type CreateSupermarketPayload = {
     name: string
     address: string

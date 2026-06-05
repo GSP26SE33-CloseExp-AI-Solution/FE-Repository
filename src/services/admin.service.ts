@@ -9,6 +9,7 @@ import type {
     AdminOrdersQuery,
     AdminRegisterInternalPayload,
     AdminSupermarketItem,
+    AdminSupermarketStaffItem,
     AdminTimeSlot,
     AdminUser,
     AiPricingHistoryItem,
@@ -786,6 +787,13 @@ export const adminService = {
         return get<AdminSupermarketItem>(
             `/supermarkets/${supermarketId}`,
             "Không thể tải chi tiết siêu thị"
+        )
+    },
+
+    getSupermarketStaff(supermarketId: string) {
+        return get<AdminSupermarketStaffItem[]>(
+            `/supermarkets/${supermarketId}/staff`,
+            "Không thể tải danh sách nhân viên siêu thị"
         )
     },
 
