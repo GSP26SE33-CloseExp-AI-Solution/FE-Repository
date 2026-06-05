@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import {
+    Ban,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -519,6 +520,7 @@ const ProductsLotsPage: React.FC = () => {
         useState<ProductDetailDto | null>(null)
     const [openDetail, setOpenDetail] = useState(false)
     const [loadingPopup, setLoadingPopup] = useState(false)
+    const [lotActionLoading, setLotActionLoading] = useState(false)
 
     const [isEditing, setIsEditing] = useState(false)
     const [savingEdit, setSavingEdit] = useState(false)
@@ -925,12 +927,67 @@ const ProductsLotsPage: React.FC = () => {
         setSelectedProduct(null)
         setSelectedProductDetail(null)
         setLoadingPopup(false)
+        setLotActionLoading(false)
         setIsEditing(false)
         setSavingEdit(false)
         setEditErrors({})
         setEditForm(createEmptyEditForm())
         setNutritionRows([createNutritionRow()])
         setProductPurchaseUnits([])
+    }
+
+    const handleDisableLot = async () => {
+        if (!selectedLotState?.lotId || lotActionLoading) return
+
+        const lotName =
+            selectedLot.productName ||
+            selectedProductDetail?.name ||
+            selectedProduct?.name ||
+            "lô hàng này"
+
+        const ok = window.confirm(
+            `Bạn có chắc muốn ẩn lô "${lotName}"?\n\nLô sẽ không hiển thị cho khách và tồn kho được đặt về 0.`,
+        )
+        if (!ok) return
+
+        setLotActionLoading(true)
+        try {
+            await productLotService.disableLot(selectedLotState.lotId)
+            toast.success("Đã ẩn lô hàng")
+            handleCloseDetail()
+            await loadLots()
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, "Không thể ẩn lô hàng"))
+        } finally {
+            setLotActionLoading(false)
+        }
+    }
+
+    const handleDeleteLot = async () => {
+        if (!selectedLotState?.lotId || lotActionLoading) return
+
+        const lotName =
+            selectedLot.productName ||
+            selectedProductDetail?.name ||
+            selectedProduct?.name ||
+            "lô hàng này"
+
+        const ok = window.confirm(
+            `Bạn có chắc muốn xóa lô "${lotName}"?\n\nThao tác này không thể hoàn tác. Nếu lô đã có trong đơn hàng, hệ thống sẽ đánh dấu đã xóa thay vì xóa vật lý.`,
+        )
+        if (!ok) return
+
+        setLotActionLoading(true)
+        try {
+            await productLotService.deleteLot(selectedLotState.lotId)
+            toast.success("Đã xóa lô hàng")
+            handleCloseDetail()
+            await loadLots()
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, "Không thể xóa lô hàng"))
+        } finally {
+            setLotActionLoading(false)
+        }
     }
 
     const handleOpenProductDetail = async (productId: string) => {
@@ -976,6 +1033,10 @@ const ProductsLotsPage: React.FC = () => {
 
     const isProductOnlyDetail = Boolean(selectedProduct && !selectedLotState)
     const canEditProductUnit = isProductOnlyDetail
+    const selectedLotStatus = (selectedLot.status || "").trim().toLowerCase()
+    const isLotArchived =
+        selectedLotStatus === "hidden" || selectedLotStatus === "deleted"
+    const canManageLot = Boolean(selectedLotState) && !isLotArchived
 
     const setEditField = <K extends keyof ProductEditFormValues>(
         key: K,
@@ -1613,10 +1674,42 @@ const ProductsLotsPage: React.FC = () => {
                                 </div>
 
                                 <div className="flex items-center gap-2">
+                                    {canManageLot && !isEditing ? (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDisableLot()}
+                                                disabled={loadingPopup || lotActionLoading}
+                                                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {lotActionLoading ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Ban className="h-4 w-4" />
+                                                )}
+                                                Ẩn lô
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDeleteLot()}
+                                                disabled={loadingPopup || lotActionLoading}
+                                                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {lotActionLoading ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Trash2 className="h-4 w-4" />
+                                                )}
+                                                Xóa lô
+                                            </button>
+                                        </>
+                                    ) : null}
+
                                     <button
                                         type="button"
                                         onClick={() => setIsEditing((prev) => !prev)}
-                                        disabled={loadingPopup || !selectedProduct}
+                                        disabled={loadingPopup || !selectedProduct || lotActionLoading}
                                         className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         <Pencil className="h-4 w-4" />
@@ -1626,7 +1719,8 @@ const ProductsLotsPage: React.FC = () => {
                                     <button
                                         type="button"
                                         onClick={handleCloseDetail}
-                                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+                                        disabled={lotActionLoading}
+                                        className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
                                         Đóng
                                     </button>

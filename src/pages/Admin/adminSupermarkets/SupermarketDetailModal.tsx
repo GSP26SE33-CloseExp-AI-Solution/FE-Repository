@@ -1,6 +1,8 @@
+import { useEffect, useMemo, useState } from "react"
 import {
     Building2,
     Copy,
+    Loader2,
     Mail,
     MapPin,
     MapPinned,
@@ -9,7 +11,11 @@ import {
     X,
 } from "lucide-react"
 
-import type { AdminSupermarketItem } from "@/types/admin.type"
+import { adminService } from "@/services/admin.service"
+import type {
+    AdminSupermarketItem,
+    AdminSupermarketStaffItem,
+} from "@/types/admin.type"
 
 import {
     cn,
@@ -33,6 +39,21 @@ type SupermarketDetailModalProps = {
     onUpdateStatus: (item: AdminSupermarketItem, nextStatus: number) => void | Promise<void>
 }
 
+const STAFF_STATUS_LABELS: Record<number, string> = {
+    0: "Đang hoạt động",
+    1: "Tạm ngưng",
+    2: "Đã nghỉ",
+}
+
+const getStaffStatusLabel = (status: number) =>
+    STAFF_STATUS_LABELS[status] ?? `Trạng thái ${status}`
+
+const getStaffStatusClass = (status: number) => {
+    if (status === 0) return "border-emerald-200 bg-emerald-50 text-emerald-700"
+    if (status === 1) return "border-amber-200 bg-amber-50 text-amber-700"
+    return "border-slate-200 bg-slate-50 text-slate-600"
+}
+
 const SupermarketDetailModal = ({
     supermarket,
     copiedCode,
@@ -42,6 +63,61 @@ const SupermarketDetailModal = ({
     onOpenMap,
     onUpdateStatus,
 }: SupermarketDetailModalProps) => {
+    const [staff, setStaff] = useState<AdminSupermarketStaffItem[]>([])
+    const [loadingStaff, setLoadingStaff] = useState(false)
+    const [staffError, setStaffError] = useState("")
+
+    useEffect(() => {
+        if (!supermarket?.supermarketId) {
+            setStaff([])
+            setStaffError("")
+            return
+        }
+
+        let cancelled = false
+
+        const loadStaff = async () => {
+            setLoadingStaff(true)
+            setStaffError("")
+
+            try {
+                const rows = await adminService.getSupermarketStaff(supermarket.supermarketId)
+                if (!cancelled) {
+                    setStaff(Array.isArray(rows) ? rows : [])
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setStaff([])
+                    setStaffError(
+                        error instanceof Error
+                            ? error.message
+                            : "Không tải được danh sách nhân viên",
+                    )
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingStaff(false)
+                }
+            }
+        }
+
+        void loadStaff()
+
+        return () => {
+            cancelled = true
+        }
+    }, [supermarket?.supermarketId])
+
+    const managerFromStaff = useMemo(
+        () => staff.find((row) => row.isManager) ?? null,
+        [staff],
+    )
+
+    const managerFullName =
+        managerFromStaff?.fullName || supermarket?.managerFullName || ""
+    const managerEmail =
+        managerFromStaff?.email || supermarket?.managerEmail || ""
+
     if (!supermarket) return null
 
     const disabled = updatingStatusId === supermarket.supermarketId
@@ -229,7 +305,16 @@ const SupermarketDetailModal = ({
                             Tài khoản quản lý
                         </p>
 
-                        {supermarket.managerFullName || supermarket.managerEmail ? (
+                        {loadingStaff ? (
+                            <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Đang tải thông tin quản lý...
+                            </div>
+                        ) : staffError ? (
+                            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                {staffError}
+                            </div>
+                        ) : managerFullName || managerEmail ? (
                             <div className="mt-4 space-y-4">
                                 <div className="flex items-start gap-3">
                                     <div className="rounded-xl bg-emerald-100 p-2">
@@ -238,7 +323,7 @@ const SupermarketDetailModal = ({
                                     <div>
                                         <p className="text-xs text-slate-500">Họ tên</p>
                                         <p className="text-sm font-medium text-slate-900">
-                                            {supermarket.managerFullName || "--"}
+                                            {managerFullName || "--"}
                                         </p>
                                     </div>
                                 </div>
@@ -250,7 +335,7 @@ const SupermarketDetailModal = ({
                                     <div className="min-w-0">
                                         <p className="text-xs text-slate-500">Email đăng nhập</p>
                                         <p className="break-all text-sm font-medium text-slate-900">
-                                            {supermarket.managerEmail || "--"}
+                                            {managerEmail || "--"}
                                         </p>
                                     </div>
                                 </div>
