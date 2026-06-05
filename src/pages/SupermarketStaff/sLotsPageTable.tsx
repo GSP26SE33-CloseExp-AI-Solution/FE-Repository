@@ -1133,7 +1133,7 @@ const ProductsLotsPage: React.FC = () => {
             const expectedStorageInstructions = payload.detail.storageInstructions?.trim() ?? ""
             const expectedSafetyWarnings = payload.detail.safetyWarnings?.trim() ?? ""
 
-            const didChange =
+            const isMetadataSynced =
                 (product.name || detail.name || "").trim() === payload.name.trim() &&
                 (product.barcode || detail.barcode || "").trim() === payload.barcode.trim() &&
                 (product.category || detail.category || "").trim() === payload.categoryName.trim() &&
@@ -1150,9 +1150,10 @@ const ProductsLotsPage: React.FC = () => {
                 fetchedIngredients === normalizedIngredients &&
                 actualNutrition === expectedNutrition
 
-            if (!didChange) {
+            const uploadedImageCount = imageFiles.length
+
+            if (!isMetadataSynced && !imageUpdateResponse) {
                 toast.error(
-                    updateResponse.message ||
                     "BE báo thành công nhưng dữ liệu chưa được cập nhật thật",
                 )
                 return
@@ -1179,11 +1180,16 @@ const ProductsLotsPage: React.FC = () => {
 
             await loadLots()
 
-            toast.success(
-                imageFiles.length > 0
-                    ? "Cập nhật thông tin và ảnh sản phẩm thành công"
-                    : updateResponse.message || "Cập nhật thông tin sản phẩm thành công",
-            )
+            if (imageUpdateResponse && !isMetadataSynced) {
+                toast.success("Cập nhật ảnh sản phẩm thành công")
+            } else if (uploadedImageCount > 0) {
+                toast.success("Cập nhật thông tin và ảnh sản phẩm thành công")
+            } else {
+                toast.success(
+                    updateResponse.message ||
+                        "Cập nhật thông tin sản phẩm thành công",
+                )
+            }
         } catch (error) {
             toast.error(
                 error instanceof Error
