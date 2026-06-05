@@ -937,11 +937,13 @@ const ProductsLotsPage: React.FC = () => {
         setProductUnitDraft(
             selectedProduct?.unitId ||
             selectedProductDetail?.unitId ||
+            selectedLot?.unitId ||
             "",
         )
     }, [
         selectedProduct?.unitId,
         selectedProductDetail?.unitId,
+        selectedLot?.unitId,
         openDetail,
     ])
 
@@ -1384,7 +1386,7 @@ const ProductsLotsPage: React.FC = () => {
             } else {
                 toast.success(
                     updateResponse.message ||
-                        "Cập nhật thông tin sản phẩm thành công",
+                    "Cập nhật thông tin sản phẩm thành công",
                 )
             }
         } catch (error) {
@@ -1794,19 +1796,19 @@ const ProductsLotsPage: React.FC = () => {
                                     <h3 className="text-lg font-semibold text-slate-900">
                                         {selectedLotState
                                             ? selectedLot.productName ||
-                                              selectedProductDetail?.name ||
-                                              selectedProduct?.name ||
-                                              "Chi tiết lô hàng"
+                                            selectedProductDetail?.name ||
+                                            selectedProduct?.name ||
+                                            "Chi tiết lô hàng"
                                             : selectedProduct?.name ||
-                                              selectedProductDetail?.name ||
-                                              "Chi tiết sản phẩm"}
+                                            selectedProductDetail?.name ||
+                                            "Chi tiết sản phẩm"}
                                     </h3>
                                     <p className="mt-1 text-sm text-slate-500">
                                         {isEditing
                                             ? "Bạn đang chỉnh sửa thông tin sản phẩm."
                                             : selectedLotState
-                                              ? `Trạng thái lô: ${getLotStatusLabel(selectedLot.status)}. Bấm ra ngoài để đóng.`
-                                              : "Bấm ra ngoài để đóng popup."}
+                                                ? `Trạng thái lô: ${getLotStatusLabel(selectedLot.status)}. Bấm ra ngoài để đóng.`
+                                                : "Bấm ra ngoài để đóng popup."}
                                     </p>
                                 </div>
 
