@@ -48,7 +48,16 @@ import {
     formatUnitDisplay,
 } from "@/utils/unitMeasure"
 
-type LotStatusFilter = "ALL" | "DRAFT" | "PRICED" | "PUBLISHED"
+type LotStatusFilter =
+    | "ALL"
+    | "DRAFT"
+    | "VERIFIED"
+    | "PRICED"
+    | "PUBLISHED"
+    | "HIDDEN"
+    | "DELETED"
+    | "EXPIRED"
+    | "SOLDOUT"
 type ExpiryFilter =
     | "Tất cả hạn dùng"
     | "Hết hạn hôm nay"
@@ -149,23 +158,76 @@ const calcDiscount = (original?: number | null, sale?: number | null) => {
     return Math.max(0, Math.round(((original - sale) / original) * 100))
 }
 
-const normalizeLotStatus = (status?: string | null): LotStatusFilter => {
-    const normalized = (status || "").trim().toLowerCase()
+const LOT_STATUS_BY_NUMBER: Record<number, LotStatusFilter> = {
+    0: "DRAFT",
+    1: "VERIFIED",
+    2: "PRICED",
+    3: "PUBLISHED",
+    4: "EXPIRED",
+    5: "SOLDOUT",
+    6: "HIDDEN",
+    7: "DELETED",
+}
+
+const normalizeLotStatus = (status?: string | number | null): LotStatusFilter => {
+    if (typeof status === "number" && LOT_STATUS_BY_NUMBER[status]) {
+        return LOT_STATUS_BY_NUMBER[status]
+    }
+
+    const normalized = String(status ?? "").trim().toLowerCase()
+    if (!normalized) return "ALL"
+
+    const numericStatus = Number(normalized)
+    if (!Number.isNaN(numericStatus) && LOT_STATUS_BY_NUMBER[numericStatus]) {
+        return LOT_STATUS_BY_NUMBER[numericStatus]
+    }
 
     if (normalized === "draft") return "DRAFT"
+    if (normalized === "verified") return "VERIFIED"
     if (normalized === "priced" || normalized === "priceconfirmed") return "PRICED"
     if (normalized === "published") return "PUBLISHED"
+    if (normalized === "hidden") return "HIDDEN"
+    if (normalized === "deleted") return "DELETED"
+    if (normalized === "expired") return "EXPIRED"
+    if (normalized === "soldout") return "SOLDOUT"
 
     return "ALL"
 }
 
-const getLotStatusMeta = (status?: string | null) => {
+const getLotStatusMeta = (status?: string | number | null) => {
     const normalized = normalizeLotStatus(status)
+
+    if (normalized === "HIDDEN") {
+        return {
+            label: "Đã ẩn",
+            color: "bg-amber-100 text-amber-800 border-amber-200",
+            description:
+                "Lô không hiển thị cho khách hàng. Nhân viên vẫn xem được và có thể đăng bán lại.",
+        }
+    }
+
+    if (normalized === "DELETED") {
+        return {
+            label: "Đã xóa",
+            color: "bg-rose-100 text-rose-700 border-rose-200",
+            description:
+                "Lô đã được đánh dấu xóa và tồn kho bằng 0. Dữ liệu vẫn được lưu trong hệ thống.",
+        }
+    }
 
     if (normalized === "DRAFT") {
         return {
             label: "Nháp",
             color: "bg-slate-100 text-slate-700 border-slate-200",
+            description: "Lô đang ở trạng thái nháp, chưa sẵn sàng đăng bán.",
+        }
+    }
+
+    if (normalized === "VERIFIED") {
+        return {
+            label: "Đã xác minh",
+            color: "bg-sky-100 text-sky-800 border-sky-200",
+            description: "Lô đã được xác minh, chờ chốt giá và đăng bán.",
         }
     }
 
@@ -173,6 +235,7 @@ const getLotStatusMeta = (status?: string | null) => {
         return {
             label: "Đã chốt giá",
             color: "bg-violet-100 text-violet-700 border-violet-200",
+            description: "Lô đã có giá bán, chờ đăng bán cho khách hàng.",
         }
     }
 
@@ -180,14 +243,35 @@ const getLotStatusMeta = (status?: string | null) => {
         return {
             label: "Đang bán",
             color: "bg-emerald-100 text-emerald-700 border-emerald-200",
+            description: "Lô đang hiển thị và có thể được khách hàng mua.",
+        }
+    }
+
+    if (normalized === "EXPIRED") {
+        return {
+            label: "Hết hạn",
+            color: "bg-orange-100 text-orange-800 border-orange-200",
+            description: "Lô đã quá hạn sử dụng, không thể đăng bán cho khách.",
+        }
+    }
+
+    if (normalized === "SOLDOUT") {
+        return {
+            label: "Hết hàng",
+            color: "bg-slate-100 text-slate-600 border-slate-200",
+            description: "Lô đã hết tồn kho.",
         }
     }
 
     return {
-        label: status || "Không rõ",
+        label: "Không xác định",
         color: "bg-slate-100 text-slate-700 border-slate-200",
+        description: "Không xác định được trạng thái lô hàng.",
     }
 }
+
+const getLotStatusLabel = (status?: string | number | null) =>
+    getLotStatusMeta(status).label
 
 const getProductStatusLabel = (status?: number | null) => {
     if (typeof status !== "number") return "—"
@@ -758,11 +842,19 @@ const ProductsLotsPage: React.FC = () => {
         const publishedCount = lots.filter(
             (item) => normalizeLotStatus(item.status) === "PUBLISHED",
         ).length
+        const hiddenCount = lots.filter(
+            (item) => normalizeLotStatus(item.status) === "HIDDEN",
+        ).length
+        const deletedCount = lots.filter(
+            (item) => normalizeLotStatus(item.status) === "DELETED",
+        ).length
 
         return {
             draftCount,
             pricedCount,
             publishedCount,
+            hiddenCount,
+            deletedCount,
             currentPageCount: lots.length,
         }
     }, [lots])
@@ -946,7 +1038,7 @@ const ProductsLotsPage: React.FC = () => {
             "lô hàng này"
 
         const ok = window.confirm(
-            `Bạn có chắc muốn ẩn lô "${lotName}"?\n\nLô sẽ không hiển thị cho khách và tồn kho được đặt về 0.`,
+            `Bạn có chắc muốn ẩn lô "${lotName}"?\n\nLô sẽ không hiển thị cho khách hàng. Nhân viên siêu thị vẫn xem được và có thể đăng bán lại sau.`,
         )
         if (!ok) return
 
@@ -973,7 +1065,7 @@ const ProductsLotsPage: React.FC = () => {
             "lô hàng này"
 
         const ok = window.confirm(
-            `Bạn có chắc muốn xóa lô "${lotName}"?\n\nThao tác này không thể hoàn tác. Nếu lô đã có trong đơn hàng, hệ thống sẽ đánh dấu đã xóa thay vì xóa vật lý.`,
+            `Bạn có chắc muốn xóa lô "${lotName}"?\n\nLô sẽ chuyển sang trạng thái đã xóa và tồn kho được đặt về 0. Dữ liệu lô vẫn được giữ lại trong hệ thống.`,
         )
         if (!ok) return
 
@@ -985,6 +1077,33 @@ const ProductsLotsPage: React.FC = () => {
             await loadLots()
         } catch (error) {
             toast.error(getApiErrorMessage(error, "Không thể xóa lô hàng"))
+        } finally {
+            setLotActionLoading(false)
+        }
+    }
+
+    const handleRepublishLot = async () => {
+        if (!selectedLotState?.lotId || lotActionLoading) return
+
+        const lotName =
+            selectedLot.productName ||
+            selectedProductDetail?.name ||
+            selectedProduct?.name ||
+            "lô hàng này"
+
+        const ok = window.confirm(
+            `Bạn có chắc muốn đăng bán lại lô "${lotName}"?\n\nLô sẽ hiển thị lại cho khách hàng nếu còn tồn kho và chưa hết hạn.`,
+        )
+        if (!ok) return
+
+        setLotActionLoading(true)
+        try {
+            await productLotService.republishLot(selectedLotState.lotId)
+            toast.success("Đã đăng bán lại lô hàng")
+            handleCloseDetail()
+            await loadLots()
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, "Không thể đăng bán lại lô hàng"))
         } finally {
             setLotActionLoading(false)
         }
@@ -1033,10 +1152,16 @@ const ProductsLotsPage: React.FC = () => {
 
     const isProductOnlyDetail = Boolean(selectedProduct && !selectedLotState)
     const canEditProductUnit = isProductOnlyDetail
-    const selectedLotStatus = (selectedLot.status || "").trim().toLowerCase()
-    const isLotArchived =
-        selectedLotStatus === "hidden" || selectedLotStatus === "deleted"
-    const canManageLot = Boolean(selectedLotState) && !isLotArchived
+    const selectedLotStatusKey = normalizeLotStatus(selectedLot.status)
+    const selectedLotStatusMeta = getLotStatusMeta(selectedLot.status)
+    const canHideLot =
+        Boolean(selectedLotState) &&
+        selectedLotStatusKey !== "HIDDEN" &&
+        selectedLotStatusKey !== "DELETED"
+    const canDeleteLot =
+        Boolean(selectedLotState) && selectedLotStatusKey !== "DELETED"
+    const canRepublishLot =
+        Boolean(selectedLotState) && selectedLotStatusKey === "HIDDEN"
 
     const setEditField = <K extends keyof ProductEditFormValues>(
         key: K,
@@ -1351,11 +1476,13 @@ const ProductsLotsPage: React.FC = () => {
                     />
                 ) : (
                     <>
-                        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="mb-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
                             <SummaryCard title="Tổng lô hàng" value={serverTotal} />
-                            <SummaryCard title="Đang hiển thị" value={summary.currentPageCount} />
+                            <SummaryCard title="Trên trang này" value={summary.currentPageCount} />
                             <SummaryCard title="Đã chốt giá" value={summary.pricedCount} />
                             <SummaryCard title="Đang bán" value={summary.publishedCount} />
+                            <SummaryCard title="Đã ẩn" value={summary.hiddenCount} />
+                            <SummaryCard title="Đã xóa" value={summary.deletedCount} />
                         </div>
 
                         <div className="mb-4 rounded-[20px] border border-slate-200 bg-white p-4 shadow-sm">
@@ -1383,6 +1510,10 @@ const ProductsLotsPage: React.FC = () => {
                                         { label: "Nháp", value: "DRAFT" },
                                         { label: "Đã chốt giá", value: "PRICED" },
                                         { label: "Đang bán", value: "PUBLISHED" },
+                                        { label: "Đã ẩn", value: "HIDDEN" },
+                                        { label: "Đã xóa", value: "DELETED" },
+                                        { label: "Hết hạn", value: "EXPIRED" },
+                                        { label: "Hết hàng", value: "SOLDOUT" },
                                     ]}
                                 />
 
@@ -1485,7 +1616,6 @@ const ProductsLotsPage: React.FC = () => {
                                                     originalPrice,
                                                     sellingPrice ?? aiSuggestedPrice,
                                                 )
-                                                const normalizedStatus = normalizeLotStatus(lot.status)
 
                                                 const remainingText =
                                                     typeof lot.daysRemaining === "number" ||
@@ -1552,9 +1682,7 @@ const ProductsLotsPage: React.FC = () => {
                                                                     statusMeta.color,
                                                                 )}
                                                             >
-                                                                {normalizedStatus === "PUBLISHED"
-                                                                    ? "Đang bán"
-                                                                    : statusMeta.label}
+                                                                {statusMeta.label}
                                                             </span>
                                                         </div>
 
@@ -1664,46 +1792,86 @@ const ProductsLotsPage: React.FC = () => {
                             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900">
-                                        {selectedLot.productName || selectedProductDetail?.name || selectedProduct?.name || "Chi tiết sản phẩm"}
+                                        {selectedLotState
+                                            ? selectedLot.productName ||
+                                              selectedProductDetail?.name ||
+                                              selectedProduct?.name ||
+                                              "Chi tiết lô hàng"
+                                            : selectedProduct?.name ||
+                                              selectedProductDetail?.name ||
+                                              "Chi tiết sản phẩm"}
                                     </h3>
                                     <p className="mt-1 text-sm text-slate-500">
                                         {isEditing
                                             ? "Bạn đang chỉnh sửa thông tin sản phẩm."
-                                            : "Bấm ra ngoài để đóng popup."}
+                                            : selectedLotState
+                                              ? `Trạng thái lô: ${getLotStatusLabel(selectedLot.status)}. Bấm ra ngoài để đóng.`
+                                              : "Bấm ra ngoài để đóng popup."}
                                     </p>
                                 </div>
 
                                 <div className="flex items-center gap-2">
-                                    {canManageLot && !isEditing ? (
-                                        <>
-                                            <button
-                                                type="button"
-                                                onClick={() => void handleDisableLot()}
-                                                disabled={loadingPopup || lotActionLoading}
-                                                className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                {lotActionLoading ? (
+                                    {canRepublishLot && !isEditing ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleRepublishLot()}
+                                            disabled={loadingPopup || lotActionLoading}
+                                            className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {lotActionLoading ? (
+                                                <>
                                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Ban className="h-4 w-4" />
-                                                )}
-                                                Ẩn lô
-                                            </button>
+                                                    Đang xử lý...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Sparkles className="h-4 w-4" />
+                                                    Đăng bán lại
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : null}
 
-                                            <button
-                                                type="button"
-                                                onClick={() => void handleDeleteLot()}
-                                                disabled={loadingPopup || lotActionLoading}
-                                                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                {lotActionLoading ? (
+                                    {canHideLot && !isEditing ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleDisableLot()}
+                                            disabled={loadingPopup || lotActionLoading}
+                                            className="inline-flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {lotActionLoading ? (
+                                                <>
                                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                                ) : (
+                                                    Đang xử lý...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Ban className="h-4 w-4" />
+                                                    Ẩn lô
+                                                </>
+                                            )}
+                                        </button>
+                                    ) : null}
+
+                                    {canDeleteLot && !isEditing ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleDeleteLot()}
+                                            disabled={loadingPopup || lotActionLoading}
+                                            className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                        >
+                                            {lotActionLoading ? (
+                                                <>
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    Đang xử lý...
+                                                </>
+                                            ) : (
+                                                <>
                                                     <Trash2 className="h-4 w-4" />
-                                                )}
-                                                Xóa lô
-                                            </button>
-                                        </>
+                                                    Xóa lô
+                                                </>
+                                            )}
+                                        </button>
                                     ) : null}
 
                                     <button
@@ -2156,7 +2324,7 @@ const ProductsLotsPage: React.FC = () => {
                                                         selectedProduct?.type ?? selectedProductDetail?.type,
                                                     ),
                                                 ],
-                                                ["Trạng thái lô hàng", selectedLot.status || "—"],
+                                                ["Trạng thái lô hàng", getLotStatusLabel(selectedLot.status)],
                                                 [
                                                     "Trạng thái sản phẩm",
                                                     getProductStatusLabel(
@@ -2289,6 +2457,68 @@ const ProductsLotsPage: React.FC = () => {
                                                 ],
                                             ]}
                                         />
+
+                                        {selectedLotState ? (
+                                            <div className="rounded-2xl border border-slate-200 p-5">
+                                                <div className="text-sm font-semibold text-slate-900">
+                                                    Quản lý trạng thái lô hàng
+                                                </div>
+
+                                                <div className="mt-4 flex flex-wrap items-center gap-2">
+                                                    <span className="text-sm text-slate-600">
+                                                        Trạng thái hiện tại:
+                                                    </span>
+                                                    <span
+                                                        className={cn(
+                                                            "inline-flex rounded-full border px-3 py-1 text-sm font-medium",
+                                                            selectedLotStatusMeta.color,
+                                                        )}
+                                                    >
+                                                        {selectedLotStatusMeta.label}
+                                                    </span>
+                                                </div>
+
+                                                <p className="mt-3 text-sm leading-6 text-slate-600">
+                                                    {selectedLotStatusMeta.description}
+                                                </p>
+
+                                                <ul className="mt-4 space-y-2 text-sm leading-6 text-slate-600">
+                                                    {canHideLot ? (
+                                                        <li>
+                                                            <span className="font-medium text-amber-800">
+                                                                Ẩn lô:
+                                                            </span>{" "}
+                                                            Tạm ẩn khỏi khách hàng, giữ nguyên tồn kho
+                                                            để có thể đăng bán lại sau.
+                                                        </li>
+                                                    ) : null}
+                                                    {canRepublishLot ? (
+                                                        <li>
+                                                            <span className="font-medium text-emerald-800">
+                                                                Đăng bán lại:
+                                                            </span>{" "}
+                                                            Hiển thị lại cho khách khi lô còn tồn kho
+                                                            và chưa hết hạn.
+                                                        </li>
+                                                    ) : null}
+                                                    {canDeleteLot ? (
+                                                        <li>
+                                                            <span className="font-medium text-rose-700">
+                                                                Xóa lô:
+                                                            </span>{" "}
+                                                            Chuyển sang trạng thái đã xóa, đặt tồn kho
+                                                            về 0, không xóa dữ liệu khỏi hệ thống.
+                                                        </li>
+                                                    ) : null}
+                                                    {selectedLotStatusKey === "DELETED" ? (
+                                                        <li className="text-slate-500">
+                                                            Lô đã xóa — không thể thực hiện thêm thao
+                                                            tác quản lý.
+                                                        </li>
+                                                    ) : null}
+                                                </ul>
+                                            </div>
+                                        ) : null}
 
                                         <div className="rounded-2xl border border-slate-200 p-5">
                                             <div className="text-sm font-semibold text-slate-900">
@@ -2604,7 +2834,7 @@ const ProductsLotsPage: React.FC = () => {
                                                                     selectedProduct?.type ?? selectedProductDetail?.type,
                                                                 ),
                                                             ],
-                                                            ["Trạng thái lô hàng", selectedLot.status || "—"],
+                                                            ["Trạng thái lô hàng", getLotStatusLabel(selectedLot.status)],
                                                             [
                                                                 "Trạng thái sản phẩm",
                                                                 getProductStatusLabel(

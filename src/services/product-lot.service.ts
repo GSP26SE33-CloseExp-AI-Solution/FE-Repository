@@ -75,4 +75,11 @@ export const productLotService = {
         )
         unwrap(response.data)
     },
+
+    async republishLot(lotId: string): Promise<void> {
+        const response = await axiosClient.patch<ApiResponse<null>>(
+            `/Products/lots/${lotId}/republish`,
+        )
+        unwrap(response.data)
+    },
 }
