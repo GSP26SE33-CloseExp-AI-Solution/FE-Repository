@@ -605,6 +605,12 @@ const ProductsLotsPage: React.FC = () => {
     const [openDetail, setOpenDetail] = useState(false)
     const [loadingPopup, setLoadingPopup] = useState(false)
     const [lotActionLoading, setLotActionLoading] = useState(false)
+    const [showRepublishForm, setShowRepublishForm] = useState(false)
+    const [republishUnitId, setRepublishUnitId] = useState("")
+    const [republishQuantity, setRepublishQuantity] = useState("")
+    const [republishPrice, setRepublishPrice] = useState("")
+    const [republishUnits, setRepublishUnits] = useState<ProductPurchaseUnit[]>([])
+    const [republishUnitsLoading, setRepublishUnitsLoading] = useState(false)
 
     const [isEditing, setIsEditing] = useState(false)
     const [savingEdit, setSavingEdit] = useState(false)
@@ -1020,6 +1026,8 @@ const ProductsLotsPage: React.FC = () => {
         setSelectedProductDetail(null)
         setLoadingPopup(false)
         setLotActionLoading(false)
+        setShowRepublishForm(false)
+        setRepublishUnits([])
         setIsEditing(false)
         setSavingEdit(false)
         setEditErrors({})
@@ -1082,33 +1090,6 @@ const ProductsLotsPage: React.FC = () => {
         }
     }
 
-    const handleRepublishLot = async () => {
-        if (!selectedLotState?.lotId || lotActionLoading) return
-
-        const lotName =
-            selectedLot.productName ||
-            selectedProductDetail?.name ||
-            selectedProduct?.name ||
-            "lô hàng này"
-
-        const ok = window.confirm(
-            `Bạn có chắc muốn đăng bán lại lô "${lotName}"?\n\nLô sẽ hiển thị lại cho khách hàng nếu còn tồn kho và chưa hết hạn.`,
-        )
-        if (!ok) return
-
-        setLotActionLoading(true)
-        try {
-            await productLotService.republishLot(selectedLotState.lotId)
-            toast.success("Đã đăng bán lại lô hàng")
-            handleCloseDetail()
-            await loadLots()
-        } catch (error) {
-            toast.error(getApiErrorMessage(error, "Không thể đăng bán lại lô hàng"))
-        } finally {
-            setLotActionLoading(false)
-        }
-    }
-
     const handleOpenProductDetail = async (productId: string) => {
         setSelectedLot(null)
         setSelectedProduct(null)
@@ -1162,6 +1143,118 @@ const ProductsLotsPage: React.FC = () => {
         Boolean(selectedLotState) && selectedLotStatusKey !== "DELETED"
     const canRepublishLot =
         Boolean(selectedLotState) && selectedLotStatusKey === "HIDDEN"
+
+    const resolveRepublishPrice = (lot: ProductLotItem) =>
+        lot.finalUnitPrice ??
+        lot.sellingUnitPrice ??
+        lot.suggestedUnitPrice ??
+        lot.originalUnitPrice ??
+        0
+
+    useEffect(() => {
+        if (!canRepublishLot || !selectedLotState?.lotId || !selectedLotState.productId) {
+            setShowRepublishForm(false)
+            setRepublishUnits([])
+            return
+        }
+
+        setRepublishUnitId(selectedLot.unitId || "")
+        setRepublishQuantity(
+            typeof selectedLot.quantity === "number" ? String(selectedLot.quantity) : "",
+        )
+        setRepublishPrice(String(resolveRepublishPrice(selectedLot)))
+
+        let cancelled = false
+
+        const loadRepublishUnits = async () => {
+            setRepublishUnitsLoading(true)
+            try {
+                const units = await productService.getPurchaseUnits(
+                    selectedLotState.productId,
+                    selectedLotState.lotId,
+                )
+                if (cancelled) return
+                setRepublishUnits(units)
+                if (!selectedLot.unitId && units[0]?.unitId) {
+                    setRepublishUnitId(units[0].unitId)
+                }
+            } catch {
+                if (!cancelled) setRepublishUnits([])
+            } finally {
+                if (!cancelled) setRepublishUnitsLoading(false)
+            }
+        }
+
+        void loadRepublishUnits()
+
+        return () => {
+            cancelled = true
+        }
+    }, [
+        canRepublishLot,
+        selectedLotState?.lotId,
+        selectedLotState?.productId,
+        selectedLot.unitId,
+        selectedLot.quantity,
+        selectedLot.finalUnitPrice,
+        selectedLot.sellingUnitPrice,
+        selectedLot.suggestedUnitPrice,
+        selectedLot.originalUnitPrice,
+    ])
+
+    const handleRepublishLot = async () => {
+        if (!selectedLotState?.lotId || lotActionLoading) return
+
+        const quantity = Number(republishQuantity)
+        const finalUnitPrice = Number(republishPrice)
+
+        if (!republishUnitId) {
+            toast.error("Vui lòng chọn đơn vị bán")
+            return
+        }
+
+        if (!Number.isFinite(quantity) || quantity <= 0) {
+            toast.error("Số lượng phải lớn hơn 0")
+            return
+        }
+
+        if (!Number.isFinite(finalUnitPrice) || finalUnitPrice <= 0) {
+            toast.error("Giá bán phải lớn hơn 0")
+            return
+        }
+
+        const unitLabel =
+            republishUnits.find((unit) => unit.unitId === republishUnitId)?.name ||
+            selectedLot.unitName ||
+            "đơn vị"
+
+        const lotName =
+            selectedLot.productName ||
+            selectedProductDetail?.name ||
+            selectedProduct?.name ||
+            "lô hàng này"
+
+        const ok = window.confirm(
+            `Đăng bán lại "${lotName}"?\n\nĐơn vị: ${unitLabel}\nSố lượng: ${quantity}\nGiá bán: ${finalUnitPrice.toLocaleString("vi-VN")} đ`,
+        )
+        if (!ok) return
+
+        setLotActionLoading(true)
+        try {
+            await productLotService.republishLot(selectedLotState.lotId, {
+                unitId: republishUnitId,
+                quantity,
+                finalUnitPrice,
+            })
+            toast.success("Đã đăng bán lại lô hàng")
+            handleCloseDetail()
+            await loadLots()
+        } catch (error) {
+            toast.error(getApiErrorMessage(error, "Không thể đăng bán lại lô hàng"))
+        } finally {
+            setLotActionLoading(false)
+        }
+    }
 
     const setEditField = <K extends keyof ProductEditFormValues>(
         key: K,
@@ -1814,7 +1907,7 @@ const ProductsLotsPage: React.FC = () => {
                                     {canRepublishLot && !isEditing ? (
                                         <button
                                             type="button"
-                                            onClick={() => void handleRepublishLot()}
+                                            onClick={() => setShowRepublishForm(true)}
                                             disabled={loadingPopup || lotActionLoading}
                                             className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
                                         >
@@ -2497,8 +2590,9 @@ const ProductsLotsPage: React.FC = () => {
                                                             <span className="font-medium text-emerald-800">
                                                                 Đăng bán lại:
                                                             </span>{" "}
-                                                            Hiển thị lại cho khách khi lô còn tồn kho
-                                                            và chưa hết hạn.
+                                                            Chỉnh đơn vị bán, số lượng và giá rồi
+                                                            hiển thị lại cho khách (khi lô chưa có
+                                                            đơn đang xử lý).
                                                         </li>
                                                     ) : null}
                                                     {canDeleteLot ? (
@@ -2517,6 +2611,135 @@ const ProductsLotsPage: React.FC = () => {
                                                         </li>
                                                     ) : null}
                                                 </ul>
+
+                                                {canRepublishLot && showRepublishForm ? (
+                                                    <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4">
+                                                        <div className="text-sm font-semibold text-slate-900">
+                                                            Đăng bán lại lô hàng
+                                                        </div>
+                                                        <p className="mt-1 text-xs leading-5 text-slate-600">
+                                                            Cập nhật thông tin bán trước khi hiển thị
+                                                            lại cho khách hàng.
+                                                        </p>
+
+                                                        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                                                            <label className="text-sm">
+                                                                <span className="mb-1 block font-medium text-slate-700">
+                                                                    Đơn vị bán
+                                                                </span>
+                                                                <select
+                                                                    value={republishUnitId}
+                                                                    onChange={(event) =>
+                                                                        setRepublishUnitId(
+                                                                            event.target.value,
+                                                                        )
+                                                                    }
+                                                                    disabled={
+                                                                        republishUnitsLoading ||
+                                                                        lotActionLoading
+                                                                    }
+                                                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm disabled:opacity-50"
+                                                                >
+                                                                    <option value="">
+                                                                        — Chọn đơn vị —
+                                                                    </option>
+                                                                    {republishUnits.map((unit) => (
+                                                                        <option
+                                                                            key={unit.unitId}
+                                                                            value={unit.unitId}
+                                                                        >
+                                                                            {formatUnitLabel(
+                                                                                unit.name,
+                                                                                unit.symbol,
+                                                                            )}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </label>
+
+                                                            <label className="text-sm">
+                                                                <span className="mb-1 block font-medium text-slate-700">
+                                                                    Số lượng
+                                                                </span>
+                                                                <input
+                                                                    type="number"
+                                                                    min={0.0001}
+                                                                    step="any"
+                                                                    value={republishQuantity}
+                                                                    onChange={(event) =>
+                                                                        setRepublishQuantity(
+                                                                            event.target.value,
+                                                                        )
+                                                                    }
+                                                                    disabled={lotActionLoading}
+                                                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm disabled:opacity-50"
+                                                                />
+                                                            </label>
+
+                                                            <label className="text-sm">
+                                                                <span className="mb-1 block font-medium text-slate-700">
+                                                                    Giá bán (đ)
+                                                                </span>
+                                                                <input
+                                                                    type="number"
+                                                                    min={1}
+                                                                    step={1}
+                                                                    value={republishPrice}
+                                                                    onChange={(event) =>
+                                                                        setRepublishPrice(
+                                                                            event.target.value,
+                                                                        )
+                                                                    }
+                                                                    disabled={lotActionLoading}
+                                                                    className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm disabled:opacity-50"
+                                                                />
+                                                            </label>
+                                                        </div>
+
+                                                        {republishUnitsLoading ? (
+                                                            <p className="mt-3 text-xs text-slate-500">
+                                                                Đang tải đơn vị bán...
+                                                            </p>
+                                                        ) : republishUnits.length === 0 ? (
+                                                            <p className="mt-3 text-xs text-amber-700">
+                                                                Chưa có đơn vị bán phù hợp cho sản phẩm
+                                                                này.
+                                                            </p>
+                                                        ) : null}
+
+                                                        <div className="mt-4 flex flex-wrap gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    void handleRepublishLot()
+                                                                }
+                                                                disabled={
+                                                                    lotActionLoading ||
+                                                                    republishUnitsLoading ||
+                                                                    republishUnits.length === 0
+                                                                }
+                                                                className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                                                            >
+                                                                {lotActionLoading ? (
+                                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                                ) : (
+                                                                    <Sparkles className="h-4 w-4" />
+                                                                )}
+                                                                Xác nhận đăng bán lại
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setShowRepublishForm(false)
+                                                                }
+                                                                disabled={lotActionLoading}
+                                                                className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 disabled:opacity-50"
+                                                            >
+                                                                Hủy
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : null}
                                             </div>
                                         ) : null}
 

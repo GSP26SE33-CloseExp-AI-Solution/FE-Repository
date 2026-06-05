@@ -568,6 +568,13 @@ const CheckoutPage: React.FC = () => {
           ) {
             setAppliedPromotion(stillValid)
           }
+        } else {
+          setCtx((prev) => {
+            if (!prev.promotionId && !prev.promotionCode) return prev
+            const next = { ...prev, promotionId: undefined, promotionCode: undefined }
+            orderContextStorage.set(next)
+            return next
+          })
         }
       } catch {
         if (mounted) setPromotions([])
@@ -907,8 +914,8 @@ const CheckoutPage: React.FC = () => {
         ...(submitCtx.deliveryMethodId === "PICKUP"
           ? { collectionId: submitCollectionId }
           : {}),
-        ...(submitCtx.promotionId
-          ? { promotionId: submitCtx.promotionId }
+        ...(appliedPromotion?.canApply && appliedPromotion.promotionId
+          ? { promotionId: appliedPromotion.promotionId }
           : {}),
         ...(submitCtx.addressId ? { addressId: submitCtx.addressId } : {}),
         deliveryNote:

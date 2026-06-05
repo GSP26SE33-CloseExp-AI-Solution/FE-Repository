@@ -131,6 +131,31 @@ export const convertQuantityBetweenRates = (
     return (quantity * from) / to
 }
 
+export const computeMaxPurchaseQuantity = (
+    lotQuantity: number,
+    lotUnitId?: string | null,
+    purchaseUnitId?: string | null,
+    lotRate?: number | null,
+    purchaseRate?: number | null,
+) => {
+    const lotQty = Math.max(0, Number(lotQuantity))
+    if (lotQty <= 0) return 0
+
+    if (!purchaseUnitId || !lotUnitId || purchaseUnitId === lotUnitId) {
+        return Math.max(0, Math.floor(lotQty))
+    }
+
+    const onePurchaseInLot = convertQuantityBetweenRates(1, purchaseRate, lotRate)
+    if (onePurchaseInLot > lotQty + 1e-9) return 0
+
+    const maxInPurchaseUnit = convertQuantityBetweenRates(
+        lotQty,
+        lotRate,
+        purchaseRate,
+    )
+    return Math.max(0, Math.floor(maxInPurchaseUnit + 1e-9))
+}
+
 export const convertUnitPriceBetweenRates = (
     unitPrice: number,
     fromRate?: number | null,

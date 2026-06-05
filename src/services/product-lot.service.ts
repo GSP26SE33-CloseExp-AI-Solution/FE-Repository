@@ -4,6 +4,7 @@ import type {
     GetMySupermarketLotsQuery,
     GetSupermarketLotsQuery,
     ProductLotListResult,
+    RepublishStockLotPayload,
 } from "@/types/product-lot.type"
 
 const unwrap = <T,>(response: ApiResponse<T>): T => {
@@ -76,9 +77,13 @@ export const productLotService = {
         unwrap(response.data)
     },
 
-    async republishLot(lotId: string): Promise<void> {
+    async republishLot(
+        lotId: string,
+        payload: RepublishStockLotPayload,
+    ): Promise<void> {
         const response = await axiosClient.patch<ApiResponse<null>>(
             `/Products/lots/${lotId}/republish`,
+            payload,
         )
         unwrap(response.data)
     },

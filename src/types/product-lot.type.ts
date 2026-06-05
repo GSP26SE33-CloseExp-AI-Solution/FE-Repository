@@ -61,6 +61,12 @@ export type ProductLotItem = {
     publishedAt?: string | null
 }
 
+export type RepublishStockLotPayload = {
+    unitId: string
+    quantity: number
+    finalUnitPrice: number
+}
+
 export type ProductLotListResult = {
     items: ProductLotItem[]
     totalResult: number
