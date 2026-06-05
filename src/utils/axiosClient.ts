@@ -26,6 +26,11 @@ const isRefreshTokenRequest = (url?: string) => {
     return url.includes("/auth/refresh-token")
 }
 
+const isLogoutAllRequest = (url?: string) => {
+    if (!url) return false
+    return url.includes("/auth/logout-all")
+}
+
 axiosClient.interceptors.request.use((config) => {
     const token = authStorage.getAccessToken()
     const headers = AxiosHeaders.from(config.headers)
@@ -68,6 +73,11 @@ axiosClient.interceptors.response.use(
                 "[axiosClient] refresh-token request failed with 401 -> force logout",
             )
             redirectToLogin()
+            return Promise.reject(error)
+        }
+
+        // logout-all tự gửi refreshToken — không refresh access token để tránh vòng lặp
+        if (status === 401 && isLogoutAllRequest(requestUrl)) {
             return Promise.reject(error)
         }
 

@@ -718,6 +718,9 @@ export type AdminSupermarketItem = {
     status: number
     createdAt?: string
     updatedAt?: string
+    managerUserId?: string
+    managerEmail?: string
+    managerFullName?: string
 }
 
 export type AdminSupermarketStaffItem = {

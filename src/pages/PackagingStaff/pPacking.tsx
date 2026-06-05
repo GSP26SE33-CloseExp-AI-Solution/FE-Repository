@@ -219,33 +219,33 @@ const PackagePacking = () => {
 
     const fetchDetail = useCallback(
         async (isRefresh = false) => {
-            if (!orderId) {
-                setLoading(false)
-                return
-            }
+        if (!orderId) {
+            setLoading(false)
+            return
+        }
 
-            try {
+        try {
                 if (isRefresh) setRefreshing(true)
                 else setLoading(true)
 
-                const response = await packagingService.getOrderDetail(orderId)
+            const response = await packagingService.getOrderDetail(orderId)
                 const nextOrder = response.data || null
 
                 setOrder(nextOrder)
                 setSelectedItemIds(
                     filterSelectablePackagingItemIds(nextOrder?.items, "packing"),
                 )
-            } catch (error: any) {
+        } catch (error: any) {
                 showError(
                     getFriendlyPackagingErrorMessage(
                         error,
                         "Không tải được chi tiết đơn."
                     )
                 )
-            } finally {
-                setLoading(false)
+        } finally {
+            setLoading(false)
                 setRefreshing(false)
-            }
+        }
         },
         [orderId]
     )
@@ -513,8 +513,8 @@ const PackagePacking = () => {
                                     "Một số dòng đã xong, còn dòng chưa đóng gói. Tiếp tục xử lý các món còn lại trước khi đơn sẵn sàng giao."}
                             </p>
                         </div>
-                    </div>
-                </div>
+                            </div>
+                            </div>
             ) : null}
 
             {!canPerformActions && orderCompleted ? (
@@ -701,11 +701,11 @@ const PackagePacking = () => {
                                                     Thành tiền
                                                 </p>
                                                 <p className="mt-1 text-sm font-semibold text-slate-900">
-                                                    {currency.format(item.subTotal || 0)}
-                                                </p>
-                                            </div>
-                                        </div>
+                                            {currency.format(item.subTotal || 0)}
+                                        </p>
                                     </div>
+                                </div>
+                        </div>
                                 </RowTag>
                             )
                         })}
@@ -722,7 +722,7 @@ const PackagePacking = () => {
                             <div>
                                 <h2 className="font-semibold text-slate-900">
                                     Tóm tắt đóng gói
-                                </h2>
+                            </h2>
                                 <p className="text-sm text-slate-500">
                                     Đơn đặt: {formatDateTime(order.orderDate)}
                                 </p>
@@ -771,30 +771,30 @@ const PackagePacking = () => {
                                     </div>
                                 </div>
 
-                                <textarea
-                                    value={notes}
-                                    onChange={(e) => setNotes(e.target.value)}
+                        <textarea
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
                                     rows={3}
                                     placeholder="Ví dụ: đã kiểm đủ món, đóng 2 túi..."
                                     className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-emerald-400"
-                                />
+                        />
 
-                                <button
+                        <button
                                     type="button"
-                                    onClick={handlePackage}
+                            onClick={handlePackage}
                                     disabled={
                                         submitting || selectedItemIds.length === 0
                                     }
                                     className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {submitting ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
+                        >
+                            {submitting ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
                                         <CheckCircle2 className="h-4 w-4" />
                                     )}
                                     Hoàn tất đóng gói
-                                </button>
-                            </div>
+                        </button>
+                    </div>
 
                             <div className="rounded-3xl border border-rose-200 bg-white p-5 shadow-sm">
                                 <div className="flex items-center gap-3">
@@ -805,44 +805,44 @@ const PackagePacking = () => {
                                     <div>
                                         <h2 className="font-semibold text-slate-900">
                                             Báo lỗi món đã chọn
-                                        </h2>
+                        </h2>
                                         <p className="text-sm text-slate-500">
                                             Dùng khi thiếu hàng, sai hàng hoặc hàng hư hỏng.
-                                        </p>
+                        </p>
                                     </div>
                                 </div>
 
                                 <input
-                                    value={failureReason}
-                                    onChange={(e) => setFailureReason(e.target.value)}
+                            value={failureReason}
+                            onChange={(e) => setFailureReason(e.target.value)}
                                     placeholder="Lý do lỗi, ví dụ: thiếu hàng / hàng hỏng"
                                     className="mt-4 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
-                                />
+                        />
 
-                                <textarea
-                                    value={failNotes}
-                                    onChange={(e) => setFailNotes(e.target.value)}
-                                    rows={3}
+                        <textarea
+                            value={failNotes}
+                            onChange={(e) => setFailNotes(e.target.value)}
+                            rows={3}
                                     placeholder="Ghi chú thêm nếu cần..."
                                     className="mt-3 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none transition focus:border-rose-400"
-                                />
+                        />
 
-                                <button
-                                    type="button"
+                        <button
+                            type="button"
                                     onClick={handleFailPackaging}
                                     disabled={
                                         failing || selectedItemIds.length === 0
                                     }
                                     className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                    {failing ? (
-                                        <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
+                        >
+                            {failing ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
                                         <AlertTriangle className="h-4 w-4" />
-                                    )}
+                            )}
                                     Báo lỗi các món đã chọn
-                                </button>
-                            </div>
+                        </button>
+                    </div>
                         </>
                     ) : null}
 

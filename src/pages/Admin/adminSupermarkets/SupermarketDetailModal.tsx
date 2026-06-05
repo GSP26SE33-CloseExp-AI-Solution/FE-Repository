@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
     Building2,
     Copy,
@@ -7,7 +7,7 @@ import {
     MapPin,
     MapPinned,
     Phone,
-    UserRound,
+    User,
     X,
 } from "lucide-react"
 
@@ -37,21 +37,6 @@ type SupermarketDetailModalProps = {
     onCopyCode: (code: string) => void | Promise<void>
     onOpenMap: (item: { latitude?: number | null; longitude?: number | null }) => void
     onUpdateStatus: (item: AdminSupermarketItem, nextStatus: number) => void | Promise<void>
-}
-
-const STAFF_STATUS_LABELS: Record<number, string> = {
-    0: "Đang hoạt động",
-    1: "Tạm ngưng",
-    2: "Đã nghỉ",
-}
-
-const getStaffStatusLabel = (status: number) =>
-    STAFF_STATUS_LABELS[status] ?? `Trạng thái ${status}`
-
-const getStaffStatusClass = (status: number) => {
-    if (status === 0) return "border-emerald-200 bg-emerald-50 text-emerald-700"
-    if (status === 1) return "border-amber-200 bg-amber-50 text-amber-700"
-    return "border-slate-200 bg-slate-50 text-slate-600"
 }
 
 const SupermarketDetailModal = ({
@@ -107,6 +92,16 @@ const SupermarketDetailModal = ({
             cancelled = true
         }
     }, [supermarket?.supermarketId])
+
+    const managerFromStaff = useMemo(
+        () => staff.find((row) => row.isManager) ?? null,
+        [staff],
+    )
+
+    const managerFullName =
+        managerFromStaff?.fullName || supermarket?.managerFullName || ""
+    const managerEmail =
+        managerFromStaff?.email || supermarket?.managerEmail || ""
 
     if (!supermarket) return null
 
@@ -291,93 +286,52 @@ const SupermarketDetailModal = ({
                     </div>
 
                     <div className="mt-4 rounded-2xl border border-slate-200 p-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
-                                Nhân viên siêu thị
-                            </p>
-                            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-600">
-                                {staff.length} người
-                            </span>
-                        </div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            Tài khoản quản lý
+                        </p>
 
-                        <div className="mt-4">
-                            {loadingStaff ? (
-                                <div className="flex items-center gap-2 text-sm text-slate-500">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Đang tải nhân viên...
+                        {loadingStaff ? (
+                            <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Đang tải thông tin quản lý...
+                            </div>
+                        ) : staffError ? (
+                            <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                                {staffError}
+                            </div>
+                        ) : managerFullName || managerEmail ? (
+                            <div className="mt-4 space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="rounded-xl bg-emerald-100 p-2">
+                                        <User className="h-4 w-4 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500">Họ tên</p>
+                                        <p className="text-sm font-medium text-slate-900">
+                                            {managerFullName || "--"}
+                                        </p>
+                                    </div>
                                 </div>
-                            ) : staffError ? (
-                                <p className="text-sm text-rose-600">{staffError}</p>
-                            ) : staff.length === 0 ? (
+
+                                <div className="flex items-start gap-3">
+                                    <div className="rounded-xl bg-emerald-100 p-2">
+                                        <Mail className="h-4 w-4 text-emerald-600" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs text-slate-500">Email đăng nhập</p>
+                                        <p className="break-all text-sm font-medium text-slate-900">
+                                            {managerEmail || "--"}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center">
                                 <p className="text-sm text-slate-500">
-                                    Chưa có nhân viên nào được gán cho siêu thị này.
+                                    Chưa có tài khoản quản lý được gán
                                 </p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {staff.map((member) => (
-                                        <div
-                                            key={member.supermarketStaffId}
-                                            className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4"
-                                        >
-                                            <div className="flex flex-wrap items-start justify-between gap-3">
-                                                <div className="flex min-w-0 items-start gap-3">
-                                                    <div className="rounded-xl bg-white p-2 shadow-sm">
-                                                        <UserRound className="h-4 w-4 text-slate-600" />
-                                                    </div>
-                                                    <div className="min-w-0">
-                                                        <p className="text-sm font-semibold text-slate-900">
-                                                            {member.fullName || "--"}
-                                                        </p>
-                                                        <p className="mt-0.5 text-xs text-slate-500">
-                                                            {member.position || "Nhân viên"}
-                                                            {member.isManager ? " · Quản lý" : ""}
-                                                        </p>
-                                                    </div>
-                                                </div>
-
-                                                <span
-                                                    className={cn(
-                                                        "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium",
-                                                        getStaffStatusClass(member.status),
-                                                    )}
-                                                >
-                                                    {getStaffStatusLabel(member.status)}
-                                                </span>
-                                            </div>
-
-                                            <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Email</p>
-                                                    <p className="break-all font-medium text-slate-800">
-                                                        {member.email || "--"}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Điện thoại</p>
-                                                    <p className="font-medium text-slate-800">
-                                                        {member.phone || "--"}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Mã nhân viên</p>
-                                                    <p className="font-medium text-slate-800">
-                                                        {member.employeeCodeHint
-                                                            ? `••••${member.employeeCodeHint}`
-                                                            : "--"}
-                                                    </p>
-                                                </div>
-                                                <div>
-                                                    <p className="text-xs text-slate-500">Tham gia</p>
-                                                    <p className="font-medium text-slate-800">
-                                                        {formatDate(member.createdAt)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-4 rounded-2xl border border-slate-200 p-4">
