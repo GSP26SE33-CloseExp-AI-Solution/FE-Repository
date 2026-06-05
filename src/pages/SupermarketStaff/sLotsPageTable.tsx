@@ -23,6 +23,7 @@ import { getApiOrigin } from "@/utils/apiConfig"
 import { productService } from "@/services/product.service"
 import { productLotService } from "@/services/product-lot.service"
 import ProductsTab from "./components/ProductsTab"
+import { SaleUnitCustomerGuide } from "./components/SaleUnitCustomerGuide"
 import type {
     ProductDetailDto,
     ProductEditFormValues,
@@ -2621,6 +2622,10 @@ const ProductsLotsPage: React.FC = () => {
                                                             Cập nhật thông tin bán trước khi hiển thị
                                                             lại cho khách hàng.
                                                         </p>
+
+                                                        <div className="mt-4">
+                                                            <SaleUnitCustomerGuide storageKey="republish-lot-sale-unit-guide-dismissed" />
+                                                        </div>
 
                                                         <div className="mt-4 grid gap-4 sm:grid-cols-3">
                                                             <label className="text-sm">

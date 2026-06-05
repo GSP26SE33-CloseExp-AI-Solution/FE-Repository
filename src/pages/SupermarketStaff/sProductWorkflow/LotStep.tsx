@@ -30,6 +30,7 @@ import {
     formatUnitOptionLabel,
     normalizeUnitMeasureKind,
 } from "@/utils/unitMeasure"
+import { SaleUnitCustomerGuide } from "@/pages/SupermarketStaff/components/SaleUnitCustomerGuide"
 
 type ProductUnitOption = {
     unitId: string
@@ -293,7 +294,8 @@ const WorkflowLotStep: React.FC<Props> = ({
                         />
                     ) : null}
 
-                    <div className="md:col-span-2 space-y-2">
+                    <div className="md:col-span-2 space-y-3">
+                        <SaleUnitCustomerGuide storageKey="workflow-lot-sale-unit-guide-dismissed" />
                         <SelectField
                             label="Đơn vị bán lô hàng *"
                             value={form.unitId}
@@ -328,11 +330,6 @@ const WorkflowLotStep: React.FC<Props> = ({
                                 value: item.unitId,
                             }))}
                         />
-                        <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-800">
-                            Khách có thể chọn đơn vị này khi mua nếu lô được đăng bán.
-                            Muốn thêm đơn vị khác, tạo thêm lô với đơn vị tương ứng hoặc
-                            đổi đơn vị chuẩn ở bước sản phẩm.
-                        </p>
                     </div>
 
                     {unitConversionHint ? (
