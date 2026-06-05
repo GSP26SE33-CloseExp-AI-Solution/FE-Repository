@@ -30,6 +30,9 @@ const getProductStatusColor = (status?: number | null) => {
     return "bg-slate-100 text-slate-700 border-slate-200"
 }
 
+const isProductDetailDisabled = (status?: number | null) =>
+    status === 6 || status === 7
+
 const getMerchandiseTypeLabel = (type?: number | null) => {
     if (typeof type !== "number") return "—"
     return (
@@ -232,8 +235,20 @@ const ProductsTab: React.FC<ProductsTabProps> = ({ supermarketId, onViewDetail }
                                             <button
                                                 type="button"
                                                 onClick={() => onViewDetail(product.productId)}
-                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700"
-                                                title="Xem chi tiết"
+                                                disabled={isProductDetailDisabled(product.status)}
+                                                className={cn(
+                                                    "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition",
+                                                    isProductDetailDisabled(product.status)
+                                                        ? "cursor-not-allowed opacity-40"
+                                                        : "hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700",
+                                                )}
+                                                title={
+                                                    isProductDetailDisabled(product.status)
+                                                        ? product.status === 7
+                                                            ? "Sản phẩm đã xóa — không thể xem chi tiết"
+                                                            : "Sản phẩm đã ẩn — không thể xem chi tiết"
+                                                        : "Xem chi tiết"
+                                                }
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </button>

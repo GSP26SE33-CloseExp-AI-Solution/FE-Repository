@@ -49,6 +49,10 @@ import {
     formatConversionRateHintWithBase,
     formatUnitDisplay,
 } from "@/utils/unitMeasure"
+import {
+    isUnitTypeAllowedForCategory,
+    isBaseProductUnit,
+} from "@/utils/categoryUnitType"
 
 type LotStatusFilter =
     | "ALL"
@@ -628,6 +632,7 @@ const ProductsLotsPage: React.FC = () => {
     ])
 
     const [apiCategoryOptions, setApiCategoryOptions] = useState<string[]>([])
+    const [categoriesList, setCategoriesList] = useState<CategoryItem[]>([])
     const [loadingCategories, setLoadingCategories] = useState(false)
 
     const [activeTab, setActiveTab] = useState<"PRODUCTS" | "LOTS">("PRODUCTS")
@@ -640,24 +645,48 @@ const ProductsLotsPage: React.FC = () => {
     const [productPurchaseUnitsLoading, setProductPurchaseUnitsLoading] =
         useState(false)
 
+    const [filteredUnitsForEdit, setFilteredUnitsForEdit] = useState<UnitItem[]>([])
+
     const unitCatalog = useMemo(
         () => Object.values(unitById),
         [unitById],
     )
 
+    useEffect(() => {
+        const fetchFilteredUnits = async () => {
+            const currentCategoryName = editForm.categoryName || selectedProduct?.category || selectedProductDetail?.category || ""
+            if (!currentCategoryName) {
+                setFilteredUnitsForEdit([])
+                return
+            }
+            const matched = categoriesList.find(
+                (cat) => cat.name.trim().toLowerCase() === currentCategoryName.trim().toLowerCase()
+            )
+            try {
+                const units = await unitService.getUnits({ categoryId: matched?.categoryId || undefined })
+                setFilteredUnitsForEdit(units)
+            } catch {
+                setFilteredUnitsForEdit([])
+            }
+        }
+        fetchFilteredUnits()
+    }, [categoriesList, editForm.categoryName, selectedProduct?.category, selectedProductDetail?.category])
+
     const productUnitSelectOptions = useMemo(() => {
-        const productType =
-            selectedProductDetail?.unitType?.trim() ||
-            selectedProduct?.unitType?.trim() ||
-            ""
-
-        if (!productType) return unitCatalog
-
-        const normalized = productType.toLowerCase()
-        return unitCatalog.filter(
-            (unit) => unit.type?.trim().toLowerCase() === normalized,
+        const currentCategoryName = editForm.categoryName || selectedProduct?.category || selectedProductDetail?.category || ""
+        const matched = categoriesList.find(
+            (cat) => cat.name.trim().toLowerCase() === currentCategoryName.trim().toLowerCase()
         )
-    }, [unitCatalog, selectedProductDetail?.unitType, selectedProduct?.unitType])
+        const isFreshFood = matched ? matched.isFreshFood : (selectedProduct?.isFreshFood || selectedProductDetail?.isFreshFood || false)
+
+        if (filteredUnitsForEdit.length > 0) {
+            return filteredUnitsForEdit.filter(u => isBaseProductUnit(u.conversionRate))
+        }
+
+        return unitCatalog.filter(
+            (unit) => isUnitTypeAllowedForCategory(unit.type, isFreshFood) && isBaseProductUnit(unit.conversionRate)
+        )
+    }, [unitCatalog, categoriesList, editForm.categoryName, selectedProduct?.category, selectedProductDetail?.category, selectedProduct?.isFreshFood, selectedProductDetail?.isFreshFood, filteredUnitsForEdit])
 
     const handleAddProduct = () => {
         navigate("/supermarketStaff/products/workflow")
@@ -711,10 +740,12 @@ const ProductsLotsPage: React.FC = () => {
 
         try {
             const categories = await categoryService.getCategories(false)
+            const rawCategories = Array.isArray(categories) ? categories : []
+            setCategoriesList(rawCategories)
 
             const names = Array.from(
                 new Set(
-                    (Array.isArray(categories) ? categories : [])
+                    rawCategories
                         .map((item) => item?.name?.trim())
                         .filter((item): item is string => Boolean(item)),
                 ),
@@ -903,6 +934,13 @@ const ProductsLotsPage: React.FC = () => {
 
         return Array.from(values).sort((a, b) => a.localeCompare(b, "vi"))
     }, [apiCategoryOptions, fallbackCategoryOptions])
+
+    const isEditFormCategoryFreshFood = useMemo(() => {
+        const matched = categoriesList.find(
+            (cat) => cat.name.trim().toLowerCase() === editForm.categoryName.trim().toLowerCase()
+        )
+        return matched?.isFreshFood ?? false
+    }, [categoriesList, editForm.categoryName])
 
     const nutritionPairs = useMemo(() => {
         return extractNutritionPairs(
@@ -1318,6 +1356,10 @@ const ProductsLotsPage: React.FC = () => {
         }
         if (!editForm.barcode.trim()) {
             nextErrors.barcode = "Vui lòng nhập mã vạch"
+        }
+
+        if (!isEditFormCategoryFreshFood && !editForm.brand.trim()) {
+            nextErrors.brand = "Vui lòng nhập thương hiệu"
         }
 
         try {
@@ -2106,11 +2148,14 @@ const ProductsLotsPage: React.FC = () => {
                                                 ) : null}
                                             </div>
 
-                                            <FieldLabel label="Thương hiệu" />
+                                            <FieldLabel label={isEditFormCategoryFreshFood ? "Thương hiệu" : "Thương hiệu *"} />
                                             <TextInput
                                                 value={editForm.brand}
                                                 onChange={(value) => setEditField("brand", value)}
                                             />
+                                            {editErrors.brand ? (
+                                                <div className="mt-1 text-xs text-rose-500">{editErrors.brand}</div>
+                                            ) : null}
 
                                             <FieldLabel label="SKU" />
                                             <TextInput

@@ -28,6 +28,7 @@ import {
     stringifyNutritionFactsForRequest,
 } from "@/types/product-ai-workflow.type"
 import { normalizeUnitMeasureKind } from "@/utils/unitMeasure"
+import { getMissingProductFieldsForLot } from "@/utils/productWorkflowValidation"
 import type { CategoryItem } from "@/types/category.type"
 import type { UnitOption } from "@/types/unit.type"
 
@@ -402,6 +403,32 @@ const ProductWorkflowPage: React.FC = () => {
     }, [])
 
     useEffect(() => {
+        const fetchFilteredUnits = async () => {
+            const catId = workflow.productForm.categoryId?.trim();
+            if (!catId) return;
+            try {
+                const data = await unitService.getUnits({ categoryId: catId });
+                setUnitOptions(
+                    Array.isArray(data)
+                        ? data.map((item) => ({
+                            unitId: item.unitId,
+                            label: item.name,
+                            value: item.unitId,
+                            unitType: item.type || undefined,
+                            unitSymbol: item.symbol || undefined,
+                            conversionRate: item.conversionRate ?? 1,
+                        }))
+                        : [],
+                )
+            } catch {
+                // Keep the general list if fetch fails
+            }
+        };
+
+        fetchFilteredUnits();
+    }, [workflow.productForm.categoryId]);
+
+    useEffect(() => {
         if (!usingCamera || !videoRef.current || !stream) return
 
         videoRef.current.srcObject = stream
@@ -698,13 +725,9 @@ const ProductWorkflowPage: React.FC = () => {
     const handleSubmitProduct = async () => {
         const form = workflow.productForm
 
-        if (
-            !form.name.trim() ||
-            !form.categoryName.trim() ||
-            !form.barcode.trim() ||
-            !form.unitId.trim()
-        ) {
-            toast.error("Còn thiếu tên sản phẩm, danh mục, barcode hoặc đơn vị bán cho lô hàng")
+        const missingFields = getMissingProductFieldsForLot(form)
+        if (missingFields.length) {
+            toast.error(`Còn thiếu: ${missingFields.join(", ")}`)
             return
         }
 
@@ -712,6 +735,10 @@ const ProductWorkflowPage: React.FC = () => {
 
         try {
             const result = await productAiService.createWorkflowProduct({
+                productId:
+                    workflow.verificationProductId ||
+                    workflow.ownProduct?.productId ||
+                    undefined,
                 barcode: form.barcode.trim(),
                 name: form.name.trim(),
                 categoryName: form.categoryName.trim(),
@@ -1020,6 +1047,7 @@ const ProductWorkflowPage: React.FC = () => {
                                         step: "SCAN",
                                     }))
                                 }}
+                                disableBack={Boolean(workflow.createdProduct?.productId)}
                                 onAnalyzeImage={handleAnalyzeImage}
                                 onStartCamera={startCamera}
                                 onStopCamera={stopCamera}
@@ -1111,6 +1139,7 @@ const ProductWorkflowPage: React.FC = () => {
                                     }))
                                 }}
                                 onSubmit={handleSubmitLot}
+                                disableBack={Boolean(workflow.createdProduct?.productId)}
                             />
                         ) : null}
 

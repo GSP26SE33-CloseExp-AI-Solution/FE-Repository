@@ -4,6 +4,7 @@ import type { UnitItem } from "@/types/unit.type"
 
 type GetWorkflowUnitsQuery = {
     type?: string
+    categoryId?: string
 }
 
 const unwrap = <T,>(response?: ApiResponse<T> | null): T => {
@@ -30,6 +31,7 @@ export const unitService = {
             {
                 params: {
                     type: query?.type?.trim() || undefined,
+                    categoryId: query?.categoryId?.trim() || undefined,
                 },
             },
         )

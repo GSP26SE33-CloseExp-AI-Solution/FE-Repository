@@ -32,11 +32,14 @@ import type { ProductPurchaseUnit } from "@/types/purchase-unit.type"
 import {
     filterPurchaseUnitsByProductType,
     mergePurchaseUnits,
+    mergePurchaseUnitsByConversionRate,
     parsePurchaseUnitsResponse,
 } from "@/utils/purchaseUnits"
 import {
     computeMaxPurchaseQuantity,
+    convertQuantityBetweenRates,
     convertUnitPriceBetweenRates,
+    formatConversionRateValue,
     formatUnitDisplay,
 } from "@/utils/unitMeasure"
 import { getAuthSession } from "@/utils/authStorage"
@@ -105,6 +108,12 @@ const getExpiryShortText = (daysToExpiry: number | null) => {
 
 type PurchaseUnitAvailability = ProductPurchaseUnit & {
     maxPurchaseQty: number
+    mergedUnitIds: string[]
+    isLotBaseUnit: boolean
+    lotBaseRemainingQty: number
+    lotBaseUnitName: string
+    lotBaseUnitSymbol: string
+    conversionToLotBaseHint: string | null
 }
 
 const pickContextLotOption = (options: LotOption[]): LotOption | undefined => {
@@ -123,11 +132,20 @@ const pickContextLotOption = (options: LotOption[]): LotOption | undefined => {
 }
 
 const getPurchaseUnitAvailability = (
-    unit: ProductPurchaseUnit,
+    unit: ProductPurchaseUnit & { mergedUnitIds?: string[] },
     lotOption?: LotOption,
 ): PurchaseUnitAvailability | null => {
     const raw = lotOption?.raw
     if (!raw) return null
+
+    const lotBaseUnitId = raw.unitId ?? ""
+    const mergedUnitIds = unit.mergedUnitIds?.length
+        ? unit.mergedUnitIds
+        : [unit.unitId]
+    const isLotBaseUnit = Boolean(
+        lotBaseUnitId &&
+            mergedUnitIds.some((id) => id === lotBaseUnitId),
+    )
 
     const maxPurchaseQty = computeMaxPurchaseQuantity(
         Number(lotOption.lot.quantity ?? 0),
@@ -139,7 +157,34 @@ const getPurchaseUnitAvailability = (
 
     if (maxPurchaseQty <= 0) return null
 
-    return { ...unit, maxPurchaseQty }
+    const lotBaseRemainingQty = Math.max(0, Math.floor(Number(lotOption.lot.quantity ?? 0)))
+    const lotBaseUnitName = raw.unitName?.trim() || "đơn vị lô"
+    const lotBaseUnitSymbol = raw.unitSymbol?.trim() || ""
+    const purchaseRate = unit.conversionRate ?? 1
+    const lotRate = raw.conversionRate ?? 1
+
+    let conversionToLotBaseHint: string | null = null
+    if (!isLotBaseUnit) {
+        const onePurchaseInLotBase = convertQuantityBetweenRates(
+            1,
+            purchaseRate,
+            lotRate,
+        )
+        if (Math.abs(onePurchaseInLotBase - 1) > 1e-9) {
+            conversionToLotBaseHint = `1 ${unit.name.trim() || "đơn vị"} = ${formatConversionRateValue(onePurchaseInLotBase)} ${lotBaseUnitName}`
+        }
+    }
+
+    return {
+        ...unit,
+        mergedUnitIds,
+        maxPurchaseQty,
+        isLotBaseUnit,
+        lotBaseRemainingQty,
+        lotBaseUnitName,
+        lotBaseUnitSymbol,
+        conversionToLotBaseHint,
+    }
 }
 
 const ProductDetailPage = () => {
@@ -344,26 +389,24 @@ const ProductDetailPage = () => {
         return defaultUnit?.type?.trim() ?? purchaseUnits[0]?.type?.trim() ?? ""
     }, [product?.rawLots, purchaseUnits])
 
-    const effectivePurchaseUnits = useMemo(() => {
-        const merged = mergePurchaseUnits(purchaseUnits, product?.rawLots ?? [])
-        return filterPurchaseUnitsByProductType(merged, productDefaultUnitType)
-    }, [purchaseUnits, product?.rawLots, productDefaultUnitType])
-
     const contextLotOption = useMemo(
         () => pickContextLotOption(selectedExpiryOptions),
         [selectedExpiryOptions],
     )
 
+    const effectivePurchaseUnits = useMemo(() => {
+        const merged = mergePurchaseUnits(purchaseUnits, product?.rawLots ?? [])
+        const sameType = filterPurchaseUnitsByProductType(merged, productDefaultUnitType)
+        return mergePurchaseUnitsByConversionRate(
+            sameType,
+            contextLotOption?.raw?.unitId,
+        )
+    }, [purchaseUnits, product?.rawLots, productDefaultUnitType, contextLotOption?.raw?.unitId])
+
     const selectablePurchaseUnits = useMemo(() => {
         return effectivePurchaseUnits
             .map((unit) => getPurchaseUnitAvailability(unit, contextLotOption))
             .filter((unit): unit is PurchaseUnitAvailability => unit !== null)
-            .sort((a, b) => {
-                if (a.isProductDefault !== b.isProductDefault) {
-                    return a.isProductDefault ? -1 : 1
-                }
-                return a.name.localeCompare(b.name, "vi")
-            })
     }, [effectivePurchaseUnits, contextLotOption])
 
     const selectedPurchaseUnit = useMemo(() => {
@@ -462,15 +505,23 @@ const ProductDetailPage = () => {
         }
 
         const preferred =
-            selectablePurchaseUnits.find((u) => u.isProductDefault)?.unitId ||
+            selectablePurchaseUnits.find((unit) => unit.isLotBaseUnit)?.unitId ||
+            selectablePurchaseUnits.find((unit) => unit.isProductDefault)?.unitId ||
             selectablePurchaseUnits[0].unitId
 
-        const stillValid = selectablePurchaseUnits.some(
-            (u) => u.unitId === selectedPurchaseUnitId,
+        const matched = selectablePurchaseUnits.find(
+            (unit) =>
+                unit.unitId === selectedPurchaseUnitId ||
+                unit.mergedUnitIds.includes(selectedPurchaseUnitId),
         )
 
-        if (!selectedPurchaseUnitId || !stillValid) {
+        if (!selectedPurchaseUnitId || !matched) {
             setSelectedPurchaseUnitId(preferred)
+            return
+        }
+
+        if (matched.unitId !== selectedPurchaseUnitId) {
+            setSelectedPurchaseUnitId(matched.unitId)
         }
     }, [selectablePurchaseUnits, selectedPurchaseUnitId])
 
@@ -820,23 +871,55 @@ const ProductDetailPage = () => {
                                                         )
                                                     }
                                                     className={cn(
-                                                        "relative min-h-[74px] rounded-xl border bg-white px-3 py-2 text-center transition hover:border-rose-300",
+                                                        "relative min-h-[84px] rounded-xl border bg-white px-3 py-2 text-center transition hover:border-rose-300",
                                                         selected
                                                             ? "border-rose-500 ring-1 ring-rose-200"
-                                                            : "border-slate-200",
+                                                            : unit.isLotBaseUnit
+                                                                ? "border-sky-300 bg-sky-50/70"
+                                                                : "border-slate-200",
                                                     )}
                                                 >
                                                     {selected && <SelectedCorner />}
 
-                                                    <div className="text-xs font-semibold text-slate-900">
+                                                    {unit.isLotBaseUnit ? (
+                                                        <div className="mx-auto mb-1 w-fit rounded-full bg-sky-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-700">
+                                                            Đơn vị gốc lô
+                                                        </div>
+                                                    ) : null}
+
+                                                    <div
+                                                        className={cn(
+                                                            "text-xs font-semibold",
+                                                            unit.isLotBaseUnit
+                                                                ? "text-sky-900"
+                                                                : "text-slate-900",
+                                                        )}
+                                                    >
                                                         {formatUnitDisplay(
                                                             unit.name,
                                                             unit.symbol,
                                                         )}
                                                     </div>
-                                                    <div className="mt-1 text-[10px] font-semibold text-slate-500">
-                                                        Còn {unit.maxPurchaseQty}{" "}
-                                                        {unit.name.toLowerCase()}
+
+                                                    {unit.conversionToLotBaseHint ? (
+                                                        <div className="mt-1 text-[10px] font-medium text-slate-500">
+                                                            {unit.conversionToLotBaseHint}
+                                                        </div>
+                                                    ) : null}
+
+                                                    <div
+                                                        className={cn(
+                                                            "mt-1 text-[10px] font-semibold",
+                                                            unit.isLotBaseUnit
+                                                                ? "text-sky-700"
+                                                                : "text-slate-500",
+                                                        )}
+                                                    >
+                                                        ≈ {unit.lotBaseRemainingQty}{" "}
+                                                        {formatUnitDisplay(
+                                                            unit.lotBaseUnitName,
+                                                            unit.lotBaseUnitSymbol,
+                                                        )}
                                                     </div>
                                                 </button>
                                             )

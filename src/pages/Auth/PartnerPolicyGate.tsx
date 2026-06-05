@@ -26,42 +26,47 @@ const POLICY_SECTIONS = [
             "Áp dụng cho chủ siêu thị, nhân sự supermarket staff và mọi tài khoản vận hành sau khi hồ sơ được phê duyệt trên CloseExp AI.",
     },
     {
-        title: "2. Thông tin & nguồn hàng",
+        title: "2. Thông tin, nguồn hàng & chất lượng",
         content:
-            "Cung cấp thông tin đơn vị chính xác. Chỉ bán hàng có nguồn gốc hợp pháp, còn hạn, đúng mô tả; tồn kho đăng bán phải khớp hàng thực tế; không bán hàng cấm hoặc hàng giả.",
+            "Cung cấp thông tin đơn vị, địa chỉ và liên hệ chính xác. Chỉ đăng bán hàng có nguồn gốc hợp pháp, còn hạn, đúng mô tả và đạt chất lượng an toàn thực phẩm. Tồn kho đăng bán phải khớp hàng thực tế; không bán hàng cấm, hàng giả hoặc hàng kém chất lượng.",
     },
     {
-        title: "3. Quy trình đưa sản phẩm (Product Workflow)",
+        title: "3. Quy tắc tạo & đăng bán sản phẩm",
         content:
-            "Thực hiện đúng workflow: quét/nhập sản phẩm, xác nhận lô, thiết lập giá, kiểm tra hạn dùng trước khi publish. Không bỏ qua bước xác minh bắt buộc. Cập nhật giá và tồn kho theo thực tế.",
+            "Tuân thủ workflow hệ thống: quét mã vạch, OCR/nhập tay, xác nhận sản phẩm, tạo lô và publish. Chọn đúng danh mục và đơn vị chuẩn phù hợp loại hàng (ví dụ: chai/thùng cho đồ uống, kg/g cho tươi sống). Chỉ dùng đơn vị mua được hệ thống cho phép theo danh mục. Không bỏ qua bước xác minh; cập nhật giá, tồn kho và trạng thái lô theo thực tế.",
     },
     {
-        title: "4. Quản lý lô hàng & hạn sử dụng",
+        title: "4. Quy trình đưa sản phẩm (Product Workflow)",
+        content:
+            "Thực hiện đúng các bước trên nền tảng; chịu trách nhiệm về ảnh, tên, thành phần, dinh dưỡng và hạn dùng hiển thị với khách. Sau khi xác nhận tạo sản phẩm, tiếp tục hoàn tất lô hàng — không quay lại làm sai quy trình.",
+    },
+    {
+        title: "5. Quản lý lô hàng & hạn sử dụng",
         content:
             "Theo dõi hạn dùng từng lô; không để lô quá hạn vẫn bán. Tuân thủ cutoff đặt hàng trong ngày với hàng sắp hết hạn. Phối hợp khi hệ thống tự expire lô hoặc hủy đơn liên quan.",
     },
     {
-        title: "5. Đóng gói, giao hàng & hoàn tiền",
+        title: "6. Đóng gói, giao hàng & hoàn tiền",
         content:
             "Đóng gói đúng số lượng và đúng siêu thị phụ trách từng dòng đơn. Báo thất bại đóng gói trung thực; chấp nhận hoàn tiền theo quy tắc hệ thống (từng dòng hoặc cả đơn kèm phí).",
     },
     {
-        title: "6. Giá bán & khuyến mãi",
+        title: "7. Giá bán & khuyến mãi",
         content:
             "Giá minh bạch, hợp lý; tuân thủ hướng dẫn giá tham chiếu khi có. Không thao túng giá hoặc gian lận khuyến mãi.",
     },
     {
-        title: "7. Xét duyệt, tạm ngưng & chấm dứt",
+        title: "8. Xét duyệt, tạm ngưng & chấm dứt",
         content:
             "CloseExp AI có quyền từ chối, tạm ngưng hoặc đóng siêu thị khi vi phạm chính sách, sai quy trình product workflow hoặc gian lận nguồn hàng.",
     },
     {
-        title: "8. Bảo mật dữ liệu",
+        title: "9. Bảo mật dữ liệu",
         content:
             "Bảo mật tài khoản đăng nhập; không chia sẻ cho bên thứ ba. Dữ liệu hồ sơ chỉ dùng cho vận hành hợp pháp trên hệ thống.",
     },
     {
-        title: "9. Xác nhận đồng ý",
+        title: "10. Xác nhận đồng ý",
         content:
             "Khi tick xác nhận, bạn đồng ý tuân thủ toàn bộ điều khoản và chỉ gửi hồ sơ sau khi đã đọc hết chính sách (trên màn hình hoặc bản tải về).",
     },

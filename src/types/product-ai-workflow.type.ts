@@ -172,6 +172,7 @@ export type WorkflowCreateProductRequestDto = {
     ocrConfidence?: number
     isManualFallback?: boolean
     unitId?: string | null
+    productId?: string | null
 }
 
 export type WorkflowCreateProductResultDto = ProductUnitInfoDto & {

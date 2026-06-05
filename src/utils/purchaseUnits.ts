@@ -82,6 +82,90 @@ export const mergePurchaseUnits = (
     })
 }
 
+export type MergedPurchaseUnit = ProductPurchaseUnit & {
+    mergedUnitIds: string[]
+}
+
+const buildConversionRateKey = (unit: ProductPurchaseUnit) => {
+    const type = unit.type?.trim().toLowerCase() || "unknown"
+    const rate = Number(unit.conversionRate ?? 1)
+    return `${type}::${Number.isFinite(rate) ? rate : 1}`
+}
+
+const pickRepresentativePurchaseUnit = (
+    group: ProductPurchaseUnit[],
+    lotBaseUnitId?: string | null,
+) => {
+    const lotUnit = group.find((unit) => unit.unitId === lotBaseUnitId)
+    if (lotUnit) return lotUnit
+
+    const publishedLotUnit = group.find((unit) => unit.hasPublishedLot)
+    if (publishedLotUnit) return publishedLotUnit
+
+    const defaultUnit = group.find((unit) => unit.isProductDefault)
+    if (defaultUnit) return defaultUnit
+
+    return [...group].sort((a, b) => a.name.localeCompare(b.name, "vi"))[0]
+}
+
+export const mergePurchaseUnitsByConversionRate = (
+    units: ProductPurchaseUnit[],
+    lotBaseUnitId?: string | null,
+): MergedPurchaseUnit[] => {
+    const groups = new Map<string, ProductPurchaseUnit[]>()
+
+    for (const unit of units) {
+        const key = buildConversionRateKey(unit)
+        const list = groups.get(key) ?? []
+        list.push(unit)
+        groups.set(key, list)
+    }
+
+    const merged: MergedPurchaseUnit[] = []
+
+    for (const group of groups.values()) {
+        if (group.length === 1) {
+            merged.push({
+                ...group[0],
+                mergedUnitIds: [group[0].unitId],
+            })
+            continue
+        }
+
+        const representative = pickRepresentativePurchaseUnit(group, lotBaseUnitId)
+        const names = [
+            ...new Set(
+                group
+                    .map((unit) => unit.name.trim())
+                    .filter(Boolean),
+            ),
+        ]
+
+        merged.push({
+            ...representative,
+            name: names.join(" / "),
+            symbol:
+                representative.symbol?.trim() ||
+                group.find((unit) => unit.symbol?.trim())?.symbol ||
+                "",
+            isProductDefault: group.some((unit) => unit.isProductDefault),
+            hasPublishedLot: group.some((unit) => unit.hasPublishedLot),
+            mergedUnitIds: group.map((unit) => unit.unitId),
+        })
+    }
+
+    return merged.sort((a, b) => {
+        const aIsLotBase = a.unitId === lotBaseUnitId || a.mergedUnitIds.includes(lotBaseUnitId ?? "")
+        const bIsLotBase = b.unitId === lotBaseUnitId || b.mergedUnitIds.includes(lotBaseUnitId ?? "")
+        if (aIsLotBase !== bIsLotBase) return aIsLotBase ? -1 : 1
+
+        const rateDiff = (a.conversionRate ?? 1) - (b.conversionRate ?? 1)
+        if (rateDiff !== 0) return rateDiff
+
+        return a.name.localeCompare(b.name, "vi")
+    })
+}
+
 export const parsePurchaseUnitsResponse = (body: unknown): ProductPurchaseUnit[] => {
     if (!body || typeof body !== "object") return []
 

@@ -1,4 +1,4 @@
-import React from "react"
+import React, { useEffect, useMemo } from "react"
 import {
     Camera,
     CheckCircle2,
@@ -22,6 +22,12 @@ import {
     formatConversionRateHintWithBase,
     formatUnitOptionLabel,
 } from "@/utils/unitMeasure"
+import { getAllowedUnitTypeForCategory } from "@/utils/categoryUnitType"
+import {
+    filterProductUnitsForCategory,
+    getMissingProductFieldsForLot,
+    getProductUnitTypeHint,
+} from "@/utils/productWorkflowValidation"
 import {
     CheckboxField,
     cn,
@@ -86,6 +92,7 @@ type Props = {
     onChange: (next: ProductFormState) => void
     onSubmit: () => void
     onBack: () => void
+    disableBack?: boolean
     onAnalyzeImage: () => void
     onStartCamera: () => void
     onStopCamera: () => void
@@ -249,6 +256,7 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
     onChange,
     onSubmit,
     onBack,
+    disableBack = false,
     onAnalyzeImage,
     onStartCamera,
     onStopCamera,
@@ -257,15 +265,36 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
     onRemoveImage,
     onFileChange,
 }) => {
-    const canSubmit = Boolean(
-        form.name.trim() &&
-        form.categoryName.trim() &&
-        form.barcode.trim() &&
-        form.unitId.trim(),
+    const missingRequiredForLot = useMemo(
+        () => getMissingProductFieldsForLot(form),
+        [form],
     )
 
-    const selectedUnit = unitOptions.find((item) => item.unitId === form.unitId)
-    const unitCatalog = unitOptions.map((item) => ({
+    const canSubmit = missingRequiredForLot.length === 0
+
+    const hasCategory = Boolean(form.categoryId.trim() || form.categoryName.trim())
+    const allowedUnitType = getAllowedUnitTypeForCategory(form.isFreshFood)
+    const selectableUnitOptions = useMemo(
+        () =>
+            hasCategory
+                ? filterProductUnitsForCategory(unitOptions, form.isFreshFood)
+                : [],
+        [unitOptions, form.isFreshFood, hasCategory],
+    )
+
+    useEffect(() => {
+        if (!form.unitId || !hasCategory) return
+
+        const stillValid = selectableUnitOptions.some(
+            (item) => item.unitId === form.unitId,
+        )
+        if (!stillValid) {
+            onChange({ ...form, unitId: "" })
+        }
+    }, [form, form.unitId, hasCategory, selectableUnitOptions, onChange])
+
+    const selectedUnit = selectableUnitOptions.find((item) => item.unitId === form.unitId)
+    const unitCatalog = selectableUnitOptions.map((item) => ({
         name: item.label,
         symbol: item.unitSymbol,
         type: item.unitType,
@@ -600,7 +629,7 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                         onChange={(value) => onChange({ ...form, name: value })}
                     />
                     <Field
-                        label="Thương hiệu"
+                        label={form.isFreshFood ? "Thương hiệu" : "Thương hiệu *"}
                         value={form.brand}
                         onChange={(value) => onChange({ ...form, brand: value })}
                     />
@@ -612,12 +641,21 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                             const selected = categoryOptions.find(
                                 (item) => item.categoryId === String(value),
                             )
+                            const nextIsFreshFood = selected?.isFreshFood ?? false
+                            const nextUnits = filterProductUnitsForCategory(
+                                unitOptions,
+                                nextIsFreshFood,
+                            )
+                            const keepUnit = nextUnits.some(
+                                (item) => item.unitId === form.unitId,
+                            )
 
                             onChange({
                                 ...form,
                                 categoryId: selected?.categoryId || "",
                                 categoryName: selected?.label || "",
-                                isFreshFood: selected?.isFreshFood ?? false,
+                                isFreshFood: nextIsFreshFood,
+                                unitId: keepUnit ? form.unitId : "",
                             })
                         }}
                         options={categoryOptions.map((item) => ({
@@ -636,7 +674,7 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                                     unitId: value ? String(value) : "",
                                 })
                             }
-                            options={unitOptions.map((item) => ({
+                            options={selectableUnitOptions.map((item) => ({
                                 label: formatUnitOptionLabel(
                                     {
                                         name: item.label,
@@ -649,15 +687,25 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                                 value: item.unitId,
                             }))}
                         />
-                        {selectedUnitConversionHint ? (
-                            <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-800">
-                                {selectedUnitConversionHint}. Đây là đơn vị chuẩn của sản phẩm;
-                                ở bước tạo lô bạn có thể chọn đơn vị bán khác (Hộp, Gói…).
-                            </p>
-                        ) : selectedUnit ? (
+                        {!hasCategory ? (
                             <p className="text-xs text-slate-500">
-                                Đơn vị gốc trong nhóm {selectedUnit.unitType || "—"} (hệ số = 1).
+                                Chọn danh mục trước để hiển thị loại đơn vị phù hợp.
                             </p>
+                        ) : (
+                            <p className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-800">
+                                {getProductUnitTypeHint(form.isFreshFood)} Chỉ hiển thị
+                                đơn vị gốc loại {allowedUnitType} (hệ số = 1). Ở bước tạo lô
+                                bạn có thể chọn đơn vị bán khác cùng loại.
+                            </p>
+                        )}
+                        {hasCategory && selectableUnitOptions.length === 0 ? (
+                            <p className="text-xs font-medium text-amber-700">
+                                Chưa có đơn vị gốc phù hợp với danh mục này. Liên hệ quản trị
+                                viên để bổ sung đơn vị loại {allowedUnitType}.
+                            </p>
+                        ) : null}
+                        {selectedUnitConversionHint ? (
+                            <p className="text-xs text-slate-500">{selectedUnitConversionHint}</p>
                         ) : null}
                     </div>
 
@@ -797,14 +845,29 @@ const WorkflowProductStep: React.FC<Props & { ocrStepIndex?: number, ocrUploadPe
                     </div>
                 </div>
 
+                {missingRequiredForLot.length ? (
+                    <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        <div className="font-semibold">
+                            Cần bổ sung trước khi tạo lô hàng
+                        </div>
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-xs leading-5">
+                            {missingRequiredForLot.map((field) => (
+                                <li key={field}>{field}</li>
+                            ))}
+                        </ul>
+                    </div>
+                ) : null}
+
                 <div className="mt-5 flex flex-wrap gap-3">
-                    <button
-                        type="button"
-                        onClick={onBack}
-                        className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                    >
-                        Quay lại
-                    </button>
+                    {!disableBack ? (
+                        <button
+                            type="button"
+                            onClick={onBack}
+                            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                        >
+                            Quay lại
+                        </button>
+                    ) : null}
 
                     <button
                         type="button"
