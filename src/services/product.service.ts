@@ -103,6 +103,15 @@ export const productService = {
         return unwrap(response.data)
     },
 
+    async updateProductUnit(productId: string, unitId: string): Promise<ProductResponseDto> {
+        const response = await axiosClient.patch<ApiResponse<ProductResponseDto>>(
+            `/Products/${productId}/unit`,
+            { unitId },
+        )
+
+        return unwrap(response.data)
+    },
+
     async updateProduct(
         productId: string,
         payload: ProductUpdatePayload,

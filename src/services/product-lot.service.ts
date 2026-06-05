@@ -63,17 +63,4 @@ export const productLotService = {
         return unwrap(response.data)
     },
 
-    async updateLotUnit(lotId: string, unitId: string): Promise<void> {
-        try {
-            const response = await axiosClient.patch<ApiResponse<unknown>>(
-                `/Products/lots/${lotId}/unit`,
-                { unitId },
-            )
-            unwrap(response.data)
-        } catch (error) {
-            throw new Error(
-                getApiErrorMessage(error, "Không thể cập nhật đơn vị bán lô hàng"),
-            )
-        }
-    },
 }
