@@ -907,20 +907,17 @@ const ProductDetailPage = () => {
                                                         </div>
                                                     ) : null}
 
-                                                    <div
-                                                        className={cn(
-                                                            "mt-1 text-[10px] font-semibold",
-                                                            unit.isLotBaseUnit
-                                                                ? "text-sky-700"
-                                                                : "text-slate-500",
-                                                        )}
-                                                    >
-                                                        ≈ {unit.lotBaseRemainingQty}{" "}
-                                                        {formatUnitDisplay(
-                                                            unit.lotBaseUnitName,
-                                                            unit.lotBaseUnitSymbol,
-                                                        )}
-                                                    </div>
+                                                    {unit.isLotBaseUnit ? (
+                                                        <div
+                                                            className="mt-1 text-[10px] font-semibold text-sky-700"
+                                                        >
+                                                            ≈ {unit.lotBaseRemainingQty}{" "}
+                                                            {formatUnitDisplay(
+                                                                unit.lotBaseUnitName,
+                                                                unit.lotBaseUnitSymbol,
+                                                            )}
+                                                        </div>
+                                                    ) : null}
                                                 </button>
                                             )
                                         })}
