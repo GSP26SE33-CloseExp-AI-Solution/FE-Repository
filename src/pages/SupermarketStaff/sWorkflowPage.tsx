@@ -596,9 +596,9 @@ const ProductWorkflowPage: React.FC = () => {
                     (progressEvent) => {
                         const total = progressEvent.total || image.size
                         const percent = Math.round((progressEvent.loaded * 100) / total)
-                        
+
                         setOcrUploadPercent(prev => Math.max(prev, percent))
-                        
+
                         if (percent >= 100) {
                             setOcrStepIndex((prev) => {
                                 // Chỉ móc sự kiện chuyển lên bước 2 & 3 nếu chưa vượt qua bước 1
@@ -615,7 +615,7 @@ const ProductWorkflowPage: React.FC = () => {
                 )
                 results.push(result)
             }
-            
+
             setOcrStepIndex(4)
 
             const next = results.reduce(
@@ -791,7 +791,7 @@ const ProductWorkflowPage: React.FC = () => {
         }
 
         if (!(originalUnitPrice > 0)) {
-            toast.error("Thiếu giá gốc hợp lệ")
+            toast.error("Thiếu giá hiện hành hợp lệ")
             return
         }
 
@@ -844,14 +844,14 @@ const ProductWorkflowPage: React.FC = () => {
                 lotUnitKind === "WEIGHT"
                     ? undefined
                     : quantityOk && typeof form.quantity === "number"
-                      ? form.quantity
-                      : undefined,
+                        ? form.quantity
+                        : undefined,
             weight:
                 lotUnitKind === "COUNT"
                     ? undefined
                     : weightOk && typeof form.weight === "number"
-                      ? form.weight
-                      : undefined,
+                        ? form.weight
+                        : undefined,
             originalUnitPrice,
             finalUnitPrice,
             acceptedSuggestion: form.acceptedSuggestion,
@@ -1058,7 +1058,7 @@ const ProductWorkflowPage: React.FC = () => {
                                     const lotForm = workflow.lotForm;
 
                                     if (!lotForm.expiryDate || typeof lotForm.originalUnitPrice !== "number" || lotForm.originalUnitPrice <= 0) {
-                                        toast.error("Vui lòng nhập Ngày hết hạn và Giá gốc trước khi xem đề xuất.");
+                                        toast.error("Vui lòng nhập Ngày hết hạn và Giá hiện hành trước khi xem đề xuất.");
                                         return;
                                     }
 

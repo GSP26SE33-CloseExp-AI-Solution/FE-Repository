@@ -213,8 +213,8 @@ const WorkflowLotStep: React.FC<Props> = ({
 
     const effectiveUnitKind = normalizeUnitMeasureKind(
         stockLot?.unitType ||
-            lotSelectedUnit?.unitType ||
-            createdProduct?.unitType,
+        lotSelectedUnit?.unitType ||
+        createdProduct?.unitType,
     )
 
     const quantityLocked = effectiveUnitKind === "WEIGHT"
@@ -300,8 +300,8 @@ const WorkflowLotStep: React.FC<Props> = ({
                             onChange={(value) => {
                                 const nextUnit = value
                                     ? compatibleUnitOptions.find(
-                                          (item) => item.unitId === String(value),
-                                      )
+                                        (item) => item.unitId === String(value),
+                                    )
                                     : undefined
                                 const nextKind = normalizeUnitMeasureKind(
                                     nextUnit?.unitType,
@@ -364,8 +364,8 @@ const WorkflowLotStep: React.FC<Props> = ({
                             effectiveUnitKind === "COUNT"
                                 ? "Số lượng *"
                                 : quantityLocked
-                                  ? "Số lượng (không áp dụng)"
-                                  : "Số lượng"
+                                    ? "Số lượng (không áp dụng)"
+                                    : "Số lượng"
                         }
                         value={quantityLocked ? "" : form.quantity}
                         disabled={quantityLocked}
@@ -377,8 +377,8 @@ const WorkflowLotStep: React.FC<Props> = ({
                             effectiveUnitKind === "WEIGHT"
                                 ? "Khối lượng (kg) *"
                                 : weightLocked
-                                  ? "Khối lượng (không áp dụng)"
-                                  : "Khối lượng (kg)"
+                                    ? "Khối lượng (không áp dụng)"
+                                    : "Khối lượng (kg)"
                         }
                         value={weightLocked ? "" : form.weight}
                         disabled={weightLocked}
@@ -390,7 +390,7 @@ const WorkflowLotStep: React.FC<Props> = ({
                     </div>
 
                     <CurrencyField
-                        label="Giá gốc *"
+                        label="Giá hiện hành *"
                         value={form.originalUnitPrice}
                         onChange={(value) => onChange({ ...form, originalUnitPrice: value })}
                     />
@@ -422,7 +422,7 @@ const WorkflowLotStep: React.FC<Props> = ({
                         <div className="md:col-span-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 mt-2">
                             <div className="font-semibold mb-1 border-b border-blue-100 pb-1">Đề xuất giá từ hệ thống</div>
                             <div className="grid grid-cols-2 gap-2 mb-2">
-                                <div><strong>Giá gốc:</strong> {formatCurrencyVN(pricing.originalPrice)}</div>
+                                <div><strong>Giá hiện hành:</strong> {formatCurrencyVN(pricing.originalPrice)}</div>
                                 <div><strong>Giá đề xuất:</strong> {formatCurrencyVN(pricing.suggestedPrice)}</div>
                                 {pricing.minMarketPrice && <div><strong>Giá TT thấp nhất:</strong> {formatCurrencyVN(pricing.minMarketPrice)}</div>}
                                 {pricing.maxMarketPrice && <div><strong>Giá TT cao nhất:</strong> {formatCurrencyVN(pricing.maxMarketPrice)}</div>}
@@ -579,7 +579,7 @@ const WorkflowLotStep: React.FC<Props> = ({
                             value={formatCurrencyVN(suggestedPrice)}
                         />
                         <InfoRow
-                            label="Giá gốc"
+                            label="Giá hiện hành"
                             value={formatCurrencyVN(originalPrice)}
                         />
                         <InfoRow
@@ -692,8 +692,8 @@ const WorkflowLotStep: React.FC<Props> = ({
                                                 <BarChart data={marketDetails} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                                                     <XAxis dataKey="storeName" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} />
-                                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(val) => `${(val/1000).toFixed(0)}k`} />
-                                                    <RechartsTooltip 
+                                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748B' }} tickFormatter={(val) => `${(val / 1000).toFixed(0)}k`} />
+                                                    <RechartsTooltip
                                                         formatter={(value) =>
                                                             formatCurrencyVN(
                                                                 value == null ? undefined : Number(value)
@@ -702,16 +702,16 @@ const WorkflowLotStep: React.FC<Props> = ({
                                                         cursor={{ fill: '#F1F5F9' }}
                                                         contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                                     />
-                                                    <Bar 
-                                                        dataKey="price" 
-                                                        radius={[6, 6, 0, 0]} 
+                                                    <Bar
+                                                        dataKey="price"
+                                                        radius={[6, 6, 0, 0]}
                                                         maxBarSize={50}
                                                     >
                                                         {
                                                             marketDetails.map((entry, index) => (
-                                                                <Cell 
+                                                                <Cell
                                                                     key={entry.key}
-                                                                    fill={entry.price === marketPriceData.minPrice ? '#10B981' : entry.price === marketPriceData.maxPrice ? '#F43F5E' : '#6366F1'} 
+                                                                    fill={entry.price === marketPriceData.minPrice ? '#10B981' : entry.price === marketPriceData.maxPrice ? '#F43F5E' : '#6366F1'}
                                                                     style={{ cursor: entry.sourceUrl || entry.source ? 'pointer' : 'default' }}
                                                                     onClick={() => {
                                                                         const rawSource = entry.sourceUrl || entry.source;

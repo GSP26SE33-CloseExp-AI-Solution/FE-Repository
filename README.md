@@ -151,7 +151,7 @@ README.md
 - Tạo lot sản phẩm
 - Publish lot lên hệ thống
 - Quản lý nhiều lot của cùng một sản phẩm
-- Hiển thị ngày sản xuất, hạn sử dụng, số lượng, đơn vị, giá gốc, giá bán và giá AI
+- Hiển thị ngày sản xuất, hạn sử dụng, số lượng, đơn vị, giá hiện hành, giá bán và giá AI
 - Import sản phẩm bằng file Excel
 - Preview file import
 - Mapping cột Excel với field hệ thống
