@@ -39,21 +39,6 @@ type SupermarketDetailModalProps = {
     onUpdateStatus: (item: AdminSupermarketItem, nextStatus: number) => void | Promise<void>
 }
 
-const STAFF_STATUS_LABELS: Record<number, string> = {
-    0: "Đang hoạt động",
-    1: "Tạm ngưng",
-    2: "Đã nghỉ",
-}
-
-const getStaffStatusLabel = (status: number) =>
-    STAFF_STATUS_LABELS[status] ?? `Trạng thái ${status}`
-
-const getStaffStatusClass = (status: number) => {
-    if (status === 0) return "border-emerald-200 bg-emerald-50 text-emerald-700"
-    if (status === 1) return "border-amber-200 bg-amber-50 text-amber-700"
-    return "border-slate-200 bg-slate-50 text-slate-600"
-}
-
 const SupermarketDetailModal = ({
     supermarket,
     copiedCode,
