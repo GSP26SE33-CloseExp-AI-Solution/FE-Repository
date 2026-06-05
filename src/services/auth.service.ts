@@ -1,5 +1,6 @@
 import axios from "axios"
 import axiosClient from "@/utils/axiosClient"
+import { authStorage } from "@/utils/authStorage"
 import type { ApiResponse } from "@/types/api.types"
 import type {
     AuthData,
@@ -64,7 +65,12 @@ const getAxiosErrorMessage = (error: unknown, fallback: string) => {
     const data = getAxiosErrorPayload(error)
 
     if (data) {
-        return data.errors?.[0] || data.message || data.error || fallback
+        const errorField = data.error
+        const normalizedError = Array.isArray(errorField)
+            ? errorField[0]
+            : errorField
+
+        return data.errors?.[0] || data.message || normalizedError || fallback
     }
 
     if (error instanceof Error) {
@@ -263,9 +269,10 @@ export const refreshTokenApi = async (
 
 export const logoutAllApi = async (): Promise<ApiResponse<boolean>> => {
     try {
+        const refreshToken = authStorage.getRefreshToken()
         const res = await axiosClient.post<ApiResponse<boolean>>(
             "/auth/logout-all",
-            {},
+            refreshToken ? { refreshToken } : {},
         )
 
         if (!res.data?.success) {

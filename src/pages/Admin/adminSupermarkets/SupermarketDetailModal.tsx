@@ -5,6 +5,7 @@ import {
     MapPin,
     MapPinned,
     Phone,
+    User,
     X,
 } from "lucide-react"
 
@@ -221,6 +222,46 @@ const SupermarketDetailModal = ({
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-slate-200 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">
+                            Tài khoản quản lý
+                        </p>
+
+                        {supermarket.managerFullName || supermarket.managerEmail ? (
+                            <div className="mt-4 space-y-4">
+                                <div className="flex items-start gap-3">
+                                    <div className="rounded-xl bg-emerald-100 p-2">
+                                        <User className="h-4 w-4 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-slate-500">Họ tên</p>
+                                        <p className="text-sm font-medium text-slate-900">
+                                            {supermarket.managerFullName || "--"}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3">
+                                    <div className="rounded-xl bg-emerald-100 p-2">
+                                        <Mail className="h-4 w-4 text-emerald-600" />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-xs text-slate-500">Email đăng nhập</p>
+                                        <p className="break-all text-sm font-medium text-slate-900">
+                                            {supermarket.managerEmail || "--"}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center">
+                                <p className="text-sm text-slate-500">
+                                    Chưa có tài khoản quản lý được gán
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-4 rounded-2xl border border-slate-200 p-4">

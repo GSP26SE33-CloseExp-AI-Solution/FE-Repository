@@ -777,7 +777,7 @@ export const adminService = {
         pageSize?: number
     }) {
         return get<PaginationResult<AdminSupermarketItem>>(
-            `/supermarkets${buildQueryString(params)}`,
+            `/admin/supermarkets${buildQueryString(params)}`,
             "Không thể tải danh sách siêu thị"
         )
     },

@@ -38,7 +38,8 @@ const SupermarketTable = ({
                     <thead>
                         <tr className="border-b border-slate-200 bg-slate-50/80 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                             <th className="px-5 py-4">Siêu thị</th>
-                            <th className="px-5 py-4">Liên hệ</th>
+                            <th className="px-5 py-4">Liên hệ cửa hàng</th>
+                            <th className="px-5 py-4">Quản lý</th>
                             <th className="px-5 py-4">Trạng thái</th>
                             <th className="px-5 py-4">Ngày tạo</th>
                             <th className="px-5 py-4 text-right">Thao tác</th>
@@ -48,13 +49,13 @@ const SupermarketTable = ({
                     <tbody>
                         {loading ? (
                             <tr>
-                                <td colSpan={5} className="px-5 py-12 text-center text-sm text-slate-500">
+                                <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">
                                     Đang tải danh sách siêu thị...
                                 </td>
                             </tr>
                         ) : supermarkets.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-5 py-12 text-center text-sm text-slate-500">
+                                <td colSpan={6} className="px-5 py-12 text-center text-sm text-slate-500">
                                     Chưa có siêu thị phù hợp với bộ lọc đang chọn.
                                 </td>
                             </tr>
@@ -93,6 +94,21 @@ const SupermarketTable = ({
                                                     {item.contactEmail || "--"}
                                                 </p>
                                             </div>
+                                        </td>
+
+                                        <td className="px-5 py-4">
+                                            {item.managerFullName || item.managerEmail ? (
+                                                <div className="space-y-1">
+                                                    <p className="text-sm font-medium text-slate-900">
+                                                        {item.managerFullName || "--"}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500">
+                                                        {item.managerEmail || "--"}
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-slate-400">Chưa có quản lý</p>
+                                            )}
                                         </td>
 
                                         <td className="px-5 py-4">
