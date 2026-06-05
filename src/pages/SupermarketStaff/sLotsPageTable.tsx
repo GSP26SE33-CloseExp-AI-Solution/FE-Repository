@@ -24,6 +24,7 @@ import { productService } from "@/services/product.service"
 import { productLotService } from "@/services/product-lot.service"
 import ProductsTab from "./components/ProductsTab"
 import { SaleUnitCustomerGuide } from "./components/SaleUnitCustomerGuide"
+import { StockLotSaleHistoryPanel } from "./components/StockLotSaleHistoryPanel"
 import type {
     ProductDetailDto,
     ProductEditFormValues,
@@ -2551,6 +2552,10 @@ const ProductsLotsPage: React.FC = () => {
                                                 ],
                                             ]}
                                         />
+
+                                        {selectedLotState?.lotId ? (
+                                            <StockLotSaleHistoryPanel lotId={selectedLotState.lotId} />
+                                        ) : null}
 
                                         {selectedLotState ? (
                                             <div className="rounded-2xl border border-slate-200 p-5">

@@ -87,3 +87,36 @@ export type GetMySupermarketLotsQuery = {
 export type GetSupermarketLotsQuery = GetMySupermarketLotsQuery & {
     supermarketId: string
 }
+
+export type StockLotSaleHistorySummary = {
+    confirmedOrderCount: number
+    totalSaleLines: number
+    totalQuantityInLotUnit: number
+    totalRevenue: number
+    lotUnitName: string
+    lotUnitSymbol?: string | null
+}
+
+export type StockLotSaleHistoryItem = {
+    orderItemId: string
+    orderId: string
+    orderCode: string
+    orderStatus: string
+    orderStatusText: string
+    orderDate: string
+    customerName?: string | null
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+    purchaseUnitName?: string | null
+    purchaseUnitSymbol?: string | null
+    quantityInLotUnit: number
+}
+
+export type StockLotSaleHistoryResponse = {
+    summary: StockLotSaleHistorySummary
+    items: StockLotSaleHistoryItem[]
+    totalResult: number
+    page: number
+    pageSize: number
+}

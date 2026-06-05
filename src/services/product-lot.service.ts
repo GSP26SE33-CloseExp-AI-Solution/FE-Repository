@@ -5,6 +5,7 @@ import type {
     GetSupermarketLotsQuery,
     ProductLotListResult,
     RepublishStockLotPayload,
+    StockLotSaleHistoryResponse,
 } from "@/types/product-lot.type"
 
 const unwrap = <T,>(response: ApiResponse<T>): T => {
@@ -86,5 +87,23 @@ export const productLotService = {
             payload,
         )
         unwrap(response.data)
+    },
+
+    async getLotSalesHistory(
+        lotId: string,
+        pageNumber = 1,
+        pageSize = 10,
+    ): Promise<StockLotSaleHistoryResponse> {
+        const response = await axiosClient.get<ApiResponse<StockLotSaleHistoryResponse>>(
+            `/Products/lots/${lotId}/sales-history`,
+            {
+                params: {
+                    pageNumber,
+                    pageSize,
+                },
+            },
+        )
+
+        return unwrap(response.data)
     },
 }
