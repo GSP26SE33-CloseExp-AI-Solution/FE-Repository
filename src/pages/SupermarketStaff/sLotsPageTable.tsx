@@ -1193,17 +1193,7 @@ const ProductsLotsPage: React.FC = () => {
         return () => {
             cancelled = true
         }
-    }, [
-        canRepublishLot,
-        selectedLotState?.lotId,
-        selectedLotState?.productId,
-        selectedLot.unitId,
-        selectedLot.quantity,
-        selectedLot.finalUnitPrice,
-        selectedLot.sellingUnitPrice,
-        selectedLot.suggestedUnitPrice,
-        selectedLot.originalUnitPrice,
-    ])
+    }, [canRepublishLot, selectedLotState?.lotId, selectedLotState?.productId, selectedLot])
 
     const handleRepublishLot = async () => {
         if (!selectedLotState?.lotId || lotActionLoading) return
