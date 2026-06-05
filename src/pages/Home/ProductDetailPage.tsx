@@ -50,7 +50,6 @@ import { CART_ROUTE, LOGIN_ROUTE } from "@/constants/home.constants"
 import type {
     HomeProductGroupView,
     HomeProductLotApiItem,
-    HomeProductLotsResponse,
     HomeProductView,
 } from "@/types/home.type"
 
