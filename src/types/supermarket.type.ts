@@ -152,6 +152,10 @@ export type CreateSupermarketApplicationPayload = {
     contactEmail?: string
 }
 
+// Payload dùng cho:
+// - PUT /api/Supermarkets/applications/{id}
+export type UpdateSupermarketApplicationPayload = CreateSupermarketApplicationPayload
+
 // Model dùng cho:
 // - response từ POST /api/Supermarkets/applications
 // - GET /api/Supermarkets/applications/my

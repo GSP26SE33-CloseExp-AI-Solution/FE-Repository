@@ -10,6 +10,7 @@ import {
     Mail,
     MapPin,
     Navigation,
+    Pencil,
     Phone,
     Search,
 } from "lucide-react"
@@ -108,6 +109,23 @@ const getStatusMeta = (status?: number) => {
     }
 }
 
+/** Chỉ hồ sơ chờ duyệt (status = 0) mới được BE cho phép PUT. */
+const PENDING_APPLICATION_STATUS = 0
+
+const canEditApplication = (application?: MySupermarketApplication | null) =>
+    application?.status === PENDING_APPLICATION_STATUS
+
+const applicationToForm = (
+    application: MySupermarketApplication,
+): FormState => ({
+    name: application.name ?? "",
+    address: application.address ?? "",
+    latitude: toNumber(application.latitude) || 0,
+    longitude: toNumber(application.longitude) || 0,
+    contactPhone: application.contactPhone ?? "",
+    contactEmail: application.contactEmail ?? "",
+})
+
 const pickLatestApplication = (items: MySupermarketApplication[]) => {
     if (!items?.length) return null
 
@@ -138,6 +156,7 @@ const PartnerRegister = () => {
         useState<MySupermarketApplication | null>(null)
     const [loadStatusError, setLoadStatusError] = useState("")
     const [policyConfirmed, setPolicyConfirmed] = useState(false)
+    const [isEditingApplication, setIsEditingApplication] = useState(false)
 
     const canSubmit = useMemo(() => {
         const latitude = toNumber(form.latitude)
@@ -283,7 +302,7 @@ const PartnerRegister = () => {
         )
     }
 
-    const validateForm = () => {
+    const validateForm = (options?: { skipPolicy?: boolean }) => {
         if (!form.name.trim() || !form.address.trim() || !form.contactPhone.trim()) {
             showError("Vui lòng điền đầy đủ thông tin bắt buộc")
             return false
@@ -302,12 +321,77 @@ const PartnerRegister = () => {
             return false
         }
 
-        if (!policyConfirmed) {
+        if (!options?.skipPolicy && !policyConfirmed) {
             showError("Vui lòng đọc và xác nhận đồng ý với chính sách hệ thống trước")
             return false
         }
 
         return true
+    }
+
+    const buildApplicationPayload = (): CreateSupermarketApplicationPayload => ({
+        name: form.name.trim(),
+        address: form.address.trim(),
+        latitude: toNumber(form.latitude),
+        longitude: toNumber(form.longitude),
+        contactPhone: form.contactPhone.trim(),
+        contactEmail: form.contactEmail?.trim() || undefined,
+    })
+
+    const handleStartEditApplication = () => {
+        if (!submittedApplication || !canEditApplication(submittedApplication)) {
+            showError("Chỉ có thể chỉnh sửa hồ sơ đang chờ duyệt")
+            return
+        }
+
+        setForm(applicationToForm(submittedApplication))
+        setAddressKeyword(submittedApplication.address ?? "")
+        setAddressSuggestions([])
+        setLoadStatusError("")
+        setPolicyConfirmed(true)
+        setIsEditingApplication(true)
+    }
+
+    const handleCancelEditApplication = () => {
+        setIsEditingApplication(false)
+        setForm(EMPTY_FORM)
+        setAddressKeyword("")
+        setAddressSuggestions([])
+    }
+
+    const handleUpdateApplication = async () => {
+        if (!submittedApplication?.supermarketId) return
+        if (!validateForm({ skipPolicy: true })) return
+
+        try {
+            setSubmitting(true)
+            setLoadStatusError("")
+
+            const payload = buildApplicationPayload()
+            const updated = await supermarketService.updateApplication(
+                submittedApplication.supermarketId,
+                payload,
+            )
+
+            setSubmittedApplication(updated)
+            setIsEditingApplication(false)
+            setForm(EMPTY_FORM)
+            setAddressKeyword("")
+            showSuccess("Đã cập nhật hồ sơ đăng ký thành công")
+        } catch (error: any) {
+            console.error("[PartnerRegister][updateApplication] error =", error)
+            const backendMessage =
+                error?.response?.data?.message ||
+                error?.response?.data?.errors?.[0] ||
+                error?.message
+            showError(
+                typeof backendMessage === "string"
+                    ? backendMessage
+                    : "Cập nhật hồ sơ không thành công. Vui lòng thử lại.",
+            )
+        } finally {
+            setSubmitting(false)
+        }
     }
 
     const handleSubmit = async () => {
@@ -322,14 +406,7 @@ const PartnerRegister = () => {
             setSubmitting(true)
             setLoadStatusError("")
 
-            const payload: CreateSupermarketApplicationPayload = {
-                name: form.name.trim(),
-                address: form.address.trim(),
-                latitude: toNumber(form.latitude),
-                longitude: toNumber(form.longitude),
-                contactPhone: form.contactPhone.trim(),
-                contactEmail: form.contactEmail?.trim() || undefined,
-            }
+            const payload = buildApplicationPayload()
 
             console.log("[PartnerRegister][submitApplication] payload =", payload)
 
@@ -450,7 +527,11 @@ const PartnerRegister = () => {
                     </button>
                     <span>/</span>
                     <span className="font-medium text-slate-800">
-                        {submittedApplication ? "Trạng thái hồ sơ đối tác" : "Đăng ký thành đối tác"}
+                        {isEditingApplication
+                            ? "Chỉnh sửa hồ sơ đối tác"
+                            : submittedApplication
+                              ? "Trạng thái hồ sơ đối tác"
+                              : "Đăng ký thành đối tác"}
                     </span>
                 </div>
 
@@ -467,20 +548,24 @@ const PartnerRegister = () => {
                                 </div>
 
                                 <h1 className="mt-2 text-2xl font-bold text-gray-800 transition-all duration-300 group-hover:text-emerald-600">
-                                    {submittedApplication
-                                        ? "Trạng thái hồ sơ đối tác CloseExp AI"
-                                        : "Đăng ký đối tác CloseExp AI"}
+                                    {isEditingApplication
+                                        ? "Chỉnh sửa hồ sơ đối tác CloseExp AI"
+                                        : submittedApplication
+                                          ? "Trạng thái hồ sơ đối tác CloseExp AI"
+                                          : "Đăng ký đối tác CloseExp AI"}
                                 </h1>
 
                                 <p className="mt-1 text-sm text-gray-500">
-                                    {submittedApplication
-                                        ? "Theo dõi tiến độ xét duyệt hồ sơ siêu thị của bạn"
-                                        : "Gửi hồ sơ mở siêu thị để tham gia hệ thống"}
+                                    {isEditingApplication
+                                        ? "Cập nhật thông tin trước khi quản trị viên xét duyệt"
+                                        : submittedApplication
+                                          ? "Theo dõi tiến độ xét duyệt hồ sơ siêu thị của bạn"
+                                          : "Gửi hồ sơ mở siêu thị để tham gia hệ thống"}
                                 </p>
                             </Link>
                         </div>
 
-                        {!submittedApplication ? (
+                        {!submittedApplication || isEditingApplication ? (
                             <div className="mt-8 space-y-5">
                                 <Field label="Tên siêu thị / đối tác" required htmlFor="partner-store-name">
                                     <div className="relative">
@@ -653,26 +738,55 @@ const PartnerRegister = () => {
                                     </Field>
                                 </div>
 
-                                <PartnerPolicyGate
-                                    confirmed={policyConfirmed}
-                                    onConfirmedChange={setPolicyConfirmed}
-                                />
+                                {!isEditingApplication ? (
+                                    <PartnerPolicyGate
+                                        confirmed={policyConfirmed}
+                                        onConfirmedChange={setPolicyConfirmed}
+                                    />
+                                ) : null}
 
-                                <button
-                                    type="button"
-                                    onClick={() => void handleSubmit()}
-                                    disabled={!canSubmit || !policyConfirmed || submitting}
-                                    className="w-full rounded-lg bg-gradient-to-r from-green-400 to-emerald-500 py-2.5 font-semibold text-white shadow-md transition-all duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
-                                >
-                                    {submitting ? (
-                                        <span className="flex items-center justify-center gap-2">
-                                            <Loader2 className="animate-spin" size={18} />
-                                            Đang gửi hồ sơ...
-                                        </span>
-                                    ) : (
-                                        "Gửi hồ sơ đăng ký"
-                                    )}
-                                </button>
+                                <div className="flex flex-col gap-3 sm:flex-row">
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            void (
+                                                isEditingApplication
+                                                    ? handleUpdateApplication()
+                                                    : handleSubmit()
+                                            )
+                                        }
+                                        disabled={
+                                            !canSubmit ||
+                                            (!isEditingApplication && !policyConfirmed) ||
+                                            submitting
+                                        }
+                                        className="w-full rounded-lg bg-gradient-to-r from-green-400 to-emerald-500 py-2.5 font-semibold text-white shadow-md transition-all duration-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-70"
+                                    >
+                                        {submitting ? (
+                                            <span className="flex items-center justify-center gap-2">
+                                                <Loader2 className="animate-spin" size={18} />
+                                                {isEditingApplication
+                                                    ? "Đang lưu..."
+                                                    : "Đang gửi hồ sơ..."}
+                                            </span>
+                                        ) : isEditingApplication ? (
+                                            "Lưu thay đổi"
+                                        ) : (
+                                            "Gửi hồ sơ đăng ký"
+                                        )}
+                                    </button>
+
+                                    {isEditingApplication ? (
+                                        <button
+                                            type="button"
+                                            onClick={handleCancelEditApplication}
+                                            disabled={submitting}
+                                            className="w-full rounded-lg border border-slate-300 bg-white py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-70"
+                                        >
+                                            Huỷ chỉnh sửa
+                                        </button>
+                                    ) : null}
+                                </div>
                             </div>
                         ) : (
                             <div className="mt-8 space-y-5">
@@ -768,6 +882,17 @@ const PartnerRegister = () => {
                                     ) : null}
 
                                     <div className="mt-5 flex flex-wrap gap-3">
+                                        {canEditApplication(submittedApplication) ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleStartEditApplication}
+                                                className="inline-flex items-center gap-2 rounded-lg border border-sky-200 bg-sky-50 px-4 py-2.5 text-sm font-semibold text-sky-800 transition hover:bg-sky-100"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                                Chỉnh sửa hồ sơ
+                                            </button>
+                                        ) : null}
+
                                         <button
                                             type="button"
                                             onClick={() => void handleCheckMyApplication()}

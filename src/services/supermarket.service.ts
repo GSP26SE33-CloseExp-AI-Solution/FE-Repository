@@ -10,6 +10,7 @@ import type {
   SupermarketsPageResponse,
   CreateSupermarketApplicationPayload,
   MySupermarketApplication,
+  UpdateSupermarketApplicationPayload,
 } from "@/types/supermarket.type";
 
 // ======================================================
@@ -461,6 +462,34 @@ export const supermarketService = {
       return res.data.data;
     } catch (error) {
       logAxiosError("submitApplication", error);
+      throw error;
+    }
+  },
+
+  // PUT /api/Supermarkets/applications/{id}
+  async updateApplication(
+    applicationId: string,
+    payload: UpdateSupermarketApplicationPayload,
+  ): Promise<MySupermarketApplication> {
+    try {
+      const res = await axiosClient.put<ApiResponse<MySupermarketApplication>>(
+        `/Supermarkets/applications/${applicationId}`,
+        payload,
+      );
+
+      console.log("[supermarketService][updateApplication] payload =", payload);
+      console.log(
+        "[supermarketService][updateApplication] raw response =",
+        res.data,
+      );
+
+      if (!res.data?.data) {
+        throw new Error("Empty application response data");
+      }
+
+      return res.data.data;
+    } catch (error) {
+      logAxiosError("updateApplication", error);
       throw error;
     }
   },
