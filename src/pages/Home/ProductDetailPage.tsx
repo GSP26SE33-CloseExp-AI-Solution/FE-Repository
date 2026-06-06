@@ -157,11 +157,18 @@ const getPurchaseUnitAvailability = (
 
     if (maxPurchaseQty <= 0) return null
 
+    const purchaseRate = unit.conversionRate ?? 1
+    const lotRate = raw.conversionRate ?? 1
+
+    // Ràng buộc: Nếu lô hàng có đơn vị gốc có hệ số lớn (> 1.0)
+    // thì chỉ cho phép đặt hàng với các đơn vị mua lớn hơn hoặc bằng hệ số quy đổi của lô.
+    if (lotRate > 1.0 && purchaseRate < lotRate) {
+        return null
+    }
+
     const lotBaseRemainingQty = Math.max(0, Math.floor(Number(lotOption.lot.quantity ?? 0)))
     const lotBaseUnitName = raw.unitName?.trim() || "đơn vị lô"
     const lotBaseUnitSymbol = raw.unitSymbol?.trim() || ""
-    const purchaseRate = unit.conversionRate ?? 1
-    const lotRate = raw.conversionRate ?? 1
 
     let conversionToLotBaseHint: string | null = null
     if (!isLotBaseUnit) {
