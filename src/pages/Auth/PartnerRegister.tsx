@@ -100,6 +100,13 @@ const getStatusMeta = (status?: number) => {
                 description:
                     "Hồ sơ này đã ở trạng thái đóng. Bạn có thể liên hệ quản trị viên nếu cần hỗ trợ thêm.",
             }
+        case 4:
+            return {
+                label: "Đã từ chối",
+                className: "border-rose-200 bg-rose-50 text-rose-700",
+                description:
+                    "Hồ sơ của bạn đã bị từ chối. Bạn có thể chỉnh sửa thông tin và gửi lại để được xét duyệt.",
+            }
         default:
             return {
                 label: "Không xác định",
@@ -109,11 +116,11 @@ const getStatusMeta = (status?: number) => {
     }
 }
 
-/** Chỉ hồ sơ chờ duyệt (status = 0) mới được BE cho phép PUT. */
-const PENDING_APPLICATION_STATUS = 0
+/** BE chỉ cho phép PUT khi hồ sơ đã bị từ chối (status = 4). */
+const REJECTED_APPLICATION_STATUS = 4
 
 const canEditApplication = (application?: MySupermarketApplication | null) =>
-    application?.status === PENDING_APPLICATION_STATUS
+    application?.status === REJECTED_APPLICATION_STATUS
 
 const applicationToForm = (
     application: MySupermarketApplication,
@@ -340,7 +347,7 @@ const PartnerRegister = () => {
 
     const handleStartEditApplication = () => {
         if (!submittedApplication || !canEditApplication(submittedApplication)) {
-            showError("Chỉ có thể chỉnh sửa hồ sơ đang chờ duyệt")
+            showError("Chỉ có thể chỉnh sửa hồ sơ đã bị từ chối")
             return
         }
 
@@ -557,7 +564,7 @@ const PartnerRegister = () => {
 
                                 <p className="mt-1 text-sm text-gray-500">
                                     {isEditingApplication
-                                        ? "Cập nhật thông tin trước khi quản trị viên xét duyệt"
+                                        ? "Cập nhật thông tin và gửi lại hồ sơ sau khi bị từ chối"
                                         : submittedApplication
                                           ? "Theo dõi tiến độ xét duyệt hồ sơ siêu thị của bạn"
                                           : "Gửi hồ sơ mở siêu thị để tham gia hệ thống"}
